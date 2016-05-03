@@ -1,0 +1,9 @@
+1. modified omni.py, added function aa_pos_to_info, for generating redinfo from real positions (path: capo/src)
+
+2. omni_run_v1: modified version of omni_run, replaced aa_to_info with aa_pos_to_info  (path: capo/omni)
+
+3. omni_run_v2: modified version of omni_run, replaced reading pickle file with reading txt file (path: capo/omni)
+
+4. omni_run_uvfits: modified version of omni_run, use uvdata object to read uvfits (path: capo/omni)
+
+5. omni_run_ucla: merged all modified versions of omni_run above, added data file type option "--ftype" to specify file type. This version supports reading miriad, uvfits and fhd (path: capo/omni)
