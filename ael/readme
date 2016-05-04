@@ -1,0 +1,28 @@
+Files in this directory:
+
+Firstpass:
+pipe_slurm.sh
+	> The top level script for running firstpass jobs (and eppsilon power spectrum) on Oscar. Should be placed in FHD/Observations
+	> Requires a file with a list of Obs IDs and a version string.
+	> Run using nohup to ensure that it doesn't stop when logging out. It will wait for the firstpass job to finish before running power spectrum and will resubmit incomplete jobs.
+
+eor_firstpass_slurm_job.sh
+	> The job script submitted by pipe_slurm. Runs eor_firstpass_versions.
+	> Should be placed in FHD/Observation, where pipe_slurm can find it.
+
+eor_firstpass_versions.pro
+	> Runs the general_obs task. This is already part of FHD. I've included my own version, which has extra code for running the IDL profiler if desired.
+
+Power Spectrum:
+ps_slurm.sh
+	> Top level code for running eppsilon on Oscar. Should be put into the eppsilon/ps_wrappers directory.
+
+integrate_slurm_job.sh:
+	> Job script for integrating Healpix cubes.
+
+PS_list_slurm_job.sh
+	> The job script for running power spectrum.
+
+locate_uvfits_oscar.py
+	> A rudimentary script, accessed by pipe_slurm and others, that will return a full path to a uvfits file given an ObsId.
+	> Must be included in PYTHONPATH to work.
