@@ -7,3 +7,5 @@
 4. omni_run_uvfits: modified version of omni_run, use uvdata object to read uvfits (path: capo/omni)
 
 5. omni_run_ucla: merged all modified versions of omni_run above, added data file type option "--ftype" to specify file type. This version supports reading miriad, uvfits and fhd (path: capo/omni)
+
+6. npz2txt.py converts the output npc files of omni_run to ucla txt file. 
