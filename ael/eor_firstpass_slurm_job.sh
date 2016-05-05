@@ -6,8 +6,8 @@
 #############################################################################
 
 #SBATCH -J firstpass
-#SBATCH --mail-type=ALL
-#SBATCH --mail-user=adam_lanman@brown.edu
+# #SBATCH --mail-type=ALL
+# #SBATCH --mail-user=adam_lanman@brown.edu
 
 # obs_id, outdir, version, and thresh and nslots expected to be passed from qsub call
 # in batch_firstpass.sh
