@@ -43,7 +43,7 @@
 
 #ls $outdir > /dev/null # ping the output directory so nfs automounts
 
-module load gs
+module load ghostscript
 module load imagemagick/6.6.4
 module load git/2.2.1
 
