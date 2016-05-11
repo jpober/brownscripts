@@ -1426,6 +1426,19 @@ case version of
     profile_path=output_directory+"/IDL_profile.out"
    end
 
+   'test_interact': begin
+    export_images=1
+    uvfits_spectral_dimension=1
+    dft_threshold=1
+    cable_bandpass_fit=0
+    saved_run_bp=0
+    recalculate_all=0
+    calibrate_visibilities=0
+    ps_export=0
+    catalog_file_path=filepath('small_catalog.sav',root=rootdir('FHD'),subdir='catalog_data/zem_simulation_sources')
+;    calibration_catalog_file_path=filepath('mwa_calibration_source_list.sav',root=rootdir('FHD'),subdir='catalog_data')
+    end
+
 endcase
 
 ;old version here -- for MIT

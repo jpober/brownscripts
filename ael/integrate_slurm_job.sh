@@ -2,6 +2,8 @@
 #integrate cubes
 
 #SBATCH -J cube_integrate
+#SBATCH --mail-type=ALL
+#SBATCH --mail-user=adam_lanman@brown.edu
 
 #inputs needed: file_path_cubes, obs_list_path, version, chunk, ncores
 # chunk is the chunk number when the list was broken up. 0 for "master" or only chunk

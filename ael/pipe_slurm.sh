@@ -126,7 +126,7 @@ if [ -z ${wallclock_time} ]; then
 fi
 #Set typical nodes needed for standard FHD firstpass if not set.
 if [ -z ${ncores} ]; then
-    ncores=5
+    ncores=10
 fi
 #Set typical memory needed for standard FHD firstpass if not set.
 if [ -z ${mem} ]; then
