@@ -14,6 +14,8 @@
 
 #Make power spectra through a ps wrapper in idl
 
+module load gs
+module load imagemagick
 module load git/2.2.1
 
 input_file=${file_path_cubes}/
