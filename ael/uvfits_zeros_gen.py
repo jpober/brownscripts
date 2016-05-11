@@ -42,7 +42,6 @@ for key, val in _instr_params.iteritems():
     setattr(uvd,key,uvp)
 	
 # Generate an antenna array from a cal file.
-##TODO -- What is bp_r? bp_i?
 aa = a.cal.get_aa(args[0].split('.')[0], uvd.channel_width.value/1e9, uvd.sfreq.value/1e9, uvd.Nfreqs.value)  #Saved in Hz, AIPY expects GHz
 Nants = len(aa)
 uvd.Nants.value = Nants
