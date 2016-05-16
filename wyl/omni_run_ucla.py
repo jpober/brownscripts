@@ -4,75 +4,6 @@ import omnical, aipy, numpy, capo
 import pickle, optparse, os, sys
 import uvdata.uv as uvd, math
 
-#####################################################################################################
-def uv_read(filenames, filetype=None, polstr=None,antstr=None,recast_as_array=True):
-    info = {'lsts':[], 'times':[]}
-    dat, flg = {},{}
-    ginfo = [0,0,0]
-    #    uvdata=uvd.UVData()
-    if type(filenames) == 'str': filenames = [filenames]
-    for filename in filenames:
-        uvdata = uvd.UVData()
-        if filetype == 'miriad':
-            uvdata.read_miriad(filename)
-        elif filetype == 'uvfits':
-            uvdata.read_uvfits(filename)
-        elif filetype == 'fhd':
-            uvdata.read_fhd(filenames)
-        else:
-            raise IOError('invalid filetype, it should be miriad, uvfits, or fhd')
-        #uvdata.read(filename, filetype)
-        tt = uvdata.time_array.value
-        Nt = uvdata.Ntimes.value
-        blt = len(tt)
-        nbl = uvdata.Nbls.value
-        nfreq = uvdata.Nfreqs.value
-        
-        for ii in range(0,Nt):
-            info['times'].append(tt[ii*nbl])
-            info['lsts'].append(tt[ii*nbl])   #not sure how to calculate lsts
-        pol = uvdata.polarization_array.value
-        npol = len(pol)
-        data = uvdata.data_array.value
-        flag = uvdata.flag_array.value
-        ant1 = uvdata.ant_1_array.value
-        ant2 = uvdata.ant_2_array.value
-        freqarr = uvdata.freq_array.value[0]
-        
-        nant = int((1+math.sqrt(1+8*nbl))/2)
-
-#ginfo=[nant, Nt, nfreq]
-        ginfo[0] = nant
-        ginfo[1] = Nt
-        ginfo[2] = nfreq
-        
-        for ii in range(0,blt):
-            bl = (ant1[ii],ant2[ii])
-            if antstr == 'cross':
-                if ant1[ii] == ant2[ii]: continue
-            if not dat.has_key(bl): dat[bl],flg[bl] = {},{}
-            for jj in range(0,npol):
-                pp = aipy.miriad.pol2str[pol[jj]]
-                if polstr != None:
-                    if pp != polstr: continue
-                if not dat[bl].has_key(pp):
-                    dat[bl][pp],flg[bl][pp] = [],[]
-                data00,flag00 = [],[]
-                for nn in range(0,len(data[ii][jj])):
-                    data00.append(data[ii][jj][nn][0])
-                    flag00.append(flag[ii][jj][nn][0])
-                dat[bl][pp].append(data00)
-                flg[bl][pp].append(flag00)
-        if filetype == 'fhd': break
-    if recast_as_array:
-        for ii in dat.keys():
-            for jj in dat[ii].keys():
-                dat[ii][jj] = numpy.array(dat[ii][jj])
-                flg[ii][jj] = numpy.array(flg[ii][jj])
-        info['lsts'] = numpy.array(info['lsts'])
-        info['times'] = numpy.array(info['times'])
-    return info, dat, flg, ginfo, freqarr
-#####################################################################################################
 
 o = optparse.OptionParser()
 o.set_usage('omni_run.py [options] *uvcRRE')
@@ -87,7 +18,7 @@ o.add_option('--omnipath',dest='omnipath',default='',type='string',
 o.add_option('--ba',dest='ba',default=None,
             help='Antennas to exclude, separated by commas.')
 o.add_option('--ftype', dest='ftype', default='', type='string',
-            help='Type of the input file, .uvfits, or miriad, or fhd, to read fhd, use ',' to separate different save files')
+            help='Type of the input file, .uvfits, or miriad, or fhd, to read fhd, use comma to separate different save files, and put the vis file at the end')
 o.add_option('--iftxt', dest='iftxt', default=False, action='store_true',
             help='A switch to write the npz info to a ucla txt file or not')
 opts,args = o.parse_args(sys.argv[1:])
@@ -95,7 +26,6 @@ opts,args = o.parse_args(sys.argv[1:])
 #Dictionary of calpar gains and files
 pols = opts.pol.split(',')
 files = {}
-fhdfiles = []
 #files=[]
 g0 = {} #firstcal gains
 if not opts.calpar == None: #create g0 if txt file is provided
@@ -141,16 +71,19 @@ if not opts.calpar == None: #create g0 if txt file is provided
 #if not provided, will initiate g0 with units in the reading file part
 
 for filename in args:
-    if opts.ftype == 'uvfits' or opts.ftype == 'miriad':
-        files[filename] = {}
-        for p in pols:
-            fn = filename.split('.')
+    files[filename] = {}
+    for p in pols:
+        fn = filename.split('.')
+        if opts.ftype == 'uvfits' or opts.ftype == 'miriad':
             fn[-2] = p
             files[filename][p] = '.'.join(fn)
-    elif opts.ftype == 'fhd':
-        fhdfiles.append(filename)
-    else:
-        raise IOError('invalid filetype, it should be miriad, uvfits, or fhd')
+        elif opts.ftype == 'fhd':
+            ffn = fn[-2].split('_')
+            ffn[-1] = p.upper()
+            fn[-2] = '_'.join(ffn)
+            files[filename][p] = '.'.join(fn)
+        else:
+            raise IOError('invalid filetype, it should be miriad, uvfits, or fhd')
 
 #Create info
 if opts.redinfo != '': #reading redinfo file
@@ -173,18 +106,13 @@ reds = info.get_reds()
 ### Omnical-ing! Loop Through Compressed Files ###
 for f,filename in enumerate(args):
 
-    if opts.ftype == 'uvfits' or opts.ftype == 'miriad':
-        file_group = files[filename] #dictionary with pol indexed files
-        print 'Reading:'
-        for key in file_group.keys(): print '   '+file_group[key]
+
+    file_group = files[filename] #dictionary with pol indexed files
+    print 'Reading:'
+    for key in file_group.keys(): print '   '+file_group[key]
 
     #pol = filename.split('.')[-2] #XXX assumes 1 pol per file
-        timeinfo,d,f,ginfo,freqs = uv_read([file_group[key] for key in file_group.keys()], filetype=opts.ftype, polstr=opts.pol, antstr='cross')
-
-    elif opts.ftype == 'fhd':
-        print 'Reading:'
-        print filename
-        timeinfo,d,f,ginfo,freqs = uv_read(filename.split(','), filetype=opts.ftype, polstr=opts.pol, antstr='cross')
+    timeinfo,d,f,ginfo,freqs = capo.omni.uv_read([file_group[key] for key in file_group.keys()], filetype=opts.ftype, polstr=opts.pol, antstr='cross')
     
     #if txt file is not provided, g0 is initiated here, with all of them to be 1.0
     if opts.calpar == None:
