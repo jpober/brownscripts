@@ -19,7 +19,7 @@ python omni_run_ucla.py [-options] zen.jds.xx.uv (or *uvfits)
 
 ‘fhd’:
 
-python omni_run_ucla.py [-options] obsid_ps_settings.txt.obsid_params.sav,obsid_flags.sav,obsid_vis_XX.sav
+python omni_run_ucla.py [-options] obsid_ps_settings.txt,obsid_params.sav,obsid_flags.sav,obsid_vis_XX.sav
 
 6. npz2txt.py writes the output npz files of omni_run to ucla txt file. 
 
