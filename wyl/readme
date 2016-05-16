@@ -12,4 +12,15 @@
    
    python omni_run_ucla.py -p [pol] -C [calfile] -—ftype=[filetype(choose from ‘fhd’, ‘miriad’ and ‘uvfits’)] —-calpar=[ucla txt file (optional)] —-omnipath=/path/to/save/npzfile/ [filelists]
 
-6. npz2txt.py converts the output npz files of omni_run to ucla txt file. 
+for different file types:
+
+‘miriad’ or ‘uvfits’:
+python omni_run_ucla.py [-options] zen.jds.xx.uv (or *uvfits)
+
+‘fhd’:
+
+python omni_run_ucla.py [-options] obsid_ps_settings.txt.obsid_params.sav,obsid_flags.sav,obsid_vis_XX.sav
+
+6. npz2txt.py writes the output npz files of omni_run to ucla txt file. 
+
+7. omni_apply_ucla: read in the data, interacting with pyuvdata object, apply the omnical solution to the data, then write out the intended file type. Added options to specify the input and output filetype. The default output file type is ‘uvfits’. The data files are entered the same way as omni_run_ucla.py in command line.
