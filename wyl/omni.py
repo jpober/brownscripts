@@ -345,7 +345,7 @@ def uv_read(filenames, filetype=None, polstr=None,antstr=None,recast_as_array=Tr
     dat, flg = {},{}
     ginfo = [0,0,0]
     #    uvdata=uvd.UVData()
-    if type(filenames) == 'str': filenames = [filenames]
+    if type(filenames) == str: filenames = [filenames]
     for filename in filenames:
         uvdata = uvd.UVData()
         if filetype == 'miriad':
@@ -394,9 +394,9 @@ def uv_read(filenames, filetype=None, polstr=None,antstr=None,recast_as_array=Tr
                 if not dat[bl].has_key(pp):
                     dat[bl][pp],flg[bl][pp] = [],[]
                 data00,flag00 = [],[]
-                for nn in range(0,len(data[ii][jj])):
-                    data00.append(data[ii][jj][nn][0])
-                    flag00.append(flag[ii][jj][nn][0])
+                for nn in range(0,len(data[ii][0])):
+                    data00.append(data[ii][0][nn][jj])
+                    flag00.append(flag[ii][0][nn][jj])
                 dat[bl][pp].append(data00)
                 flg[bl][pp].append(flag00)
 #        if filetype == 'fhd': break
