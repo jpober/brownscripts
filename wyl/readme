@@ -4,9 +4,7 @@
 
 3. omni_run_v2: modified version of omni_run, replaced reading pickle file with reading txt file (path: capo/omni) 
 
-4. omni_run_uvfits: modified version of omni_run, use uvdata object to read uvfits (path: capo/omni)
-
-5. omni_run_ucla: merged all modified versions of omni_run above, added data file type option "--ftype" to specify file type. This version supports reading miriad, uvfits and fhd (path: capo/omni)
+4. omni_run_ucla: merged all modified versions of omni_run above, added data file type option "--ftype" to specify file type. This version supports reading miriad, uvfits and fhd (path: capo/omni)
    
    How to run omni_run_ucla.py:
    
@@ -19,8 +17,8 @@ python omni_run_ucla.py [-options] zen.jds.xx.uv (or *uvfits)
 
 ‘fhd’:
 
-python omni_run_ucla.py [-options] obsid_ps_settings.txt,obsid_params.sav,obsid_flags.sav,obsid_vis_XX.sav
+python omni_run_ucla.py [-options] /path/obsid
 
-6. npz2txt.py writes the output npz files of omni_run to ucla txt file. 
+5. npz2txt.py writes the output npz files of omni_run to ucla txt file. 
 
-7. omni_apply_ucla: read in the data, interacting with pyuvdata object, apply the omnical solution to the data, then write out the intended file type. Added options to specify the input and output filetype. The default output file type is ‘uvfits’. The data files are entered the same way as omni_run_ucla.py in command line.
+6. omni_apply_ucla: read in the data, interacting with pyuvdata object, apply the omnical solution to the data, then write out the intended file type. Added options to specify the input and output filetype. The default output file type is ‘uvfits’. The data files are entered the same way as omni_run_ucla.py in command line.

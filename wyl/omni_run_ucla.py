@@ -1,7 +1,7 @@
 #! /usr/bin/env python
 
 import omnical, aipy, numpy, capo
-import pickle, optparse, os, sys
+import pickle, optparse, os, sys, glob
 import uvdata.uv as uvd, math
 
 
@@ -18,7 +18,7 @@ o.add_option('--omnipath',dest='omnipath',default='',type='string',
 o.add_option('--ba',dest='ba',default=None,
             help='Antennas to exclude, separated by commas.')
 o.add_option('--ftype', dest='ftype', default='', type='string',
-            help='Type of the input file, .uvfits, or miriad, or fhd, to read fhd, use comma to separate different save files, and put the vis file at the end')
+            help='Type of the input file, .uvfits, or miriad, or fhd, to read fhd, simply type in the /path/obsid')
 o.add_option('--iftxt', dest='iftxt', default=False, action='store_true',
             help='A switch to write the npz info to a ucla txt file or not')
 opts,args = o.parse_args(sys.argv[1:])
@@ -73,17 +73,23 @@ if not opts.calpar == None: #create g0 if txt file is provided
 for filename in args:
     files[filename] = {}
     for p in pols:
-        fn = filename.split('.')
         if opts.ftype == 'uvfits' or opts.ftype == 'miriad':
+            fn = filename.split('.')
             fn[-2] = p
             files[filename][p] = '.'.join(fn)
         elif opts.ftype == 'fhd':
-            ffn = fn[-2].split('_')
-            ffn[-1] = p.upper()
-            fn[-2] = '_'.join(ffn)
-            files[filename][p] = '.'.join(fn)
+            obs = filename + '*'
+            filelist = glob.glob(obs)
+            if p == 'xx':
+                filelist.remove(filename + '_vis_YY.sav')
+            elif p == 'yy':
+                filelist.remove(filename + '_vis_XX.sav')
+            else:
+                raise IOError('do not support cross pol')
+            files[filename][p] = filelist
         else:
             raise IOError('invalid filetype, it should be miriad, uvfits, or fhd')
+
 
 #Create info
 if opts.redinfo != '': #reading redinfo file
@@ -109,10 +115,10 @@ for f,filename in enumerate(args):
 
     file_group = files[filename] #dictionary with pol indexed files
     print 'Reading:'
-    for key in file_group.keys(): print '   '+file_group[key]
+    for key in file_group.keys(): print file_group[key]
 
     #pol = filename.split('.')[-2] #XXX assumes 1 pol per file
-    timeinfo,d,f,ginfo,freqs = capo.omni.uv_read([file_group[key] for key in file_group.keys()], filetype=opts.ftype, polstr=opts.pol, antstr='cross')
+    timeinfo,d,f,ginfo,freqs = capo.wyl.uv_read([file_group[key] for key in file_group.keys()], filetype=opts.ftype, polstr=opts.pol, antstr='cross')
     
     #if txt file is not provided, g0 is initiated here, with all of them to be 1.0
     if opts.calpar == None:
@@ -150,9 +156,9 @@ for f,filename in enumerate(args):
 
     elif opts.ftype == 'fhd':
         if len(pols)>1: #obsid.npz
-            npzname = opts.omnipath+filename.split('/')[-1].split('_')[0]+'.npz'
+            npzname = opts.omnipath+filename.split('/')[-1]+'.npz'
         else: #obsid.pol.npz
-            npzname = opts.omnipath+filename.split('/')[-1].split('_')[0]+pols[0]+'.npz'
+            npzname = opts.omnipath+filename.split('/')[-1]+'.'+pols[0]+'.npz'
 
     print '   Saving %s'%npzname
     capo.omni.to_npz(npzname, m2, g2, v2, xtalk)
@@ -160,7 +166,7 @@ for f,filename in enumerate(args):
 
     if opts.iftxt: #if True, write npz gains to txt files
         print 'writing to txt:'
-        capo.omni.writetxt([npzname])
+        capo.wyl.writetxt([npzname])
         print 'Saving txt file'
 
 

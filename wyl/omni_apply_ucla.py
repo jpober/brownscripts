@@ -1,7 +1,7 @@
 #! /usr/bin/env python
 
 import omnical, aipy, numpy, capo
-import pickle, optparse, os, sys
+import pickle, optparse, os, sys, glob
 import uvdata.uv as uvd
 
 ### Options ###
@@ -14,7 +14,7 @@ o.add_option('--xtalk',dest='xtalk',default=False,action='store_true',
 o.add_option('--omnipath',dest='omnipath',default='%s.npz',type='string',
             help='Format string (e.g. "path/%s.npz", where you actually type the "%s") which converts the input file name to the omnical npz path/file.')
 o.add_option('--intype', dest='intype', default='', type='string',
-             help='Type of the input file, .uvfits, or miriad, or fhd, to read fhd, use comma to separate different save files, and put the vis file at the end')
+             help='Type of the input file, .uvfits, or miriad, or fhd, to read fhd, simply type in the /path/obsid')
 o.add_option('--outtype', dest='outtype', default='uvfits', type='string',
              help='Type of the output file, .uvfits, or miriad, or fhd')
 opts,args = o.parse_args(sys.argv[1:])
@@ -26,15 +26,20 @@ files = {}
 for filename in args:
     files[filename] = {}
     for p in pols:
-        fn = filename.split('.')
         if opts.intype == 'uvfits' or opts.intype == 'miriad':
+            fn = filename.split('.')
             fn[-2] = p
             files[filename][p] = '.'.join(fn)
         elif opts.intype == 'fhd':
-            ffn = fn[-2].split('_')
-            ffn[-1] = p.upper()
-            fn[-2] = '_'.join(ffn)
-            files[filename][p] = '.'.join(fn)
+            obs = filename + '*'
+            filelist = glob.glob(obs)
+            if p == 'xx':
+                filelist.remove(filename + '_vis_YY.sav')
+            elif p == 'yy':
+                filelist.remove(filename + '_vis_XX.sav')
+            else:
+                raise IOError('do not support cross pol')
+            files[filename][p] = filelist
         else:
             raise IOError('invalid filetype, it should be miriad, uvfits, or fhd')
 
@@ -47,9 +52,9 @@ for f,filename in enumerate(args):
             omnifile = opts.omnipath % '.'.join(filename.split('/')[-1].split('.')[0:4])
     elif opts.intype == 'fhd':
         if len(pols)>1:
-            omnifile = opts.omnipath % filename.split('/')[-1].split('_')[0]
+            omnifile = opts.omnipath % filename.split('/')[-1]
         else:
-            omnifile = opts.omnipath % filename.split('/')[-1].split('_')[0]+pols[0]
+            omnifile = opts.omnipath % filename.split('/')[-1]+'.'+pols[0]
     print '   Omnical npz:', omnifile
     _,gains,_,xtalk = capo.omni.from_npz(omnifile) #loads npz outputs from omni_run
 
@@ -71,8 +76,7 @@ for f,filename in enumerate(args):
         elif opts.intype == 'miriad':
             uvi.read_miriad(files[filename][p])
         elif opts.intype == 'fhd':
-            fnames = files[filename][p].split(',')
-            uvi.read_fhd(fnames)
+            uvi.read_fhd(files[filename][p])
 
         Nblts = uvi.Nblts.value
         Nfreqs = uvi.Nfreqs.value
@@ -95,7 +99,9 @@ for f,filename in enumerate(args):
                 except(KeyError): pass
         uvi.history.value = ''
         if opts.outtype == 'uvfits':
+            print 'writing:' + newfile
             uvi.write_uvfits(newfile)
+            print 'saving ' + newfile
     
 #        def mfunc(uv,p,d,f): #loops over time and baseline
 #            global times #global list
