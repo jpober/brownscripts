@@ -1,7 +1,8 @@
 import numpy as np, omnical, aipy, math
 import uvdata.uv as uvd
+import subprocess
 
-def writetxt(npzfiles):
+def writetxt(npzfiles, repopath):
     
     p2pol = {'EE': 'x','NN': 'y','EN': 'cross', 'NE': 'cross'}  #check the convension
     
@@ -10,7 +11,9 @@ def writetxt(npzfiles):
     fn0[-1] = 'txt'
     outfn = '.'.join(fn0)
     outfile = open(outfn,'w')
-    outfile.write("# Program of origin: Omnical\n")
+    hash = subprocess.check_output(['git','rev-parse','HEAD'], cwd=repopath)
+    outfile.write("# Program of origin: https://github.com/wenyang-li/capo.git\n")
+    outfile.write("# Git Hash: %s"%hash)
     outfile.write("# Convention: Divide uncalibrated data by these gains to obtain calibrated data.\n")
     outfile.write("# ANT NAME, ANT INDEX, FREQ (MHZ), POL, TIME (JD), RE(GAIN), IM(GAIN), FLAG\n")
     
@@ -25,6 +28,7 @@ def writetxt(npzfiles):
                 intss = int(ss[0:-1])
                 if not intss in ant:
                     ant.append(intss)
+        ant.sort()
         time = data['jds']
         freq = data['freqs']/1e6
         pol = ['EE', 'NN', 'EN', 'NE']
@@ -69,10 +73,14 @@ def uv_read(filenames, filetype=None, polstr=None,antstr=None,recast_as_array=Tr
         blt = len(tt)
         nbl = uvdata.Nbls.value
         nfreq = uvdata.Nfreqs.value
+        timeinfo = []
+        lstsinfo = []
         
         for ii in range(0,Nt):
-            info['times'].append(tt[ii*nbl])
-            info['lsts'].append(tt[ii*nbl])   #not sure how to calculate lsts
+            timeinfo.append(tt[ii*nbl])
+            lstsinfo.append(tt[ii*nbl])   #not sure how to calculate lsts
+        info['times'] = timeinfo
+        info['lsts'] = lstsinfo
         pol = uvdata.polarization_array.value
         npol = len(pol)
         data = uvdata.data_array.value
@@ -95,8 +103,6 @@ def uv_read(filenames, filetype=None, polstr=None,antstr=None,recast_as_array=Tr
             if not dat.has_key(bl): dat[bl],flg[bl] = {},{}
             for jj in range(0,npol):
                 pp = aipy.miriad.pol2str[pol[jj]]
-                if polstr != None:
-                    if pp != polstr: continue
                 if not dat[bl].has_key(pp):
                     dat[bl][pp],flg[bl][pp] = [],[]
                 data00,flag00 = [],[]

@@ -18,7 +18,7 @@ o.add_option('--omnipath',dest='omnipath',default='',type='string',
 o.add_option('--ba',dest='ba',default=None,
             help='Antennas to exclude, separated by commas.')
 o.add_option('--ftype', dest='ftype', default='', type='string',
-            help='Type of the input file, .uvfits, or miriad, or fhd, to read fhd, simply type in the /path/obsid')
+            help='Type of the input file, .uvfits, or miriad, or fhd, to read fhd, simply type in the path/obsid')
 o.add_option('--iftxt', dest='iftxt', default=False, action='store_true',
             help='A switch to write the npz info to a ucla txt file or not')
 opts,args = o.parse_args(sys.argv[1:])
@@ -165,8 +165,11 @@ for f,filename in enumerate(args):
 
 
     if opts.iftxt: #if True, write npz gains to txt files
+        scrpath = os.path.abspath(sys.argv[0])
+        pathlist = os.path.split(scrpath)[0].split('/')
+        repopath = '/'.join(pathlist[0:-1])
         print 'writing to txt:'
-        capo.wyl.writetxt([npzname])
+        capo.wyl.writetxt([npzname], repopath)
         print 'Saving txt file'
 
 

@@ -14,7 +14,7 @@ o.add_option('--xtalk',dest='xtalk',default=False,action='store_true',
 o.add_option('--omnipath',dest='omnipath',default='%s.npz',type='string',
             help='Format string (e.g. "path/%s.npz", where you actually type the "%s") which converts the input file name to the omnical npz path/file.')
 o.add_option('--intype', dest='intype', default='', type='string',
-             help='Type of the input file, .uvfits, or miriad, or fhd, to read fhd, simply type in the /path/obsid')
+             help='Type of the input file, .uvfits, or miriad, or fhd, to read fhd, simply type in the path/obsid')
 o.add_option('--outtype', dest='outtype', default='uvfits', type='string',
              help='Type of the output file, .uvfits, or miriad, or fhd')
 opts,args = o.parse_args(sys.argv[1:])
@@ -61,7 +61,7 @@ for f,filename in enumerate(args):
     for ip,p in enumerate(pols):
         print 'Reading', files[filename][p]
         if opts.outtype == 'uvfits':
-            newfn = omnifile.split('.')
+            newfn = files[filename][p].split('.')
             newfn[-1] = 'O.uvfits'
             newfile = '.'.join(newfn)
 #        omnifile = opts.omnipath % '.'.join(filename.split('/')[-1].split('.')[0:3])
@@ -89,13 +89,13 @@ for f,filename in enumerate(args):
             ti = ii/Nbls
             for jj in range(0,Nfreqs):
                 if opts.xtalk:
-                    try: uvi.data_array.value[ii][0][jj][ip] -= xtalk[p][(a1,a2)][jj]
+                    try: uvi.data_array.value[ii][0][jj][0] -= xtalk[p][(a1,a2)][jj]
                     except(KeyError):
-                        try: uvi.data_array.value[ii][0][jj][ip] -= xtalk[p][(a1,a2)][jj].conj()
+                        try: uvi.data_array.value[ii][0][jj][0] -= xtalk[p][(a1,a2)][jj].conj()
                         except(KeyError): pass
-                try: uvi.data_array.value[ii][0][jj][ip] /= gains[p1][a1][ti][jj]
+                try: uvi.data_array.value[ii][0][jj][0] /= gains[p1][a1][ti][jj]
                 except(KeyError): pass
-                try: uvi.data_array.value[ii][0][jj][ip] /= gains[p2][a2][ti][jj].conj()
+                try: uvi.data_array.value[ii][0][jj][0] /= gains[p2][a2][ti][jj].conj()
                 except(KeyError): pass
         uvi.history.value = ''
         if opts.outtype == 'uvfits':
