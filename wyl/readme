@@ -1,3 +1,5 @@
+# Program of origin: https://github.com/wenyang-li/capo.git
+
 1. modified omni.py, added function aa_pos_to_info, for generating redinfo from real positions (path: capo/src)
 
 2. omni_run_v1: modified version of omni_run, replaced aa_to_info with aa_pos_to_info  (path: capo/omni)
@@ -8,17 +10,57 @@
    
    How to run omni_run_ucla.py:
    
-   python omni_run_ucla.py -p [pol] -C [calfile] -—ftype=[filetype(choose from ‘fhd’, ‘miriad’ and ‘uvfits’)] —-calpar=[ucla txt file (optional)] —-omnipath=/path/to/save/npzfile/ [filelists]
+      python omni_run_ucla.py [-options] [filelists]
 
-for different file types:
+   for different file types:
 
-‘miriad’ or ‘uvfits’:
-python omni_run_ucla.py [-options] zen.jds.xx.uv (or *uvfits)
+      ‘miriad’ or ‘uvfits’:
 
-‘fhd’:
+         python omni_run_ucla.py [-options] /path/zen.jds.xx.uv (or *uvfits)
 
-python omni_run_ucla.py [-options] /path/obsid
+      ‘fhd’:
 
-5. npz2txt.py writes the output npz files of omni_run to ucla txt file. 
+         python omni_run_ucla.py [-options] /path/obsid
 
-6. omni_apply_ucla: read in the data, interacting with pyuvdata object, apply the omnical solution to the data, then write out the intended file type. Added options to specify the input and output filetype. The default output file type is ‘uvfits’. The data files are entered the same way as omni_run_ucla.py in command line.
+   options:
+
+     -h, --help           show this help message and exit
+     -p POL, --pol=POL    Choose polarization (xx, yy, xy, yx) to include.
+     -C CAL, --cal=CAL    Use specified <cal>.py for calibration information.
+     --calpar=CALPAR      Path and name of POL.p ("xx.p") calpar file.
+     --redinfo=REDINFO    Path and name of .bin redundant info file.
+     --omnipath=OMNIPATH  Path to save .npz files. Include final / in path.
+     --ba=BA              Antennas to exclude, separated by commas.
+     --ftype=FTYPE        Type of the input file, .uvfits, or miriad, or fhd, to
+                          read fhd, simply type in the path/obsid
+     --iftxt              A switch to write the npz info to a ucla txt file or
+                          not
+
+
+5. omni_apply_ucla: read in the data, interacting with pyuvdata object, apply the omnical solution to the data, then write out the intended file type. Added options to specify the input and output filetype. The default output file type is ‘uvfits’. The data files are entered the same way as omni_run_ucla.py in command line.
+
+   How to run omni_apply_ucla.py:
+   
+      python omni_apply_ucla.py [-options] [filelists]
+
+   for different file types:
+
+      ‘miriad’ or ‘uvfits’:
+
+         python omni_run_ucla.py [-options] /path/zen.jds.xx.uv (or *uvfits)
+
+      ‘fhd’:
+
+         python omni_run_ucla.py [-options] /path/obsid
+
+   Options:
+
+     -h, --help           show this help message and exit
+     -p POL, --pol=POL    Choose polarization (xx, yy, xy, yx) to include.
+     --xtalk              Toggle: apply xtalk solutions to data. Default=False
+     --omnipath=OMNIPATH  Format string (e.g. "path/%s.npz", where you actually
+                          type the "%s") which converts the input file name to
+                          the omnical npz path/file.
+     --intype=INTYPE      Type of the input file, .uvfits, or miriad, or fhd, to
+                          read fhd, simply type in the path/obsid
+     --outtype=OUTTYPE    Type of the output file, .uvfits, or miriad, or fhd

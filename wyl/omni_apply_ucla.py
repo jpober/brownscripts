@@ -91,7 +91,7 @@ for f,filename in enumerate(args):
                 if opts.xtalk:
                     try: uvi.data_array.value[ii][0][jj][0] -= xtalk[p][(a1,a2)][jj]
                     except(KeyError):
-                        try: uvi.data_array.value[ii][0][jj][0] -= xtalk[p][(a1,a2)][jj].conj()
+                        try: uvi.data_array.value[ii][0][jj][0] -= xtalk[p][(a2,a1)][jj].conj()
                         except(KeyError): pass
                 try: uvi.data_array.value[ii][0][jj][0] /= gains[p1][a1][ti][jj]
                 except(KeyError): pass

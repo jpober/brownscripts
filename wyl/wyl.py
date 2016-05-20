@@ -1,6 +1,6 @@
 import numpy as np, omnical, aipy, math
 import uvdata.uv as uvd
-import subprocess
+import subprocess, datetime
 
 def writetxt(npzfiles, repopath):
     
@@ -11,9 +11,11 @@ def writetxt(npzfiles, repopath):
     fn0[-1] = 'txt'
     outfn = '.'.join(fn0)
     outfile = open(outfn,'w')
-    hash = subprocess.check_output(['git','rev-parse','HEAD'], cwd=repopath)
+    githash = subprocess.check_output(['git','rev-parse','HEAD'], cwd=repopath)
+    today = datetime.date.today().strftime("Date: %d, %b %Y")
+    outfile.write("# %s\n"%today)
     outfile.write("# Program of origin: https://github.com/wenyang-li/capo.git\n")
-    outfile.write("# Git Hash: %s"%hash)
+    outfile.write("# Git Hash: %s"%githash)
     outfile.write("# Convention: Divide uncalibrated data by these gains to obtain calibrated data.\n")
     outfile.write("# ANT NAME, ANT INDEX, FREQ (MHZ), POL, TIME (JD), RE(GAIN), IM(GAIN), FLAG\n")
     
@@ -46,8 +48,7 @@ def writetxt(npzfiles, repopath):
                         stkey = str(aa) + p2pol[pol[pp]]
                         try: da = data[stkey][tt][ff]
                         except: da = 1.0
-                        string = 'ant'+str(aa)+', '+str(aa)+', '+str(df)+', '+dp+', '+'%.10f'%dt +', '+str(da.real)+', '+str(da.imag)+', 0\n'
-                        outfile.write(string)
+                        outfile.write("ant%d, %d, %f, %s, %.8f, %f, %f, 0\n"%(aa,aa,df,dp,dt,da.real,da.imag))
     outfile.close()
 
 def uv_read(filenames, filetype=None, polstr=None,antstr=None,recast_as_array=True):
