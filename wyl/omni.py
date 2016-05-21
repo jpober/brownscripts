@@ -107,14 +107,21 @@ def aa_pos_to_info(aa, pols=['x'], **kwargs):
         The remaining arguments are passed to omnical.arrayinfo.filter_reds()'''
     nant = len(aa)
     antpos = -np.ones((nant*len(pols),3)) # -1 to flag unused antennas
+    xmin = 0
+    ymin = 0
+    for ant in xrange(nant):  #trying to shift the crd to make sure they are positive
+        bl = aa.get_baseline(0,ant,src='z')
+        x,y = bl[0], bl[1]
+        if x < xmin: xmin = x
+        if y < ymin: ymin = y
     for ant in xrange(nant):
         bl = aa.get_baseline(0,ant,src='z')
-        x,y = bl[0], bl[1]#w is currently not included
+        x,y = bl[0] - xmin + 0.1, bl[1] - ymin + 0.1  #w is currently not included
         for z,pol in enumerate(pols):
             z = 2**z # exponential ensures diff xpols aren't redundant w/ each other
             i = Antpol(ant,pol,len(aa)) # creates index in POLNUM/NUMPOL for pol
             antpos[i,0],antpos[i,1],antpos[i,2] = x,y,z
-    reds = compute_reds(nant, pols, antpos[:nant],tol=0.1) # only first nant b/c compute_reds treats pol redundancy separately
+    reds = compute_reds(nant, pols, antpos[:nant],tol=0.0001) # only first nant b/c compute_reds treats pol redundancy separately
     # XXX haven't enforced xy = yx yet.  need to conjoin red groups for that
     ex_ants = [Antpol(i,nant).ant() for i in range(antpos.shape[0]) if antpos[i,0] < 0]
     kwargs['ex_ants'] = kwargs.get('ex_ants',[]) + ex_ants

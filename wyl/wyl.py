@@ -51,7 +51,7 @@ def writetxt(npzfiles, repopath):
                         outfile.write("ant%d, %d, %f, %s, %.8f, %f, %f, 0\n"%(aa,aa,df,dp,dt,da.real,da.imag))
     outfile.close()
 
-def uv_read(filenames, filetype=None, polstr=None,antstr=None,recast_as_array=True):
+def uv_read(filenames, filetype=None, polstr=None,antstr='cross',recast_as_array=True):
     info = {'lsts':[], 'times':[]}
     dat, flg = {},{}
     ginfo = [0,0,0]
@@ -68,7 +68,6 @@ def uv_read(filenames, filetype=None, polstr=None,antstr=None,recast_as_array=Tr
             uvdata.read_fhd(filename)
         else:
             raise IOError('invalid filetype, it should be miriad, uvfits, or fhd')
-        #uvdata.read(filename, filetype)
         tt = uvdata.time_array.value
         Nt = uvdata.Ntimes.value
         blt = len(tt)
@@ -88,19 +87,25 @@ def uv_read(filenames, filetype=None, polstr=None,antstr=None,recast_as_array=Tr
         flag = uvdata.flag_array.value
         ant1 = uvdata.ant_1_array.value
         ant2 = uvdata.ant_2_array.value
+        
+        if filetype == 'fhd':          #for fhd, the index starts from 1
+            ones = np.ones((len(ant1)))
+            ant1 = ant1 - ones
+            ant2 = ant2 - ones
+        
         freqarr = uvdata.freq_array.value[0]
+        auto = 0
+        
+        for ii in range(0, nbl):
+            if ant1[ii] == ant2[ii]:
+                auto += 1
+        nbl -= auto
         
         nant = int((1+math.sqrt(1+8*nbl))/2)
         
-        #ginfo=[nant, Nt, nfreq]
-        ginfo[0] = nant
-        ginfo[1] = Nt
-        ginfo[2] = nfreq
-        
         for ii in range(0,blt):
+            if ant1[ii] == ant2[ii] and antstr == 'cross': continue
             bl = (ant1[ii],ant2[ii])
-            if antstr == 'cross':
-                if ant1[ii] == ant2[ii]: continue
             if not dat.has_key(bl): dat[bl],flg[bl] = {},{}
             for jj in range(0,npol):
                 pp = aipy.miriad.pol2str[pol[jj]]
@@ -112,13 +117,17 @@ def uv_read(filenames, filetype=None, polstr=None,antstr=None,recast_as_array=Tr
                     flag00.append(flag[ii][0][nn][jj])
                 dat[bl][pp].append(data00)
                 flg[bl][pp].append(flag00)
-    #        if filetype == 'fhd': break
+        #ginfo = [nant, Nt, nfreq]
+        ginfo[0] = nant
+        ginfo[1] = Nt
+        ginfo[2] = nfreq
     if recast_as_array:
         for ii in dat.keys():
             for jj in dat[ii].keys():
-                dat[ii][jj] = np.array(dat[ii][jj])
+                dat[ii][jj] = np.complex64(dat[ii][jj])
                 flg[ii][jj] = np.array(flg[ii][jj])
         info['lsts'] = np.array(info['lsts'])
         info['times'] = np.array(info['times'])
+
     return info, dat, flg, ginfo, freqarr
 
