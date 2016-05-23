@@ -1,8 +1,8 @@
 #! /bin/bash
 #run Bryna's PS code on cubes that have already been integrated (in Slurm)
 #SBATCH -J PS_B
-#SBATCH --mail-type=ALL
-#SBATCH --mail-user=adam_lanman@brown.edu
+# #SBATCH --mail-type=ALL
+# #SBATCH --mail-user=adam_lanman@brown.edu
 
 #inputs needed: file_path_cubes, nobs, version, ncores
 
@@ -16,6 +16,7 @@
 
 #Make power spectra through a ps wrapper in idl
 
+module load ghostscript
 module load git/2.2.1
 module load imagemagick
 

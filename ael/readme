@@ -1,28 +1,45 @@
-Files in this directory:
+The collection of all scripts that are useful to the eorlive v2 website lives in this dir.
 
-Firstpass:
-pipe_slurm.sh
-	> The top level script for running firstpass jobs (and eppsilon power spectrum) on Oscar. Should be placed in FHD/Observations
-	> Requires a file with a list of Obs IDs and a version string.
-	> Run using nohup to ensure that it doesn't stop when logging out. It will wait for the firstpass job to finish before running power spectrum and will resubmit incomplete jobs.
 
-eor_firstpass_slurm_job.sh
-	> The job script submitted by pipe_slurm. Runs eor_firstpass_versions.
-	> Should be placed in FHD/Observation, where pipe_slurm can find it.
+------------------------
+generate_beam_image.py
 
-eor_firstpass_versions.pro
-	> Runs the general_obs task. This is already part of FHD. I've included my own version, which has extra code for running the IDL profiler if desired.
+Python script that generates the beam image at /var/beam_images. This path should be pre-generated.
+In order to run it as a cron process, first wrap it in a shell script like below
 
-Power Spectrum:
-ps_slurm.sh
-	> Top level code for running eppsilon on Oscar. Should be put into the eppsilon/ps_wrappers directory.
+#! /bin/bash
+source /opt/pyvenv/eorlive/bin/activate
+/home/ubuntu/MWA_Tools/eorlive_v2/scripts/generate_beam_image.py
 
-integrate_slurm_job.sh:
-	> Job script for integrating Healpix cubes.
+So it runs within the venv where mwapy is installed. Then add the crobtab entry like below
 
-PS_list_slurm_job.sh
-	> The job script for running power spectrum.
+*/10     *     *     *     *         /home/ubuntu/generate_image.sh
 
-locate_uvfits_oscar.py
-	> A rudimentary script, accessed by pipe_slurm and others, that will return a full path to a uvfits file given an ObsId.
-	> Must be included in PYTHONPATH to work.
+
+
+--------------------------
+insert_fake_graph_data.sql
+
+Used to insert some bogus data to test the front end charting system.
+Not really useful anymore since we have old_eor_obs_data.sql. See below.
+
+
+
+---------------------------
+old_eor_obs_data.sql
+
+Old eorlive website used Google Fusion Table to host the data for plotting.
+This sql script is a result of parsing that legacy data into an insert statement.
+Feed this statement into the database and you have yourself the old real data.
+The command would look something like this
+
+psql -h localhost -U eor -d eor -f old_eor_obs_data.sql
+
+
+
+
+------------------------------
+pull_chart_data.py
+
+This is the python script that gathers all the data for one row of data that we use for making graphs.
+Run it in the same manner as generate_beam_image.py script.

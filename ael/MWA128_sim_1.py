@@ -15,7 +15,8 @@ sim_prms= {
 
 	'channel_width' : 8e4,	 #Hz
 #	'sfreq' : 182435000.0, 
-	'sfreq' : 91217500.0, 
+	#'sfreq' : 91217500.0, 
+	'sfreq' : 166995000.0+8e4, 
 	'Nfreqs' : 384,
 
 	'Npols' : 4,

@@ -96,7 +96,7 @@ if [ -z ${wallclock_time} ]; then wallclock_time=10:00:00; fi
 if [ -z ${ncores} ]; then ncores=10; fi
 
 #Set typical memory needed for standard PS with obs ids if not set.
-if [ -z ${mem} ]; then mem=9G; fi
+if [ -z ${mem} ]; then mem=20G; fi
 
 #Set default to do integration
 if [ -z ${ps_only} ]; then ps_only=0; fi
@@ -162,7 +162,7 @@ fi
 
 if [ "$exit_flag" -eq 1 ]; then exit 1; fi
 
-if [ "$first_line_len" == 10 ]; then
+if [ "$first_line_len" -ge 10 ]; then
     
     # Just PS if flag has been set
     if [ "$ps_only" -eq "1" ]; then
@@ -181,7 +181,7 @@ if [ "$first_line_len" == 10 ]; then
 
     while read line
     do
-        ((chunk=obs/100+1))		#integer division results in chunks labeled 0 (first 100), 1 (second 100), etc
+        ((chunk=obs/100))		#integer division results in chunks labeled 0 (first 100), 1 (second 100), etc
         echo $line >> ${FHDdir}/Healpix/${version}_int_chunk${chunk}.txt	#put that obs id into the right txt file
         ((obs++))			#increment obs for the next run through
     done < $integrate_list
@@ -190,7 +190,6 @@ if [ "$first_line_len" == 10 ]; then
 else
 
     if [[ "$first_line" != */* ]]; then
-   
         chunk=0 
         while read line
         do
@@ -199,7 +198,6 @@ else
         nchunk=$chunk                       #number of chunks we ended up with
     
     else
-
         chunk=0 
         while read line
         do
@@ -241,12 +239,13 @@ if [ "$nchunk" -gt "1" ]; then
 else
 
     # Just one integrator
-    mv ${FHDdir}/Healpix/${version}_int_chunk1.txt ${FHDdir}/Healpix/${version}_int_chunk0.txt
+#    mv ${FHDdir}/Healpix/${version}_int_chunk1.txt ${FHDdir}/Healpix/${version}_int_chunk0.txt
     chunk=0
     chunk_obs_list=${FHDdir}/Healpix/${version}_int_chunk${chunk}.txt
     outfile=${FHDdir}/Healpix/${version}_int_chunk${chunk}_out.log
     errfile=${FHDdir}/Healpix/${version}_int_chunk${chunk}_err.log
     message=$(sbatch -p jpober-test --mem=$mem -t $wallclock_time -n $ncores --export=file_path_cubes=$FHDdir,obs_list_path=$chunk_obs_list,version=$version,chunk=$chunk,ncores=$ncores,legacy=$legacy -e $errfile -o $outfile ${PSpath}ps_wrappers/integrate_slurm_job.sh)
+
    # message=$(qsub ${hold_str} -l h_vmem=$mem,h_stack=512k,h_rt=$wallclock_time -V -v file_path_cubes=$FHDdir,obs_list_path=$chunk_obs_list,version=$version,chunk=$chunk,ncores=$ncores,legacy=$legacy -e $errfile -o $outfile -pe chost $ncores ${PSpath}ps_wrappers/integrate_job.sh)
     message=($message)
     master_id=${message[3]}

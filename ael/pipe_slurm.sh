@@ -130,7 +130,7 @@ if [ -z ${ncores} ]; then
 fi
 #Set typical memory needed for standard FHD firstpass if not set.
 if [ -z ${mem} ]; then
-    mem=10G
+    mem=40G
 fi
 if [ -z ${thresh} ]; then
     # if thresh is not set, set it to -1 which will cause it to not check for a window power
@@ -188,9 +188,10 @@ fi
 #Create a list of observations using the specified range, or the full observation id file. 
 unset good_obs_list
 for obs_id in "${obs_id_array[@]}"; do
-    if [ $obs_id -ge $starting_obs ] && [ $obs_id -le $ending_obs ]; then
-	good_obs_list+=($obs_id)
-    fi
+     good_obs_list+=($obs_id)
+#    if [ $obs_id -ge $starting_obs ] && [ $obs_id -le $ending_obs ]; then
+#	good_obs_list+=($obs_id)
+#    fi
 done
 
 #######End of gathering the input arguments and applying defaults if necessary

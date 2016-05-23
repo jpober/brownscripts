@@ -45,7 +45,7 @@ for key, val in _instr_params.iteritems():
 aa = a.cal.get_aa(args[0].split('.')[0], uvd.channel_width.value/1e9, uvd.sfreq.value/1e9, uvd.Nfreqs.value)  #Saved in Hz, AIPY expects GHz
 Nants = len(aa)
 uvd.Nants.value = Nants
-uvd.latitude.value, uvd.longitude.value, uvd.altitude.value= aa.lat, aa.long, aa.elev ### Altitude vs elevation?
+uvd.latitude.value, uvd.longitude.value, uvd.altitude.value= aa.lat*(180./n.pi), aa.long*(180./n.pi), aa.elev ### Altitude vs elevation?
 
 polar = uvd.polarization_array.value
 if polar == 'stokes':
@@ -79,7 +79,16 @@ uvd.freq_array.value = n.array([aa.get_afreqs()* 1e9])
 
 #Baseline array:
 ## Format -- Repeat baseline numbers for each time.
-bls = n.array(aa.bl_indices(auto=False))
+#bls = n.array(aa.bl_indices(auto=False))
+
+bls=[]
+blr = n.load('cotter_baselines.npz')['arr_0']
+
+ant_exclude = []  #List antennas to be excluded here, for whatever reason.
+bls = [uvd.antnums_to_baseline(j,i,attempt256=True) 
+       for i in range(0,len(aa)) 
+       for j in range(i,len(aa)) if not j in ant_exclude and not i in ant_exclude ]
+
 uvd.baseline_array.value = n.tile(bls, uvd.Ntimes.value)
 
 #number of baselines
@@ -90,7 +99,8 @@ uvd.Nblts.value = nbl*uvd.Ntimes.value
 #Time array:
 ## Format -- Repeat times for each baseline number.
 tims = n.arange(uvd.Ntimes.value, dtype=n.float) * dt + tzero
-uvd.time_array.value = n.tile(tims, nbl)
+#uvd.time_array.value = n.tile(tims, nbl)
+uvd.time_array.value = n.sort(n.tile(tims, nbl))    #Should be of length Nblts, baseline fast time slow
 
 uvd.Nbls.value = nbl
 
@@ -98,7 +108,7 @@ uvd.Nbls.value = nbl
 uvd.data_array.value = n.zeros((nbl * uvd.Ntimes.value, uvd.Nspws.value, uvd.Nfreqs.value,uvd.Npols.value), dtype=n.intc)
 
 #Antennas
-uvd.antenna_indices.value = n.arange(Nants)
+uvd.antenna_indices.value = n.arange(1,Nants+1,1)       #1 indexed, not 0
 uvd.antenna_names.value = ["ANT"+str(i) for i in uvd.antenna_indices.value]
 uvd.antenna_positions.value = n.array([ant.pos for ant in aa])
 uvd.ant_1_array.value = uvd.antenna_indices.value
@@ -122,10 +132,14 @@ src = RA+'_'+dec
 #Phase to 0,-27
 #src="0:00:00.0_-27:00:00.00"
 #src="355:46:28.8_-25:57:51.84"
-
+src="23:43:06.0_-25:57:51.84"
+RA,dec = src.split('_')
 print src
-uvd.phase_center_ra.value= RA
-uvd.phase_center_dec.value  = dec
+#sys.exit()
+
+
+uvd.phase_center_ra.value= n.rad2deg(float(repr(ephem.hours(RA))))
+uvd.phase_center_dec.value  = n.rad2deg(float(repr(ephem.degrees(dec))))
 uvd.object_name.value= "zenith"
 uvd.phase_center_epoch.value = 2000
 uvd.history.value = ''
