@@ -77,26 +77,55 @@ def compute_reds(nant, pols, *args, **kwargs):
         for pj in pols:
             reds += [[(Antpol(i,pi,nant),Antpol(j,pj,nant)) for i,j in gp] for gp in _reds]
     return reds
+ 
+#def aa_to_info(aa, pols=['x'], **kwargs):
+#    '''Use aa.ant_layout to generate redundances based on ideal placement.
+#    The remaining arguments are passed to omnical.arrayinfo.filter_reds()'''
+#    layout = aa.ant_layout
+#    nant = len(aa)
+#    antpos = -np.ones((nant*len(pols),3)) # -1 to flag unused antennas
+#    xs,ys = np.indices(layout.shape)
+#    for ant,x,y in zip(layout.flatten(), xs.flatten(), ys.flatten()):
+#        for z,pol in enumerate(pols):
+#            z = 2**z # exponential ensures diff xpols aren't redundant w/ each other
+#            i = Antpol(ant,pol,len(aa)) # creates index in POLNUM/NUMPOL for pol
+#            antpos[i,0],antpos[i,1],antpos[i,2] = x,y,z
+#    reds = compute_reds(nant, pols, antpos[:nant],tol=.1) # only first nant b/c compute_reds treats pol redundancy separately
+#    # XXX haven't enforced xy = yx yet.  need to conjoin red groups for that
+#    ex_ants = [Antpol(i,nant).ant() for i in range(antpos.shape[0]) if antpos[i,0] < 0]
+#    kwargs['ex_ants'] = kwargs.get('ex_ants',[]) + ex_ants
+#    reds = filter_reds(reds, **kwargs)
+#    info = RedundantInfo(nant)
+#    info.init_from_reds(reds,antpos)
+#    return info
 
-
-def aa_to_info(aa, pols=['x'], **kwargs):
+def aa_to_info(aa, pols=['x'], fcal=False, **kwargs):
     '''Use aa.ant_layout to generate redundances based on ideal placement.
         The remaining arguments are passed to omnical.arrayinfo.filter_reds()'''
     layout = aa.ant_layout
     nant = len(aa)
-    antpos = -np.ones((nant*len(pols),3)) # -1 to flag unused antennas
-    xs,ys = np.indices(layout.shape)
+    try:
+        antpos_ideal = aa.antpos_ideal
+        xs,ys,zs = antpos_ideal.T
+        layout = np.arange(len(xs))
+        #antpos = np.concatenat([antpos_ideal for i in len(pols)])
+    except(AttributeError):
+        layout = aa.ant_layout
+        xs,ys = np.indices(layout.shape)
+    antpos = -np.ones((nant*len(pols),3)) #remake antpos with pol information. -1 to flag
     for ant,x,y in zip(layout.flatten(), xs.flatten(), ys.flatten()):
-        for z,pol in enumerate(pols):
-            z = 2**z # exponential ensures diff xpols aren't redundant w/ each other
-            i = Antpol(ant,pol,len(aa)) # creates index in POLNUM/NUMPOL for pol
-            antpos[i,0],antpos[i,1],antpos[i,2] = x,y,z
-    reds = compute_reds(nant, pols, antpos[:nant],tol=.1) # only first nant b/c compute_reds treats pol redundancy separately
-    # XXX haven't enforced xy = yx yet.  need to conjoin red groups for that
-    ex_ants = [Antpol(i,nant).ant() for i in range(antpos.shape[0]) if antpos[i,0] < 0]
+        for z, pol in enumerate(pols):
+            z = 2**z
+            i = Antpol(ant, pol, len(aa))
+            antpos[i,0], antpos[i,1], antpos[i,2] = x,y,z
+    reds = compute_reds(nant, pols, antpos[:nant], tol=.1)
+    ex_ants = [Antpol(i,nant).ant() for i in range(antpos.shape[0]) if antpos[i,0] == -1]
     kwargs['ex_ants'] = kwargs.get('ex_ants',[]) + ex_ants
     reds = filter_reds(reds, **kwargs)
-    info = RedundantInfo(nant)
+    if fcal:
+        info = FirstCalRedundantInfo(nant)
+    else:
+        info = RedundantInfo(nant)
     info.init_from_reds(reds,antpos)
     return info
 
@@ -130,6 +159,7 @@ def aa_pos_to_info(aa, pols=['x'], **kwargs):
     info.init_from_reds(reds,antpos)
     return info
 ####################################################################################################
+
 
 
 def redcal(data, info, xtalk=None, gains=None, vis=None,removedegen=False, uselogcal=True, maxiter=50, conv=1e-3, stepsize=.3, computeUBLFit=True, trust_period=1):
@@ -183,11 +213,11 @@ def compute_xtalk(res, wgts):
         for key in res[pol]: 
             r,w = np.where(wgts[pol][key] > 0, res[pol][key], 0), wgts[pol][key].sum(axis=0)
             w = np.where(w == 0, 1, w)
-        xtalk[pol][key] = (r.sum(axis=0) / w).astype(res[pol][key].dtype) # avg over time
+            xtalk[pol][key] = (r.sum(axis=0) / w).astype(res[pol][key].dtype) # avg over time
     return xtalk
 
 def to_npz(filename, meta, gains, vismdl, xtalk):
-    '''Write results from omnical.calib.redcal (meta,gains,vismdl) to npz file.
+    '''Write results from omnical.calib.redcal (meta,gains,vismdl,xtalk) to npz file.
     Each of these is assumed to be a dict keyed by pol, and then by bl/ant/keyword'''
     d = {}
     metakeys = ['jds','lsts','freqs','history']#,chisq]
@@ -218,24 +248,28 @@ def from_npz(filename, verbose=False):
     for f in filename:
         if verbose: print 'Reading', f
         npz = np.load(f)
-        for k in [f for f in npz.files if f.startswith('(')]:
-            pol,bl = parse_key(k)
-            if not xtalk.has_key(pol): xtalk[pol] = {}
-            xtalk[pol][bl] = xtalk[pol].get(bl,[]) + [np.copy(npz[k])]
         for k in [f for f in npz.files if f.startswith('<')]:
             pol,bl = parse_key(k)
             if not vismdl.has_key(pol): vismdl[pol] = {}
             vismdl[pol][bl] = vismdl[pol].get(bl,[]) + [np.copy(npz[k])]
+        for k in [f for f in npz.files if f.startswith('(')]:
+            pol,bl = parse_key(k)
+            if not xtalk.has_key(pol): xtalk[pol] = {}
+            dat = np.resize(np.copy(npz[k]),vismdl[pol][vismdl[pol].keys()[0]][0].shape) #resize xtalk to be like vismdl (with a time dimension too)
+            if xtalk[pol].get(bl) == None: #no bl key yet
+                xtalk[pol][bl] = dat
+            else: #append to array
+                xtalk[pol][bl] = np.vstack((xtalk[pol].get(bl),dat))
         for k in [f for f in npz.files if f[0].isdigit()]:
             pol,ant = k[-1:],int(k[:-1])
             if not gains.has_key(pol): gains[pol] = {}
-            gains[pol][ant] = gains[pol].get(bl,[]) + [np.copy(npz[k])]
+            gains[pol][ant] = gains[pol].get(ant,[]) + [np.copy(npz[k])]
         kws = ['chi','hist','j','l','f']
         for kw in kws:
             for k in [f for f in npz.files if f.startswith(kw)]:
                 meta[k] = meta.get(k,[]) + [np.copy(npz[k])]
-    for pol in xtalk:
-        for bl in xtalk[pol]: xtalk[pol][bl] = np.concatenate(xtalk[pol][bl])
+    #for pol in xtalk: #this is already done above now
+        #for bl in xtalk[pol]: xtalk[pol][bl] = np.concatenate(xtalk[pol][bl])
     for pol in vismdl:
         for bl in vismdl[pol]: vismdl[pol][bl] = np.concatenate(vismdl[pol][bl])
     for pol in gains:
@@ -250,29 +284,37 @@ class FirstCal(object):
         self.data = data
         self.fqs = fqs
         self.info = info
-    def data_to_delays(self):
+    def data_to_delays(self,**kwargs):
         '''data = dictionary of visibilities. 
            info = FirstCalRedundantInfo class
+           can give it kwargs:
+                supports 'window': window function for fourier transform. default is none
            Returns a dictionary with keys baseline pairs and values delays.'''
+        window=kwargs.get('window','none')
+        tune=kwargs.get('tune','True')
         self.blpair2delay = {}
         dd = self.info.order_data(self.data)
+#        ww = self.info.order_data(self.wgts)
         for (bl1,bl2) in self.info.bl_pairs:
             d1 = dd[:,:,self.info.bl_index(bl1)]
+#            w1 = ww[:,:,self.info.bl_index(bl1)]
             d2 = dd[:,:,self.info.bl_index(bl2)]
-            delay = red.redundant_bl_cal_simple(d1,d2,self.fqs)
-            self.blpair2delay[(bl1,bl2)] = delay    
+#            w2 = ww[:,:,self.info.bl_index(bl2)]
+            #delay = red.redundant_bl_cal_simple(d1,w1,d2,w2,self.fqs)
+            delay = red.redundant_bl_cal_simple(d1,d2,self.fqs,window=window,tune=tune)
+            self.blpair2delay[(bl1,bl2)] = delay
         return self.blpair2delay
     def get_N(self,nblpairs):
         return np.identity(nblpairs) 
-    def get_M(self):
+    def get_M(self,**kwargs):
         M = np.zeros((len(self.info.bl_pairs),1))
-        blpair2delay = self.data_to_delays()
+        blpair2delay = self.data_to_delays(**kwargs)
         for pair in blpair2delay:
             M[self.info.blpair_index(pair)] = blpair2delay[pair]
         return M
-    def run(self):
+    def run(self, **kwargs):
         #make measurement matrix 
-        self.M = self.get_M()
+        self.M = self.get_M(**kwargs)
         #make noise matrix
         N = self.get_N(len(self.info.bl_pairs)) 
         self._N = np.linalg.inv(N)

@@ -13,8 +13,10 @@ def writetxt(npzfiles, repopath):
     outfile = open(outfn,'w')
     githash = subprocess.check_output(['git','rev-parse','HEAD'], cwd=repopath)
     today = datetime.date.today().strftime("Date: %d, %b %Y")
+    ori = subprocess.check_output(['git','remote','show','origin'], cwd=repopath)
+    ori = ori.split('\n')[1].split(' ')[-1]
     outfile.write("# %s\n"%today)
-    outfile.write("# Program of origin: https://github.com/wenyang-li/capo.git\n")
+    outfile.write("# Program of origin: %s\n"%ori)
     outfile.write("# Git Hash: %s"%githash)
     outfile.write("# Convention: Divide uncalibrated data by these gains to obtain calibrated data.\n")
     outfile.write("# ANT NAME, ANT INDEX, FREQ (MHZ), POL, TIME (JD), RE(GAIN), IM(GAIN), FLAG\n")
@@ -88,14 +90,20 @@ def uv_read(filenames, filetype=None, polstr=None,antstr='cross',recast_as_array
         ant1 = uvdata.ant_1_array.value
         ant2 = uvdata.ant_2_array.value
         
-        if filetype == 'fhd':          #for fhd, the index starts from 1
+        if not (0 in ant1 or 0 in ant2):          #if the index starts from 1
             ones = np.ones((len(ant1)))
             ant1 = ant1 - ones
             ant2 = ant2 - ones
-        
+
         freqarr = uvdata.freq_array.value[0]
         auto = 0
         
+        dindex = ant1 - ant2
+        if 1 in dindex and -1 in dindex: #if both (i,j) and (j,i) are included, use -1 to flag (j,i) (if j>i)
+            for ii in range(0,blt):
+                if ant1[ii] > ant2[ii]:
+                    ant1[ii]=-1
+                    ant2[ii]=-1
         for ii in range(0, nbl):
             if ant1[ii] == ant2[ii]:
                 auto += 1
@@ -104,6 +112,7 @@ def uv_read(filenames, filetype=None, polstr=None,antstr='cross',recast_as_array
         nant = int((1+math.sqrt(1+8*nbl))/2)
         
         for ii in range(0,blt):
+            if ant1[ii] < 0: continue
             if ant1[ii] == ant2[ii] and antstr == 'cross': continue
             bl = (ant1[ii],ant2[ii])
             if not dat.has_key(bl): dat[bl],flg[bl] = {},{}

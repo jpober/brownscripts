@@ -43,7 +43,7 @@ if not opts.calpar == None: #create g0 if txt file is provided
                 elif s.strip() == 'EE': s = 'xx' #need to check the convension
                 elif s.strip() == 'NN': s = 'yy'
                 temp2.append(s)
-            if temp2[2].strip() == 'EN' or temp2[2].strip() == 'NE': continue
+            if not temp2[2].strip() in pols: continue
             temp3=[temp2[2], int(temp2[0]), float(temp2[3]), float(temp2[1]), float(temp2[4]), float(temp2[5])]  #temp3=[pol,ant,jds,freq,real,imag]
             tkn.append(temp3)
         for p,pp in enumerate(tkn):
