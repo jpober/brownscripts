@@ -69,7 +69,7 @@ version='jrk'
 #Specify the FHD file path that is used in IDL (generally specified in idl_startup)
 FHDpath=$(idl -e 'print,rootdir("fhd")') ### NOTE this only works if idlstartup doesn't have any print statements (e.g. healpix check)
 if [ -z ${wallclock_time} ]; then
-    wallclock_time=6:00:00
+    wallclock_time=1:00:00
 fi
 #Set typical nodes needed for standard FHD firstpass if not set.                                                                                                     
 if [ -z ${ncores} ]; then
@@ -77,7 +77,7 @@ if [ -z ${ncores} ]; then
 fi
 #Set typical memory needed for standard FHD firstpass if not set.                                                                                                    
 if [ -z ${mem} ]; then
-    mem=100G
+    mem=60G
 fi
 if [ -z ${thresh} ]; then
     # if thresh is not set, set it to -1 which will cause it to not check for a window power                                                                         
@@ -86,7 +86,7 @@ fi
 
 if [ -z ${outdir} ]
 then
-    outdir=/users/jkerriga/scratch/FHD_out
+    outdir=/users/jkerriga
     echo Using default output directory: $outdir
 else
     #strip the last / if present in output directory filepath
@@ -94,9 +94,9 @@ else
     echo Using output directory: $outdir
 fi
 
-mkdir -p ${outdir}/fhd_${version}
-mkdir -p ${outdir}/fhd_${version}/grid_out
-echo Output located at ${outdir}/fhd_${version}
+mkdir -p ${outdir}
+mkdir -p ${outdir}/grid_out
+echo Output located at ${outdir}
 
 #Read the obs file and put into an array, skipping blank lines if they exist
 #i=0
@@ -107,8 +107,9 @@ echo Output located at ${outdir}/fhd_${version}
 #      i=$((i + 1))
 #   fi
 #done < "$obs_file_name"
-obs_list='~/zen.2456242.29909.uvcRREcACOcPM.uvfits'
-message=$(sbatch -p jpober-test --mem=$mem -t ${wallclock_time} -n ${ncores} --export=ncores=$ncores,outdir=$outdir,version=$version,thresh=$thresh -o ${outdir}/fhd_${version}/grid_out/firstpass-%A_%a.out -e ${outdir}/fhd_${version}/grid_out/firstpass-%A_%a.err ~/brownscripts/jrk/eor_firstpass_slurm_job.sh ${obs_list})
+obs_list='/users/jkerriga/zen.2456242.29909.uvcRREcACOcPM.uvfits'
+#obs_list='zen.2456242.29909.uvcRREcACOcPM'
+message=$(sbatch -p jpober-test --mem=$mem -t ${wallclock_time} -n ${ncores} --export=ncores=$ncores,outdir=$outdir,version=$version,thresh=$thresh -o ${outdir}/grid_out/firstpass-%A_%a.out -e ${outdir}/grid_out/firstpass-%A_%a.err ~/brownscripts/jrk/eor_firstpass_slurm_job.sh ${obs_list})
 
 #echo $message
 
@@ -159,7 +160,7 @@ done
 
 #Exit if all jobs errored. Otherwise, if not all jobs errored, it is assumed that a pull happened sometime
 #during the run, and that resubmission is desired.
-n_resubmit=${#resubmit_list[@]}
+#n_resubmit=${#resubmit_list[@]}
 #if [ "$nobs" -eq "$n_resubmit" ]; then
 #   echo All jobs encountered code errors or halts during firstpass run. Exiting
 #   exit 1
@@ -172,7 +173,7 @@ rerun_flag=0
 for obs_id in "${obs_id_array[@]}"; do
     i=$((i + 1))
     # Check to see if 4 files (even/odd, XX/YY) return from listing for that obsid
-    if ! ls -1 ${outdir}/fhd_${version}/Healpix/${obs_id}*cube* 2>/dev/null | wc -l | grep 4 -q; then
+    if ! ls -1 ${outdir}/fhd/Healpix/${obs_id}*cube* 2>/dev/null | wc -l | grep 4 -q; then
 	echo Observation $obs_id is missing one or more Healpix cubes
         rerun_flag=1
         [[ $resubmit_list =~ $x ]] || resubmit_list+=($obs_id)
@@ -276,8 +277,8 @@ done
 
 ### NOTE this only works if idlstartup doesn't have any print statements (e.g. healpix check)
 #PSpath=$(idl -e 'print,rootdir("eppsilon")')
-PSpath=~/brownscripts/jrk
-${PSpath}/ps_slurm.sh -f $obs_file -d $outdir/fhd_$version -w ${wallclock_time} -m ${mem}
+PSpath=/users/jkerriga/brownscripts/jrk
+${PSpath}/ps_slurm.sh -f $obs_file -d $outdir -w ${wallclock_time} -m ${mem}
 
 
 echo "Cube integration and PS submitted"

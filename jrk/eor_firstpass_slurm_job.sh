@@ -42,14 +42,14 @@
 #fi
 
 #ls $outdir > /dev/null # ping the output directory so nfs automounts
-
+module load ghostscript
 module load imagemagick/6.6.4
 module load git/2.2.1
 
 obsids=("$@")
 obs_id=${obsids[$SLURM_ARRAY_TASK_ID]}
 
-/usr/local/bin/idl -IDL_DEVICE ps -quiet -IDL_CPU_TPOOL_NTHREADS $mem $ncores -e eor_firstpass_versions -args $outdir $version 
+/usr/local/bin/idl -IDL_DEVICE ps -quiet -IDL_CPU_TPOOL_NTHREADS $mem $ncores -e paper_psa64 -args $outdir $version 
 
 if [ $? -eq 0 ]
 then
