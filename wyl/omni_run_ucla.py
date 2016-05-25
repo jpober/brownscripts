@@ -10,7 +10,7 @@ o.set_usage('omni_run.py [options] *uvcRRE')
 o.set_description(__doc__)
 aipy.scripting.add_standard_options(o,cal=True,pol=True)
 o.add_option('--calpar',dest='calpar',type='string',default=None,
-            help='Path and name of POL.p ("xx.p") calpar file.')
+            help='Path and name of calpar file (txt or npz).')
 o.add_option('--redinfo',dest='redinfo',type='string',default='',
             help='Path and name of .bin redundant info file.')
 o.add_option('--omnipath',dest='omnipath',default='',type='string',
@@ -28,9 +28,10 @@ pols = opts.pol.split(',')
 files = {}
 #files=[]
 g0 = {} #firstcal gains
-if not opts.calpar == None: #create g0 if txt file is provided
+if opts.calpar != None: #create g0 if txt file is provided
     fname = opts.calpar
     if fname.endswith('.txt'):
+        print 'Reading: ', fname
         f = open(fname,'r')
         tkn = []
         g = {}
@@ -66,8 +67,44 @@ if not opts.calpar == None: #create g0 if txt file is provided
                         ff.append(g[pol][ant][jds][freq])
                     g0[pol][ant].append(ff)
                 g0[pol][ant] = numpy.array(g0[pol][ant])      #g0={pol:{ant:{array(jds,freq)}}}
+    elif fname.endswith('.npz'):
+        for pp,p in enumerate(pols):
+            g0[p[0]] = {}
+            if p in fname:
+                print 'Reading: ', fname
+                cp = numpy.load(fname)
+                for i in cp.keys():
+                    if i.isdigit():
+                        g0[p[0]][int(i)] = cp[i] / numpy.abs(cp[i])
+            else:
+                new_cp = fname.split('.npz')[0][:-2]+p+'.npz'
+                print 'Reading: ', new_cp
+                cp = numpy.load(new_cp)
+                for i in cp.keys():
+                    if i.isdigit():
+                        g0[p[0]][int(i)] = cp[i] / numpy.abs(cp[i])
     else:
-        raise IOError('invalid txtfile')
+        raise IOError('invalid calpar file')
+
+#elif opts.fc2 != None:  #create g0 if firstcal solution is provided
+#    if not opts.fc2.endswith('.npz'):
+#        raise IOError('invalid npzfile')
+#    for pp,p in enumerate(pols):
+#        g0[p[0]] = {}
+#        if p in opts.fc2:
+#            print 'Reading', opts.fc2
+#            cp = numpy.load(opts.fc2)
+#            for i in cp.keys():
+#                if i.isdigit():
+#                    g0[p[0]][int(i)] = cp[i] / numpy.abs(cp[i])
+#        else:
+#            new_cp = opts.fc2.split('.npz')[0][:-2]+p+'.npz'
+#            print 'Reading', new_cp
+#            cp = numpy.load(new_cp)
+#            for i in cp.keys():
+#                if i.isdigit():
+#                    g0[p[0]][int(i)] = cp[i] / numpy.abs(cp[i])
+
 #if not provided, will initiate g0 with units in the reading file part
 
 for filename in args:
@@ -120,12 +157,16 @@ for f,filename in enumerate(args):
     #pol = filename.split('.')[-2] #XXX assumes 1 pol per file
     timeinfo,d,f,ginfo,freqs = capo.wyl.uv_read([file_group[key] for key in file_group.keys()], filetype=opts.ftype, polstr=opts.pol, antstr='cross')
     
-    #if txt file is not provided, g0 is initiated here, with all of them to be 1.0
+    #if txt file or first cal is not provided, g0 is initiated here, with all of them to be 1.0
     if opts.calpar == None:
         for p in pols:
             if not g0.has_key(p[0]): g0[p[0]] = {}
             for iant in range(0, ginfo[0]):
                 g0[p[0]][iant] = numpy.ones((ginfo[1],ginfo[2]))
+    elif opts.calpar.endswith('.npz'):
+        SH = (ginfo[1],ginfo[2])
+        for p in g0.keys():
+            for i in g0[p]: g0[p][i] = numpy.resize(g0[p][i],SH)
 
     t_jd = timeinfo['times']
     t_lst = timeinfo['lsts']
