@@ -77,7 +77,7 @@ if [ -z ${ncores} ]; then
 fi
 #Set typical memory needed for standard FHD firstpass if not set.                                                                                                    
 if [ -z ${mem} ]; then
-    mem=60G
+    mem=120G
 fi
 if [ -z ${thresh} ]; then
     # if thresh is not set, set it to -1 which will cause it to not check for a window power                                                                         

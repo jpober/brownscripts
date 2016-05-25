@@ -16,19 +16,21 @@ image_filter_fn='filter_uv_uniform' ;applied ONLY to output images
 ;    ELSE data_directory=rootdir('mwa')+filepath('',root='PAPER_DATA',subdir=['psa32_redundant'])
 data_directory='/users/jkerriga/'
 vis_file_list=file_search(data_directory,'zen.2456242.29909.uvcRREcACOM.uvfits',count=n_files)
-print,vis_file_list
 ;vis_file_list='/users/jkerriga/zen.2456242.29909.uvcRREcACOM.uvfits'
 fhd_file_list=fhd_path_setup(vis_file_list,version=version)
 print,fhd_file_list
 healpix_path=fhd_path_setup(output_dir=data_directory,subdir='Healpix',output_filename='Combined_obs',version=version)
 catalog_file_path=filepath('master_sgal_cat.sav',root=rootdir('FHD'),subdir='catalog_data')
 calibration_catalog_file_path=filepath('master_sgal_cat.sav',root=rootdir('FHD'),subdir='catalog_data')
-model_catalog_file_path=filepath('master_sgal_cat.sav',root=rootdir('FHD'),subdir='catalog_data')
+;model_catalog_file_path=filepath('master_sgal_cat.sav',root=rootdir('FHD'),subdir='catalog_data')
 
 FoV=160.
 dimension=1024
 n_pol=2
 export_images=1
+flag_calibration=0
+flag_visibilities=0
+combine_obs=0
 ps_export=1
 precess=1 ;At least the new uvfits files from Jonnie need to be precessed to J2000
 instrument='paper'
@@ -39,7 +41,7 @@ lon=Ten(21,25,41)
 time_offset=5.*60. ;time offset of phase center from start time. PAPER data are phased to 5 minutes after the start time. 
 min_baseline=1.
 min_cal_baseline=30.
-calibrate_visibilities=0
+calibrate_visibilities=1
 max_calibration_sources=10000
 calibration_polyfit=2
 no_restrict_cal_sources=1
