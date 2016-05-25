@@ -167,9 +167,9 @@ for f,filename in enumerate(args):
     if opts.iftxt: #if True, write npz gains to txt files
         scrpath = os.path.abspath(sys.argv[0])
         pathlist = os.path.split(scrpath)[0].split('/')
-        repopath = '/'.join(pathlist[0:-1])
+        repopath = '/'.join(pathlist[0:-1])+'/'
         print 'writing to txt:'
-        capo.wyl.writetxt([npzname], repopath)
+        capo.wyl.writetxt([npzname], repopath, ex_ants)
         print 'Saving txt file'
 
 

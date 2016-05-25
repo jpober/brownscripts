@@ -2,7 +2,7 @@ import numpy as np, omnical, aipy, math
 import uvdata.uv as uvd
 import subprocess, datetime
 
-def writetxt(npzfiles, repopath):
+def writetxt(npzfiles, repopath, ex_ants):
     
     p2pol = {'EE': 'x','NN': 'y','EN': 'cross', 'NE': 'cross'}  #check the convension
     
@@ -33,24 +33,28 @@ def writetxt(npzfiles, repopath):
                 if not intss in ant:
                     ant.append(intss)
         ant.sort()
+        tot = ant + ex_ants
+        tot.sort()
         time = data['jds']
         freq = data['freqs']/1e6
         pol = ['EE', 'NN', 'EN', 'NE']
         nt = time.shape[0]
         nf = freq.shape[0]
-        na = len(ant)
+        na = len(tot)
         for tt in range(0, nt):
             for pp in range(0, 4):
                 for ff in range(0, nf):
                     for iaa in range(0, na):
-                        aa = ant[iaa]
+                        aa = tot[iaa]
+                        dfl = 0
+                        if aa in ex_ants: dfl=1
                         dt = time[tt]
                         dp = pol[pp]
                         df = freq[ff]
                         stkey = str(aa) + p2pol[pol[pp]]
                         try: da = data[stkey][tt][ff]
-                        except: da = 1.0
-                        outfile.write("ant%d, %d, %f, %s, %.8f, %f, %f, 0\n"%(aa,aa,df,dp,dt,da.real,da.imag))
+                        except(KeyError): da = 1.0
+                        outfile.write("ant%d, %d, %f, %s, %.8f, %f, %f, %d\n"%(aa,aa,df,dp,dt,da.real,da.imag,dfl))
     outfile.close()
 
 def uv_read(filenames, filetype=None, polstr=None,antstr='cross',recast_as_array=True):
