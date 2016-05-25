@@ -22,17 +22,22 @@ print,fhd_file_list
 healpix_path=fhd_path_setup(output_dir=data_directory,subdir='Healpix',output_filename='Combined_obs',version=version)
 catalog_file_path=filepath('master_sgal_cat.sav',root=rootdir('FHD'),subdir='catalog_data')
 calibration_catalog_file_path=filepath('master_sgal_cat.sav',root=rootdir('FHD'),subdir='catalog_data')
-;model_catalog_file_path=filepath('master_sgal_cat.sav',root=rootdir('FHD'),subdir='catalog_data')
+model_catalog_file_path=filepath('master_sgal_cat.sav',root=rootdir('FHD'),subdir='catalog_data')
 
 FoV=160.
 dimension=1024
+beam_offset_time=56
 n_pol=2
+n_tile=64
+n_tile_cut=0
 export_images=1
-flag_calibration=0
+flag_calibration=1
 flag_visibilities=0
-combine_obs=0
+calibration_flag_iterate=0
+combine_obs=1
 ps_export=1
 precess=1 ;At least the new uvfits files from Jonnie need to be precessed to J2000
+calibration_auto_initialize=0
 instrument='paper'
 no_ps=1
 gain_factor=0.15
@@ -48,7 +53,7 @@ no_restrict_cal_sources=1
 no_rephase=1
 freq_start=124
 freq_end=174
-beam_cal_threshold=0.5
+;beam_cal_threshold=0.5
 beam_model_version=2
 firstpass=1
 antenna_size=2.34

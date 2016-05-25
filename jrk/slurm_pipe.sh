@@ -77,7 +77,7 @@ if [ -z ${ncores} ]; then
 fi
 #Set typical memory needed for standard FHD firstpass if not set.                                                                                                    
 if [ -z ${mem} ]; then
-    mem=120G
+    mem=22G
 fi
 if [ -z ${thresh} ]; then
     # if thresh is not set, set it to -1 which will cause it to not check for a window power                                                                         
@@ -107,7 +107,7 @@ echo Output located at ${outdir}
 #      i=$((i + 1))
 #   fi
 #done < "$obs_file_name"
-obs_list='/users/jkerriga/zen.2456242.29909.uvcRREcACOcPM.uvfits'
+obs_list='zen.2456242.29909.uvcRREcACOM.uvfits'
 #obs_list='zen.2456242.29909.uvcRREcACOcPM'
 message=$(sbatch -p jpober-test --mem=$mem -t ${wallclock_time} -n ${ncores} --export=ncores=$ncores,outdir=$outdir,version=$version,thresh=$thresh -o ${outdir}/grid_out/firstpass-%A_%a.out -e ${outdir}/grid_out/firstpass-%A_%a.err ~/brownscripts/jrk/eor_firstpass_slurm_job.sh ${obs_list})
 
