@@ -3,6 +3,7 @@
 import capo,aipy
 import numpy as n
 import sys,optparse
+import glob
 
 o = optparse.OptionParser()
 aipy.scripting.add_standard_options(o,cal=True,pol=True)
@@ -92,6 +93,7 @@ for f,filename in enumerate(args):
 
 
 #gets phase solutions per frequency.
+    print 'First Calibrating...'
     fc = capo.omni.FirstCal(dd,fqs,info)
     sols = fc.run(tune=True)
     fn = ''
@@ -102,6 +104,7 @@ for f,filename in enumerate(args):
 
     pstr = ''.join(pols)
 #Save solutions
+    print 'Saving FirstCal solution...'
     save_gains(sols,fqs, pstr, fn)
 
 

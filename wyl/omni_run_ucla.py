@@ -1,9 +1,7 @@
 #! /usr/bin/env python
 
 import omnical, aipy, numpy, capo
-import pickle, optparse, os, sys, glob
-import uvdata.uv as uvd, math
-
+import optparse, os, sys, glob
 
 o = optparse.OptionParser()
 o.set_usage('omni_run.py [options] *uvcRRE')
@@ -85,25 +83,6 @@ if opts.calpar != None: #create g0 if txt file is provided
                         g0[p[0]][int(i)] = cp[i] / numpy.abs(cp[i])
     else:
         raise IOError('invalid calpar file')
-
-#elif opts.fc2 != None:  #create g0 if firstcal solution is provided
-#    if not opts.fc2.endswith('.npz'):
-#        raise IOError('invalid npzfile')
-#    for pp,p in enumerate(pols):
-#        g0[p[0]] = {}
-#        if p in opts.fc2:
-#            print 'Reading', opts.fc2
-#            cp = numpy.load(opts.fc2)
-#            for i in cp.keys():
-#                if i.isdigit():
-#                    g0[p[0]][int(i)] = cp[i] / numpy.abs(cp[i])
-#        else:
-#            new_cp = opts.fc2.split('.npz')[0][:-2]+p+'.npz'
-#            print 'Reading', new_cp
-#            cp = numpy.load(new_cp)
-#            for i in cp.keys():
-#                if i.isdigit():
-#                    g0[p[0]][int(i)] = cp[i] / numpy.abs(cp[i])
 
 #if not provided, will initiate g0 with units in the reading file part
 
