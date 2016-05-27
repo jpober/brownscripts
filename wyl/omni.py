@@ -1,5 +1,4 @@
 import numpy as np, omnical, aipy, math
-import uvdata.uv as uvd
 import capo.red as red
 import numpy.linalg as la
 import warnings
@@ -102,7 +101,6 @@ def compute_reds(nant, pols, *args, **kwargs):
 def aa_to_info(aa, pols=['x'], fcal=False, **kwargs):
     '''Use aa.ant_layout to generate redundances based on ideal placement.
         The remaining arguments are passed to omnical.arrayinfo.filter_reds()'''
-    layout = aa.ant_layout
     nant = len(aa)
     try:
         antpos_ideal = aa.antpos_ideal
@@ -131,7 +129,7 @@ def aa_to_info(aa, pols=['x'], fcal=False, **kwargs):
 
 #generate info from real positions
 ####################################################################################################
-def aa_pos_to_info(aa, pols=['x'], **kwargs):
+def aa_pos_to_info(aa, pols=['x'], fcal=False, **kwargs):
     '''Use aa.ant_layout to generate redundances based on real placement.
         The remaining arguments are passed to omnical.arrayinfo.filter_reds()'''
     nant = len(aa)
@@ -155,7 +153,11 @@ def aa_pos_to_info(aa, pols=['x'], **kwargs):
     ex_ants = [Antpol(i,nant).ant() for i in range(antpos.shape[0]) if antpos[i,0] < 0]
     kwargs['ex_ants'] = kwargs.get('ex_ants',[]) + ex_ants
     reds = filter_reds(reds, **kwargs)
-    info = RedundantInfo(nant)
+    if fcal:
+        info = FirstCalRedundantInfo(nant)
+    else:
+        info = RedundantInfo(nant)
+#info = RedundantInfo(nant)
     info.init_from_reds(reds,antpos)
     return info
 ####################################################################################################
@@ -284,7 +286,7 @@ class FirstCal(object):
         self.data = data
         self.fqs = fqs
         self.info = info
-    def data_to_delays(self,**kwargs):
+    def data_to_delays(self, verbose=False, **kwargs):
         '''data = dictionary of visibilities. 
            info = FirstCalRedundantInfo class
            can give it kwargs:
@@ -296,6 +298,8 @@ class FirstCal(object):
         dd = self.info.order_data(self.data)
 #        ww = self.info.order_data(self.wgts)
         for (bl1,bl2) in self.info.bl_pairs:
+            if verbose:
+                print (bl1, bl2)
             d1 = dd[:,:,self.info.bl_index(bl1)]
 #            w1 = ww[:,:,self.info.bl_index(bl1)]
             d2 = dd[:,:,self.info.bl_index(bl2)]
@@ -306,15 +310,15 @@ class FirstCal(object):
         return self.blpair2delay
     def get_N(self,nblpairs):
         return np.identity(nblpairs) 
-    def get_M(self,**kwargs):
+    def get_M(self, verbose=False, **kwargs):
         M = np.zeros((len(self.info.bl_pairs),1))
-        blpair2delay = self.data_to_delays(**kwargs)
+        blpair2delay = self.data_to_delays(verbose=verbose, **kwargs)
         for pair in blpair2delay:
             M[self.info.blpair_index(pair)] = blpair2delay[pair]
         return M
-    def run(self, **kwargs):
+    def run(self, verbose=False, **kwargs):
         #make measurement matrix 
-        self.M = self.get_M(**kwargs)
+        self.M = self.get_M(verbose=verbose, **kwargs)
         #make noise matrix
         N = self.get_N(len(self.info.bl_pairs)) 
         self._N = np.linalg.inv(N)
