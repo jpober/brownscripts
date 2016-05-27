@@ -69,7 +69,7 @@ version='jrk'
 #Specify the FHD file path that is used in IDL (generally specified in idl_startup)
 FHDpath=$(idl -e 'print,rootdir("fhd")') ### NOTE this only works if idlstartup doesn't have any print statements (e.g. healpix check)
 if [ -z ${wallclock_time} ]; then
-    wallclock_time=1:00:00
+    wallclock_time=6:00:00
 fi
 #Set typical nodes needed for standard FHD firstpass if not set.                                                                                                     
 if [ -z ${ncores} ]; then
@@ -77,7 +77,7 @@ if [ -z ${ncores} ]; then
 fi
 #Set typical memory needed for standard FHD firstpass if not set.                                                                                                    
 if [ -z ${mem} ]; then
-    mem=22G
+    mem=100G
 fi
 if [ -z ${thresh} ]; then
     # if thresh is not set, set it to -1 which will cause it to not check for a window power                                                                         
