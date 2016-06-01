@@ -81,6 +81,8 @@ for f,filename in enumerate(args):
         Nblts = uvi.Nblts.value
         Nfreqs = uvi.Nfreqs.value
         Nbls = uvi.Nbls.value
+        pollist = list(uvi.polarization_array.value)
+        pid = pollist.index(aipy.miriad.str2pol[p])
 
         for ii in range(0,Nblts):
             a1 = uvi.ant_1_array.value[ii]
@@ -89,13 +91,13 @@ for f,filename in enumerate(args):
             ti = ii/Nbls
             for jj in range(0,Nfreqs):
                 if opts.xtalk:
-                    try: uvi.data_array.value[ii][0][jj][0] -= xtalk[p][(a1,a2)][jj]
+                    try: uvi.data_array.value[ii][0][jj][pid] -= xtalk[p][(a1,a2)][jj]
                     except(KeyError):
-                        try: uvi.data_array.value[ii][0][jj][0] -= xtalk[p][(a2,a1)][jj].conj()
+                        try: uvi.data_array.value[ii][0][jj][pid] -= xtalk[p][(a2,a1)][jj].conj()
                         except(KeyError): pass
-                try: uvi.data_array.value[ii][0][jj][0] /= gains[p1][a1][ti][jj]
+                try: uvi.data_array.value[ii][0][jj][pid] /= gains[p1][a1][ti][jj]
                 except(KeyError): pass
-                try: uvi.data_array.value[ii][0][jj][0] /= gains[p2][a2][ti][jj].conj()
+                try: uvi.data_array.value[ii][0][jj][pid] /= gains[p2][a2][ti][jj].conj()
                 except(KeyError): pass
         uvi.history.value = ''
         if opts.outtype == 'uvfits':
