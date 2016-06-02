@@ -126,7 +126,6 @@ uvd.ant_1_array.value, uvd.ant_2_array.value = \
 #uvw_array = n.array([ aa.get_baseline(i,j,src='z') for i,j in [aa.bl2ij(bl) for bl in bls] ]).T
 #uvd.uvw_array = n.tile(uvw_array, Nt) /(a.const.len_ns * 100.)  #in meters
 
-### Phase to zenith at the halfway point:
 #t = (tfin - tzero)/2.
 t = tzero
 aa.set_jultime(t)
@@ -141,10 +140,12 @@ print src
 #sys.exit()
 
 
-uvd.phase_center_ra.value= n.rad2deg(float(repr(ephem.hours(RA))))
-uvd.phase_center_dec.value  = n.rad2deg(float(repr(ephem.degrees(dec))))
+#uvd.phase_center_ra.value= n.rad2deg(float(repr(ephem.hours(RA))))
+#uvd.phase_center_dec.value  = n.rad2deg(float(repr(ephem.degrees(dec))))
+uvd.phase_center_ra.value= ephem.hours(RA)
+uvd.phase_center_dec.value  = ephem.degrees(dec)
 uvd.object_name.value= "zenith"
-uvd.phase_center_epoch.value = 2000.
+uvd.phase_center_epoch.value = ephem.J2000
 uvd.history.value = ''
 
 srclist,cutoff,catalogs = a.scripting.parse_srcs(src, 'helm')
@@ -182,7 +183,6 @@ for attr in extra_attrs:
 
 #uvd.instrument.expected_type=str
 #delattr(uvd, 'end_time')
-
 uvd.set_lsts_from_time_array()
 #uvd.lst_array.value = n.zeros(uvd.Ntimes.value*nbl)
 uvd.write_uvfits(ofile, spoof_nonessential=True)
