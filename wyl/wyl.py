@@ -124,12 +124,8 @@ def uv_read(filenames, filetype=None, polstr=None,antstr='cross',recast_as_array
                 pp = aipy.miriad.pol2str[pol[jj]]
                 if not dat[bl].has_key(pp):
                     dat[bl][pp],flg[bl][pp] = [],[]
-                data00,flag00 = [],[]
-                for nn in range(0,len(data[ii][0])):
-                    data00.append(data[ii][0][nn][jj])
-                    flag00.append(flag[ii][0][nn][jj])
-                dat[bl][pp].append(data00)
-                flg[bl][pp].append(flag00)
+                dat[bl][pp].append(data[:,0][:,:,jj][ii])
+                flg[bl][pp].append(flag[:,0][:,:,jj][ii])
         #ginfo = [nant, Nt, nfreq]
         ginfo[0] = nant
         ginfo[1] = Nt

@@ -73,8 +73,8 @@ restore_last=1
 snapshot_healpix_export = 1
 ps_export=1
 split_ps_export=1
-save_imagecube=1
-save_uvf=1
+save_imagecube=0
+save_uvf=0
 dft_threshold=1   ; Approximate the DFT (1) or not (0)
 
 grid_interpolate=1

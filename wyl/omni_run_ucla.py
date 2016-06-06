@@ -97,9 +97,11 @@ for filename in args:
             obs = filename + '*'
             filelist = glob.glob(obs)
             if p == 'xx':
-                filelist.remove(filename + '_vis_YY.sav')
+                try: filelist.remove(filename + '_vis_YY.sav')
+                except: pass
             elif p == 'yy':
-                filelist.remove(filename + '_vis_XX.sav')
+                try: filelist.remove(filename + '_vis_XX.sav')
+                except: pass
             else:
                 raise IOError('do not support cross pol')
             files[filename][p] = filelist
