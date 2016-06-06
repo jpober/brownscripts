@@ -64,11 +64,9 @@ for f,filename in enumerate(args):
             newfn = files[filename][p].split('.')
             newfn[-1] = 'O.uvfits'
             newfile = '.'.join(newfn)
-#        omnifile = opts.omnipath % '.'.join(filename.split('/')[-1].split('.')[0:3])
         if os.path.exists(newfile):
             print '    %s exists.  Skipping...' % newfile
             continue
-        #times = []
 
         uvi = uvd.UVData()
         if opts.intype == 'uvfits':
@@ -89,44 +87,20 @@ for f,filename in enumerate(args):
             a2 = uvi.ant_2_array.value[ii]
             p1,p2 = p
             ti = ii/Nbls
-            for jj in range(0,Nfreqs):
-                if opts.xtalk:
-                    try: uvi.data_array.value[ii][0][jj][pid] -= xtalk[p][(a1,a2)][jj]
-                    except(KeyError):
-                        try: uvi.data_array.value[ii][0][jj][pid] -= xtalk[p][(a2,a1)][jj].conj()
-                        except(KeyError): pass
-                try: uvi.data_array.value[ii][0][jj][pid] /= gains[p1][a1][ti][jj]
-                except(KeyError): pass
-                try: uvi.data_array.value[ii][0][jj][pid] /= gains[p2][a2][ti][jj].conj()
-                except(KeyError): pass
+            if opts.xtalk:
+                try: uvi.data_array.value[:,0][:,:,pid][ii] -= xtalk[p][(a1,a2)]
+                except(KeyError):
+                    try: uvi.data_array.value[:,0][:,:,pid][ii] -= xtalk[p][(a2,a1)].conj()
+                    except(KeyError): pass
+            try: uvi.data_array.value[:,0][:,:,pid][ii] /= gains[p1][a1][ti]
+            except(KeyError): pass
+            try: uvi.data_array.value[:,0][:,:,pid][ii] /= gains[p2][a2][ti].conj()
+            except(KeyError): pass
         uvi.history.value = ''
         if opts.outtype == 'uvfits':
             print 'writing:' + newfile
             uvi.write_uvfits(newfile)
             print 'saving ' + newfile
     
-#        def mfunc(uv,p,d,f): #loops over time and baseline
-#            global times #global list
-#            _,t,(a1,a2) = p
-#            p1,p2 = pol = aipy.miriad.pol2str[uv['pol']]
-#            if len(times) == 0 or times[-1] != t: times.append(t) #fill times list
-#            if opts.xtalk: #subtract xtalk
-#                try: d -= xtalk[pol][(a1,a2)]
-#                except(KeyError):
-#                    try: d -= xtalk[pol][(a2,a1)].conj()
-#                    except(KeyError): pass
-#            ti = len(times) - 1 #time index
-#            try: d /= gains[p1][a1][ti] #apply gains
-#            except(KeyError): pass
-#            try: d /= gains[p2][a2][ti].conj() 
-#            except(KeyError): pass
-#            return p, numpy.where(f,0,d), f
-#    
-#        if opts.xtalk: print '    Calibrating and subtracting xtalk'
-#        else: print '    Calibrating'
-#        uvi = aipy.miriad.UV(files[filename][p])
-#        uvo = aipy.miriad.UV(newfile,status='new')
-#        uvo.init_from_uv(uvi)
-#        print '    Saving', newfile
-#        uvo.pipe(uvi, mfunc=mfunc, raw=True, append2hist='OMNICAL: ' + ' '.join(sys.argv) + '\n')
+
 
