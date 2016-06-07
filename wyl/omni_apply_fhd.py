@@ -74,10 +74,10 @@ for f,filename in enumerate(args):
             except(KeyError): pass
 
     #write file
-    uvi.history.value = ''
+#uvi.history.value = ''
     if opts.outtype == 'uvfits':
         print 'writing:' + newfile
-        uvi.write_uvfits(newfile)
+        uvi.write_uvfits(newfile,spoof_nonessential=True)
         print 'saving ' + newfile
 
 
