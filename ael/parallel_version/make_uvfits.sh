@@ -2,12 +2,13 @@
 
 ### Submit the sbatch array command to generate a set of uvfits files
 
-fname='hera37'
-paramfile='HERA_sim_2.py'
-calfile='hera37_cal.py'
-N=94   #Number of files
+fname='mwa128'
+paramfile='golden_1061311664_sim_1.py'
+calfile='hera19_cal.py'
+N=1   #Number of files
 mem='10G'
 time='1:00:00'
 
 
-sbatch -p jpober-test -o /dev/null --array=0-$N --mem=$mem -t $time -n 3 --export=N=$N,fname=$fname,paramfile=$paramfile,calfile=$calfile zeros_job.sh
+#sbatch -o /dev/null  --array=1-$N --mem=$mem -t $time -n 3 --export=N=$N,fname=$fname,paramfile=$paramfile,calfile=$calfile zeros_job.sh
+sbatch  --array=1-$N --mem=$mem -t $time -n 3 --export=N=$N,fname=$fname,paramfile=$paramfile,calfile=$calfile zeros_job.sh
