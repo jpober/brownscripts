@@ -65,19 +65,19 @@ done
 
 #Manual shift to the next flag.
 shift $(($OPTIND - 1))
-version='jrk'
+
 #Specify the FHD file path that is used in IDL (generally specified in idl_startup)
 FHDpath=$(idl -e 'print,rootdir("fhd")') ### NOTE this only works if idlstartup doesn't have any print statements (e.g. healpix check)
 if [ -z ${wallclock_time} ]; then
-    wallclock_time=6:00:00
+    wallclock_time=3:00:00
 fi
 #Set typical nodes needed for standard FHD firstpass if not set.                                                                                                     
 if [ -z ${ncores} ]; then
-    ncores=5
+    ncores=6
 fi
 #Set typical memory needed for standard FHD firstpass if not set.                                                                                                    
 if [ -z ${mem} ]; then
-    mem=100G
+    mem=60G
 fi
 if [ -z ${thresh} ]; then
     # if thresh is not set, set it to -1 which will cause it to not check for a window power                                                                         
@@ -86,17 +86,18 @@ fi
 
 if [ -z ${outdir} ]
 then
-    outdir=/users/jkerriga
+    #outdir=/users/jkerriga/scratch/fhd
+    outdir=/users/jkerriga/data/jkerriga/FHDOutput
     echo Using default output directory: $outdir
 else
     #strip the last / if present in output directory filepath
-    outdir=${outdir%/}
+    outdir=${outdir%}
     echo Using output directory: $outdir
 fi
 
-mkdir -p ${outdir}
-mkdir -p ${outdir}/grid_out
-echo Output located at ${outdir}
+mkdir -p ${outdir}/fhd_${version}
+mkdir -p ${outdir}/fhd_${version}/grid_out
+echo Output located at ${outdir}/fhd_${version}
 
 #Read the obs file and put into an array, skipping blank lines if they exist
 #i=0
@@ -107,9 +108,11 @@ echo Output located at ${outdir}
 #      i=$((i + 1))
 #   fi
 #done < "$obs_file_name"
-obs_list='zen.2456242.29909.uvcRREcACOM.uvfits'
-#obs_list='zen.2456242.29909.uvcRREcACOcPM'
-message=$(sbatch -p jpober-test --mem=$mem -t ${wallclock_time} -n ${ncores} --export=ncores=$ncores,outdir=$outdir,version=$version,thresh=$thresh -o ${outdir}/grid_out/firstpass-%A_%a.out -e ${outdir}/grid_out/firstpass-%A_%a.err ~/brownscripts/jrk/eor_firstpass_slurm_job.sh ${obs_list})
+#obs_list='zen.2456375.27129.uvcRREcACOcP.uvfits'
+#obs_list='zen.2456242.29213.uvcRREcACOM.uvfits'
+obs_list='Pzen.2456286.18775.uvcRREcACOMTU.uvfits'
+#obs_list='Szen.2456327.34089.uvcRREcACOM.uvfits'
+message=$(sbatch --mem=$mem -t ${wallclock_time} -n ${ncores} --export=ncores=$ncores,outdir=$outdir/fhd_${version},version=$version,thresh=$thresh -o ${outdir}/fhd_${version}/grid_out/firstpass-%A_%a.out -e ${outdir}/fhd_${version}/grid_out/firstpass-%A_%a.err ~/brownscripts/jrk/eor_firstpass_slurm_job.sh ${obs_list})
 
 #echo $message
 
@@ -124,10 +127,6 @@ echo ${message[@]}
 id=`echo ${message[3]}`
 echo $id
 
-###TEMPORARY
-#qdel $id
-#touch $outdir"/fhd_"$version"/grid_out/firstpass-"$id"_"$i".err"
-###
 
 
 ########End of submitting the firstpass job and waiting for output
@@ -136,35 +135,6 @@ echo $id
 while [ `myq | grep $id | wc -l` -ge 1 ]; do
     sleep 10
 done
-
-
-########Check the firstpass run, and setup a rerun list with new memory/walltime if necessary.
-
-#Check that output location is not running out of space
-if df -h $outdir | awk '{print $4}' | grep M -q; then
-   echo There is only "$(df -h $outdir | awk '{print $4}' | grep M)" space left on disk. Exiting
-   exit 1
-fi
-
-#Check to see if there were any errors in the grid_out files
-i=0
-for obs_id in "${obs_id_array[@]}"; do
-   exec_num=$(grep "Execution halted at:" $outdir"/fhd_"$version"/grid_out/firstpass-"$id"_"$i".err" | wc -l)
-   if [ "$exec_num" -gt 1 ]; then
-      echo $obs_id encountered code error during firstpass run
-      resubmit_list+=($obs_id)
-      resubmit_index+=($i)
-   fi
-   i=$((i + 1))
-done
-
-#Exit if all jobs errored. Otherwise, if not all jobs errored, it is assumed that a pull happened sometime
-#during the run, and that resubmission is desired.
-#n_resubmit=${#resubmit_list[@]}
-#if [ "$nobs" -eq "$n_resubmit" ]; then
-#   echo All jobs encountered code errors or halts during firstpass run. Exiting
-#   exit 1
-#fi
 
 
 #Check to see if Healpix cubes exist for all obsids
@@ -182,103 +152,11 @@ for obs_id in "${obs_id_array[@]}"; do
 
 done
 
-#Check to see if Healpix-less cubes ran out of time
-#wallclock_resubmit_flag=0
-#for index in "${resubmit_index[@]}"; do
-#   wallclock_used_total="$(sacct --format='JobID,CPUTime,MaxRSS' -j $id | grep $id"_"$index -m 1 | awk '{print $2}' )"
-#   wallclock_given_hrs="$(echo $wallclock_time | awk -F':' '{print $1}')"
-#   wallclock_given_min="$(echo $wallclock_time | awk -F':' '{print $2}')"
-#   wallclock_given_sec="$(echo $wallclock_time | awk -F':' '{print $3}')"
-#   wallclock_given_total=$(echo ${wallclock_given_hrs} ${wallclock_given_min} ${wallclock_given_sec} | awk '{printf "%8f\n",$1*3600+$2*60+$3}')
-
-#Add two hours if jobs exited because of lack of time
-#   if [ -n "$wallclock_used_total" -a -n "$wallclock_given_total" ];then
-#      result=$(awk -vn1="$wallclock_used_total" -vn2="$wallclock_given_total" 'BEGIN{print (n1>n2)?1:0 }')
-#      if [ "$result" -eq 1 ];then
-#         wallclock_resubmit="$(($wallclock_given_hrs+2))":00:00
-#         wallclock_resubmit_flag=1
-#         echo Adding two more hours to wallclock time for $index
-#      else
-#         if [ "$wallclock_resubmit_flag" -ne 1 ];then 
-#            wallclock_resubmit=$wallclock_time
-#         fi
-#      fi
-#   fi
-#done
-
-#Check to see if Healpix-less cubes ran out of memory
-#First check total alloted memory (mem * NNodes) ---- For now, NNodes = 1
-#if echo $mem | grep G -q; then
-#   totalmem="$((${mem%G}*1))"
-#elif echo $mem | grep M -q; then
-#   totalmem=$(echo ${mem%M} $ncores 1000 | awk '{printf "%5.3f\n",$1*$2/$3}')
-#fi
-#Now check what was actually used
-#resubmit_mem_flag=0
-#for index in "${resubmit_index[@]}"; do
-#   taskmem_used_total="$(sacct --format='JobID,CPUTime,MaxRSS' -j $id | grep $id"\."$index -m 1 | awk '{print $3}' )"
-#   if echo $taskmem_used_full | grep G -q; then
-#      taskmem_used=${taskmem_used_full%G}
-#   elif echo $taskmem_used_full | grep M -q; then
-#      taskmem_used=$(echo ${taskmem_used_full%M} 1000 | awk '{printf "%5.3f\n",$1/$2}')
-#   else
-#      taskmem_used=0
-#   fi
-
-#Check to see if what was used is bigger than the allotment (what happens right before mem error)
-#If it is bigger than the allotment, try adding 2G per slot
-#   if [ -n "$taskmem_used" -a -n "$totalmem" ];then
-#      result=$(awk -vn1="$taskmem_used" -vn2="$totalmem" 'BEGIN{print (n1>n2)?1:0 }')
-#      if [ "$result" -eq 1 ];then
-#         if echo $mem | grep G -q; then
-#            resubmit_mem="$((${mem%G}+2))"G
-#            resubmit_mem_flag=1
-#            if [ "$((${resubmit_mem%G}))" -gt 8 ]; then
-#               echo Hit the maximum memory level for the cluster during rerun for $resubmit_list[$index]. Will attempt to rerun with same level of memory.
-#               resubmit_mem_flag=0
-#            fi
-#            echo Adding two more Gigs to memory for $index
-#         elif echo $mem | grep M -q; then
-#            resubmit_mem=$(echo ${mem%M} 1000 2 | awk '{printf "%5.3f\n",$1/$2+$3}')G
-#            resubmit_mem_flag=1
-#            echo Adding two more Gigs to memory for $index
-#         fi
-#      else
-#         if [ "$resubmit_mem_flag" -ne 1 ];then 
-#            resubmit_mem=$mem
-#         fi
-#      fi
-#   fi
-#
-#done
-
-
-########End of checking the firstpass run, and setuping a rerun list with new memory/walltime if necessary.
-
-
-
-
-########Resubmit the firstpass jobs that failed and might benefit from a rerun
-
-#if [ "$rerun_flag" -ne 1 ];then 
-#
-#   nobs=${#resubmit_list[@]}
-#
-#   message=$(sbatch -p jpober-test --mem=$mem -t ${wallclock_time} -n ${ncores} --array=0-$nobs --export=ncores=$ncores,outdir=$outdir,version=$version,thresh=$thresh -o ${outdir}/fhd_${version}/grid_out/firstpass-%A_%a.out -e ${outdir}/fhd_${version}/grid_out/firstpass-%A_%a.err ~/brownscripts/jrk/eor_firstpass_slurm_job.sh ${resubmit_list[@]})
-#   message=($message)
-#   id=`echo ${message[3]}`
-#
-#fi
-
-########End of resubmitting the firstpass jobs that failed and might benefit from a rerun
-
-
-
 
 ### NOTE this only works if idlstartup doesn't have any print statements (e.g. healpix check)
 #PSpath=$(idl -e 'print,rootdir("eppsilon")')
 PSpath=/users/jkerriga/brownscripts/jrk
-${PSpath}/ps_slurm.sh -f $obs_file -d $outdir -w ${wallclock_time} -m ${mem}
-
+echo $obs_file ${outdir}/fhd_${version}/
+${PSpath}/ps_slurm.sh -f $obs_id -d ${outdir}/fhd_${version}/ -o 1
 
 echo "Cube integration and PS submitted"
