@@ -11,12 +11,15 @@ from uvdata.uv import UVData, UVProperty
 
 ## NB -- pyuvdata and uvfits use Hz and Seconds for everything. AIPY assumes GHz and ns.
 
+#Parallel version of uvfits_zeros_gen
+
 
 o = optparse.OptionParser()
 o.set_usage('uvfits_zeros_gen [-o <outfile>] <cal file of coords> <sim_settings_file>')
 
 o.add_option('-o', dest='ofile', help='Destination filename')
-o.add_option('-N', dest='nout', help='Split output')
+o.add_option('-i', dest='en', help='Which job?')
+o.add_option('-N', dest='nout', help='How many?')
 
 opts,args = o.parse_args(sys.argv[1:])
 
@@ -24,6 +27,10 @@ if not opts.ofile == None:
     ofile=opts.ofile
 else:
     ofile='empty.uvfits'
+if not opts.en == None:
+    en=int(opts.en)
+else:
+    en=1
 if not opts.nout == None:
     nout=opts.nout
 else:
@@ -120,72 +127,71 @@ uvd.delays = UVProperty()
 uvd.delays.value=[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
 uvd.delays.form = (6,)
 
-t0 = tzero
+t0 = tzero+en*uvd.Ntimes.value*dt
 #Data array
 uvd.data_array.value = n.zeros((nbl * uvd.Ntimes.value, uvd.Nspws.value, uvd.Nfreqs.value,uvd.Npols.value), dtype=n.complex)
 
-for m in range(int(nout)):
-     #Time array:
-     ## Format -- Repeat times for each baseline number.
+#Time array:
+## Format -- Repeat times for each baseline number.
 
-     tims = n.arange(uvd.Ntimes.value, dtype=n.float) * dt + t0
-     uvd.time_array.value = n.sort(n.tile(tims, nbl))    #Should be of length Nblts, baseline fast time slow
-     uvd.Nblts.value = len(uvd.time_array.value)    #nbls * Ntimes
+tims = n.arange(uvd.Ntimes.value, dtype=n.float) * dt + t0
+uvd.time_array.value = n.sort(n.tile(tims, nbl))    #Should be of length Nblts, baseline fast time slow
+uvd.Nblts.value = len(uvd.time_array.value)    #nbls * Ntimes
 
-     t = t0 + dt
-     t0 = max(tims)
-     aa.set_jultime(t)
-     RA = str(aa.sidereal_time())
-     dec = str(aa.lat)
-     src = RA+'_'+dec
-     
-     #Artificial point
-     #src="23:43:06.0_-25:57:51.84"
-     RA,dec = src.split('_')
-     print src
-     #sys.exit()
-     
-     
-     #uvd.phase_center_ra.value= n.rad2deg(float(repr(ephem.hours(RA))))
-     #uvd.phase_center_dec.value  = n.rad2deg(float(repr(ephem.degrees(dec))))
-     uvd.phase_center_ra.value= ephem.hours(RA)
-     uvd.phase_center_dec.value  = ephem.degrees(dec)
-     uvd.object_name.value= "zenith"
-     uvd.phase_center_epoch.value = ephem.J2000
-     uvd.history.value = ''
-     
-     srclist,cutoff,catalogs = a.scripting.parse_srcs(src, 'helm')
-     src = a.cal.get_catalog(args[0], srclist, cutoff, catalogs).values()[0]
-     #src._epoch=36525.
-     uvw_array = []
-     curtime=-1
-     for t in tims:
-     	if curtime != t:
-     		curtime = t
-     		aa.set_jultime(t)
-     	src.compute(aa)
-     	for bl in bls:
-     		i,j = aa.bl2ij(bl)
-     		uvw_array.append(aa.get_baseline(i,j,src=src))
-     
-     uvd.uvw_array.value = n.array(uvw_array).T * a.const.len_ns / 100.
-     
-     
-     del uvw_array
-     
-     #TODO --- Check line below. uvd needs a flag array. True = flagged
-     uvd.flag_array.value = n.zeros(shape=uvd.data_array.value.shape, dtype=n.bool)
-     uvd.nsample_array.value = n.ones(shape=uvd.data_array.value.shape, dtype=n.intc)
-     
-     extra_attrs=[atr for atr in dir(uvd) if not atr.startswith('__') if not atr in default_attrs]
-     for attr in extra_attrs:
-     		delattr(uvd, attr)
+t = t0 + dt
+#t0 = max(tims)
+aa.set_jultime(t)
+RA = str(aa.sidereal_time())
+dec = str(aa.lat)
+src = RA+'_'+dec
 
-     #uvd.instrument.expected_type=str
-     #delattr(uvd, 'end_time')
-     uvd.set_lsts_from_time_array()
-     #uvd.lst_array.value = n.zeros(uvd.Ntimes.value*nbl)
-     if nout > 1:
-          ofi = ofile.split(".")[0] +"_"  +  str(m) + ".uvfits"
-     print ofi
-     uvd.write_uvfits(ofi, spoof_nonessential=True)
+#Artificial point
+#src="23:43:06.0_-25:57:51.84"
+RA,dec = src.split('_')
+print src
+#sys.exit()
+
+
+#uvd.phase_center_ra.value= n.rad2deg(float(repr(ephem.hours(RA))))
+#uvd.phase_center_dec.value  = n.rad2deg(float(repr(ephem.degrees(dec))))
+uvd.phase_center_ra.value= ephem.hours(RA)
+uvd.phase_center_dec.value  = ephem.degrees(dec)
+uvd.object_name.value= "zenith"
+uvd.phase_center_epoch.value = ephem.J2000
+uvd.history.value = ''
+
+srclist,cutoff,catalogs = a.scripting.parse_srcs(src, 'helm')
+src = a.cal.get_catalog(args[0], srclist, cutoff, catalogs).values()[0]
+#src._epoch=36525.
+uvw_array = []
+curtime=-1
+for t in tims:
+	if curtime != t:
+		curtime = t
+		aa.set_jultime(t)
+	src.compute(aa)
+	for bl in bls:
+		i,j = aa.bl2ij(bl)
+		uvw_array.append(aa.get_baseline(i,j,src=src))
+
+uvd.uvw_array.value = n.array(uvw_array).T * a.const.len_ns / 100.
+
+
+del uvw_array
+
+#TODO --- Check line below. uvd needs a flag array. True = flagged
+uvd.flag_array.value = n.zeros(shape=uvd.data_array.value.shape, dtype=n.bool)
+uvd.nsample_array.value = n.ones(shape=uvd.data_array.value.shape, dtype=n.intc)
+
+extra_attrs=[atr for atr in dir(uvd) if not atr.startswith('__') if not atr in default_attrs]
+for attr in extra_attrs:
+		delattr(uvd, attr)
+
+#uvd.instrument.expected_type=str
+#delattr(uvd, 'end_time')
+uvd.set_lsts_from_time_array()
+#uvd.lst_array.value = n.zeros(uvd.Ntimes.value*nbl)
+if nout > 1:
+     ofi = ofile.split(".")[0] +"_"  +  str(en) + ".uvfits"
+print ofi
+uvd.write_uvfits(ofi, spoof_nonessential=True)

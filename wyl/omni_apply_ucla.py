@@ -76,30 +76,30 @@ for f,filename in enumerate(args):
         elif opts.intype == 'fhd':
             uvi.read_fhd(files[filename][p])
 
-        Nblts = uvi.Nblts.value
-        Nfreqs = uvi.Nfreqs.value
-        Nbls = uvi.Nbls.value
-        pollist = list(uvi.polarization_array.value)
+        Nblts = uvi.Nblts
+        Nfreqs = uvi.Nfreqs
+        Nbls = uvi.Nbls
+        pollist = list(uvi.polarization_array)
         pid = pollist.index(aipy.miriad.str2pol[p])
 
         for ii in range(0,Nblts):
-            a1 = uvi.ant_1_array.value[ii]
-            a2 = uvi.ant_2_array.value[ii]
+            a1 = uvi.ant_1_array[ii]
+            a2 = uvi.ant_2_array[ii]
             p1,p2 = p
             ti = ii/Nbls
             if opts.xtalk:
-                try: uvi.data_array.value[:,0][:,:,pid][ii] -= xtalk[p][(a1,a2)]
+                try: uvi.data_array[:,0][:,:,pid][ii] -= xtalk[p][(a1,a2)]
                 except(KeyError):
-                    try: uvi.data_array.value[:,0][:,:,pid][ii] -= xtalk[p][(a2,a1)].conj()
+                    try: uvi.data_array[:,0][:,:,pid][ii] -= xtalk[p][(a2,a1)].conj()
                     except(KeyError): pass
-            try: uvi.data_array.value[:,0][:,:,pid][ii] /= gains[p1][a1][ti]
+            try: uvi.data_array[:,0][:,:,pid][ii] /= gains[p1][a1][ti]
             except(KeyError): pass
-            try: uvi.data_array.value[:,0][:,:,pid][ii] /= gains[p2][a2][ti].conj()
+            try: uvi.data_array[:,0][:,:,pid][ii] /= gains[p2][a2][ti].conj()
             except(KeyError): pass
-        uvi.history.value = ''
+#uvi.history = ''
         if opts.outtype == 'uvfits':
             print 'writing:' + newfile
-            uvi.write_uvfits(newfile)
+            uvi.write_uvfits(newfile,spoof_nonessential=True)
             print 'saving ' + newfile
     
 
