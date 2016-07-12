@@ -43,6 +43,7 @@ exec('from %s import instr_prms as _instr_params' % args[1].split('.')[0] )
 uvd = UVData()
 
 default_attrs=[aa for aa in dir(uvd) if not aa.startswith('__')]
+#default_attrs.append("delays")
 
 for key, val in _sim_params.iteritems():
     if key in default_attrs:
@@ -123,9 +124,8 @@ uvd.ant_1_array.value, uvd.ant_2_array.value = \
           uvd.baseline_to_antnums(uvd.baseline_array.value)
 
 #Delays
-uvd.delays = UVProperty()
-uvd.delays.value=[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
-uvd.delays.form = (6,)
+if uvd.instrument.value == 'MWA':
+	uvd.extra_keywords.value['delays'] = '0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0'
 
 t0 = tzero+en*uvd.Ntimes.value*dt
 #Data array
@@ -184,6 +184,7 @@ uvd.flag_array.value = n.zeros(shape=uvd.data_array.value.shape, dtype=n.bool)
 uvd.nsample_array.value = n.ones(shape=uvd.data_array.value.shape, dtype=n.intc)
 
 extra_attrs=[atr for atr in dir(uvd) if not atr.startswith('__') if not atr in default_attrs]
+
 for attr in extra_attrs:
 		delattr(uvd, attr)
 
