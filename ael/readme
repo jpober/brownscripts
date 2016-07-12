@@ -1,0 +1,45 @@
+The collection of all scripts that are useful to the eorlive v2 website lives in this dir.
+
+
+------------------------
+generate_beam_image.py
+
+Python script that generates the beam image at /var/beam_images. This path should be pre-generated.
+In order to run it as a cron process, first wrap it in a shell script like below
+
+#! /bin/bash
+source /opt/pyvenv/eorlive/bin/activate
+/home/ubuntu/MWA_Tools/eorlive_v2/scripts/generate_beam_image.py
+
+So it runs within the venv where mwapy is installed. Then add the crobtab entry like below
+
+*/10     *     *     *     *         /home/ubuntu/generate_image.sh
+
+
+
+--------------------------
+insert_fake_graph_data.sql
+
+Used to insert some bogus data to test the front end charting system.
+Not really useful anymore since we have old_eor_obs_data.sql. See below.
+
+
+
+---------------------------
+old_eor_obs_data.sql
+
+Old eorlive website used Google Fusion Table to host the data for plotting.
+This sql script is a result of parsing that legacy data into an insert statement.
+Feed this statement into the database and you have yourself the old real data.
+The command would look something like this
+
+psql -h localhost -U eor -d eor -f old_eor_obs_data.sql
+
+
+
+
+------------------------------
+pull_chart_data.py
+
+This is the python script that gathers all the data for one row of data that we use for making graphs.
+Run it in the same manner as generate_beam_image.py script.
