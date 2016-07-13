@@ -31,7 +31,7 @@ for filename in args:
         dec= str(aa.lat)
         print "opts.onesrc is True: setting phase to %s_%s"%(RA,dec)
         opts.src = RA+'_'+dec
-        epoch = aa.epoch
+        epoch = (aa.epoch-36525.0)/365.2422 + 2000.
     
     if not opts.src is None:
         if not opts.src.startswith('zen'):
@@ -69,7 +69,8 @@ for filename in args:
 
     uvo = a.pol.UV(filename+'M',status='new')
     ra = src.get_params()['ra']
-    uvo.init_from_uv(uvi,override={'antpos':antpos,'obsra':ra,'ra':ra,'epoch':epoch*2000/36525.})
+    #uvo.init_from_uv(uvi,override={'antpos':antpos,'obsra':ra,'ra':ra,'epoch':epoch*2000/36525.})
+    uvo.init_from_uv(uvi,override={'antpos':antpos,'obsra':ra,'ra':ra,'epoch':epoch})
     uvo.add_var('restfreq','d')
     uvo['restfreq'] = uvi['sfreq']
     for t in D:
