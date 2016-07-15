@@ -31,40 +31,32 @@ if opts.calpar != None: #create g0 if txt file is provided
     if fname.endswith('.txt'):
         print 'Reading: ', fname
         f = open(fname,'r')
-        tkn = []
-        g = {}
+        Ntimes = []
+        Nfreqs = []
         for line in f:
             temp = line.split(',')[:7]
             if temp[0].startswith('#'): continue
             temp2 = []
             for ii, s in enumerate(temp):
                 if ii == 0: continue
-                elif s.strip() == 'EE': s = 'xx' #need to check the convension
-                elif s.strip() == 'NN': s = 'yy'
+                elif s.strip() == 'EW': s = 'xx' #need to check the convension
+                elif s.strip() == 'NS': s = 'yy'
                 temp2.append(s)
             if not temp2[2].strip() in pols: continue
-            temp3=[temp2[2], int(temp2[0]), float(temp2[3]), float(temp2[1]), float(temp2[4]), float(temp2[5])]  #temp3=[pol,ant,jds,freq,real,imag]
-            tkn.append(temp3)
-        for p,pp in enumerate(tkn):
-            if not g.has_key(pp[0][0]):
-                g[pp[0][0]] = {}
-                g0[pp[0][0]] = {}
-            if not g[pp[0][0]].has_key(pp[1]):
-                g[pp[0][0]][pp[1]] = {}
-                g0[pp[0][0]][pp[1]] = []
-            if not g[pp[0][0]][pp[1]].has_key(pp[2]):
-                g[pp[0][0]][pp[1]][pp[2]] = {}
-            if not g[pp[0][0]][pp[1]][pp[2]].has_key(pp[3]):
-                gg = complex(pp[4],pp[5])
-                g[pp[0][0]][pp[1]][pp[2]][pp[3]] = gg.conjugate()/abs(gg)#g{pol:{ant:{jds:{freq:gain}}}}
-        for i1, pol in pols:
-            for i2, ant in enumerate(g[pol]):
-                for i3, jds in enumerate(g[pol][ant]):
-                    ff = []
-                    for i4, freq in enumerate(g[pol][ant][jds]):
-                        ff.append(g[pol][ant][jds][freq])
-                    g0[pol][ant].append(ff)
-                g0[pol][ant] = numpy.array(g0[pol][ant])      #g0={pol:{ant:{array(jds,freq)}}}
+            temp3 = [temp2[2], int(temp2[0]), float(temp2[3]), float(temp2[1]), float(temp2[4]), float(temp2[5])]  #temp3=[pol,ant,jds,freq,real,imag]
+            if not temp3[2] in Ntimes: Ntimes.append(temp3[2])
+            if not temp3[3] in Nfreqs: Nfreqs.append(temp3[3])
+            if not g0.has_key(temp3[0][0]):
+                g0[temp3[0][0]] = {}
+            if not g0[temp3[0][0]].has_key(temp3[1]):
+                g0[temp3[0][0]][temp3[1]] = []
+            gg = complex(temp3[4],temp3[5])
+            g0[temp3[0][0]][temp3[1]].append(gg.conjugate()/abs(gg))
+        print len(Ntimes),len(Nfreqs)
+        for pp in g0.keys():
+            for ant in g0[pp].keys():
+                g0[pp][ant] = numpy.array(g0[pp][ant])
+                g0[pp][ant] = g0[pp][ant].reshape(len(Ntimes),len(Nfreqs))
     elif fname.endswith('.npz'):
         for pp,p in enumerate(pols):
             g0[p[0]] = {}
