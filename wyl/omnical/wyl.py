@@ -131,20 +131,21 @@ def uv_read(filenames, filetype=None, polstr=None,antstr='cross',recast_as_array
                 pp = aipy.miriad.pol2str[pol[jj]]
                 if not dat[bl].has_key(pp):
                     dat[bl][pp],flg[bl][pp] = [],[]
-                dat[bl][pp] = np.complex64(datcut[jj][:,ii])
-                flg[bl][pp] = flgcut[jj][:,ii]
+                dat[bl][pp].append(datcut[jj][:,ii])
+                flg[bl][pp].append(flgcut[jj][:,ii])
 #                dat[bl][pp].append(data[:,0][:,:,jj][ii])
 #                flg[bl][pp].append(flag[:,0][:,:,jj][ii])
         #ginfo = [nant, Nt, nfreq]
         ginfo[0] = nant
         ginfo[1] = Nt
         ginfo[2] = nfreq
-#    if recast_as_array:
-#        for ii in dat.keys():
-#            for jj in dat[ii].keys():
-#                dat[ii][jj] = np.complex64(dat[ii][jj])
-#                flg[ii][jj] = np.array(flg[ii][jj])
-#        info['lsts'] = np.array(info['lsts'])
-#        info['times'] = np.array(info['times'])
+    if recast_as_array:
+        for ii in dat.keys():
+            for jj in dat[ii].keys():
+                dat[ii][jj] = np.complex64(dat[ii][jj])
+                flg[ii][jj] = np.array(flg[ii][jj])
+        info['lsts'] = np.array(info['lsts'])
+        info['times'] = np.array(info['times'])
+
     return info, dat, flg, ginfo, freqarr
 
