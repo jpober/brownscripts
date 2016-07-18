@@ -4,7 +4,7 @@ import subprocess, datetime
 
 def writetxt(npzfiles, repopath, ex_ants):
     
-    p2pol = {'EE': 'x','NN': 'y','EN': 'cross', 'NE': 'cross'}  #check the convension
+    p2pol = {'EW': 'x','NS': 'y'}#,'EN': 'cross', 'NE': 'cross'}  #check the convension
     
     #create output file
     fn0 = npzfiles[0].split('.')
@@ -37,12 +37,12 @@ def writetxt(npzfiles, repopath, ex_ants):
         tot.sort()
         time = data['jds']
         freq = data['freqs']/1e6
-        pol = ['EE', 'NN', 'EN', 'NE']
+        pol = ['EW', 'NS']#, 'EN', 'NE']
         nt = time.shape[0]
         nf = freq.shape[0]
         na = len(tot)
         for tt in range(0, nt):
-            for pp in range(0, 4):
+            for pp in range(0, 2):
                 for ff in range(0, nf):
                     for iaa in range(0, na):
                         aa = tot[iaa]
