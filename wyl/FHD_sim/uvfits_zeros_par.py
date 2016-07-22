@@ -13,8 +13,8 @@ def decdeg2dms(dd):
     else: dp = dd
     mnt,sec=divmod(dp*3600,60)
     deg,mnt=divmod(mnt,60)
-    if dd<0: return str(-int(deg))+':'+str(int(mnt))+':'+str(sec)
-    else: return str(int(deg))+':'+str(int(mnt))+':'+str(sec)
+    if dd<0: return str(-int(deg))+':'+str(int(mnt))+':%.2f'%(sec)
+    else: return str(int(deg))+':'+str(int(mnt))+':%.2f'%(sec)
 
 d1 = '0,2,4,6,0,2,4,6,0,2,4,6,0,2,4,6'
 d2 = '0,1,2,3,0,1,2,3,0,1,2,3,0,1,2,3'
@@ -501,10 +501,14 @@ uvd.set_lsts_from_time_array()
 #uvd.lst_array.value = n.zeros(uvd.Ntimes.value*nbl)
 if nout > 1:
      ofi = ofile.split(".")[0] +"_"  +  str(en) + ".uvfits"
+else:
+     ofi = ofile
 print ofi
 uvd.write_uvfits(ofi, spoof_nonessential=True)
 
 hdu = fits.open(ofi,mode='update')
 hdu[0].header['DELAYS'] = delaylist[en-1]
+hdu[0].header['RAPHASE'] = 0.0
+hdu[0].header['DECPHASE'] = -27.0
 hdu.flush()
 hdu.close()

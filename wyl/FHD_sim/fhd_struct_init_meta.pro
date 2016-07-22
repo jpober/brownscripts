@@ -116,9 +116,11 @@ ENDIF ELSE BEGIN
     IF N_Elements(phasera) EQ 0 THEN BEGIN
         phasera=sxpar(hdr0,'RAPHASE',count=cnt)
         IF cnt>0 THEN phasera=phasera ELSE phasera=obsra
+    ENDIF
     IF N_Elements(phasedec) EQ 0 THEN BEGIN
         phasedec=sxpar(hdr0,'DECPHASE',count=cnt)        
         IF cnt>0 THEN phasedec=phasedec ELSE phasedec=obsdec
+    ENDIF
     print, phasera, phasedec
 
     hor2eq,90.,0.,jd0,zenra,zendec,ha_out,lat=lat,lon=lon,/precess,/nutate
