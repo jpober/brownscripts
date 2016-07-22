@@ -14,7 +14,8 @@ metafits_name=file_basename(metafits_name,'.uvfits',/fold_case)
 metafits_name=file_basename(metafits_name,'_cal',/fold_case) ;sometimes "_cal" is present, sometimes not.
 metafits_path=metafits_dir+path_sep()+metafits_name+metafits_ext
 Imadethisup_path=metafits_dir+path_sep()+metafits_name+'.uvfits'
-
+print, '###CHECK PATH###'
+print, Imadethisup_path
 time=params.time
 b0i=Uniq(time)
 jdate=double(hdr.jd0)+time[b0i]
@@ -107,17 +108,17 @@ ENDIF ELSE BEGIN
     epoch=epoch_year+epoch_fraction   
    
     hdr0=headfits(Imadethisup_path,exten=0,/silent) 
-    ;obsra=sxpar(hdr0,'RA')
-    ;obsdec=sxpar(hdr0,'DEC')
-    ;phasera=sxpar(hdr0,'RAPHASE')
-    ;phasedec=sxpar(hdr0,'DECPHASE')
     obsra=hdr.obsra
     obsdec=hdr.obsdec
     print, '### check ra and dec ###'
     print, obsra,obsdec
     IF Keyword_Set(precess) THEN Precess,obsra,obsdec,epoch,2000.
-    IF N_Elements(phasera) EQ 0 THEN phasera=0.0;obsra
-    IF N_Elements(phasedec) EQ 0 THEN phasedec=-27.0;obsdec
+    IF N_Elements(phasera) EQ 0 THEN BEGIN
+        phasera=sxpar(hdr0,'RAPHASE',count=cnt)
+        IF cnt>0 THEN phasera=phasera ELSE phasera=obsra
+    IF N_Elements(phasedec) EQ 0 THEN BEGIN
+        phasedec=sxpar(hdr0,'DECPHASE',count=cnt)        
+        IF cnt>0 THEN phasedec=phasedec ELSE phasedec=obsdec
     print, phasera, phasedec
 
     hor2eq,90.,0.,jd0,zenra,zendec,ha_out,lat=lat,lon=lon,/precess,/nutate
