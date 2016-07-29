@@ -2,6 +2,8 @@
 
 import omnical, aipy, numpy, capo
 import optparse, os, sys, glob
+from astropy.io import fits
+import pickle
 
 o = optparse.OptionParser()
 o.set_usage('omni_run.py [options] *uvcRRE')
@@ -18,7 +20,9 @@ o.add_option('--ba',dest='ba',default=None,
 o.add_option('--ftype', dest='ftype', default='', type='string',
             help='Type of the input file, .uvfits, or miriad, or fhd, to read fhd, simply type in the path/obsid')
 o.add_option('--iftxt', dest='iftxt', default=False, action='store_true',
-            help='A switch to write the npz info to a ucla txt file or not')
+            help='A switch to write the npz info to a ucla format txt file or not')
+o.add_option('--iffits', dest='iffits', default=False, action='store_true',
+            help='A switch to write the npz info to a ucla format fits file or not')
 opts,args = o.parse_args(sys.argv[1:])
 
 #Dictionary of calpar gains and files
@@ -28,8 +32,8 @@ files = {}
 g0 = {} #firstcal gains
 if opts.calpar != None: #create g0 if txt file is provided
     fname = opts.calpar
+    print '   Reading: ', fname
     if fname.endswith('.txt'):
-        print 'Reading: ', fname
         f = open(fname,'r')
         Ntimes = []
         Nfreqs = []
@@ -39,8 +43,10 @@ if opts.calpar != None: #create g0 if txt file is provided
             temp2 = []
             for ii, s in enumerate(temp):
                 if ii == 0: continue
-                elif s.strip() == 'EW': s = 'xx' #need to check the convension
-                elif s.strip() == 'NS': s = 'yy'
+                elif s.strip() == 'EE': s = 'xx' #need to check the convension
+                elif s.strip() == 'NN': s = 'yy'
+                elif s.strip() == 'EN': s = 'xy'
+                elif s.strip() == 'NE': s = 'yx'
                 temp2.append(s)
             if not temp2[2].strip() in pols: continue
             temp3 = [temp2[2], int(temp2[0]), float(temp2[3]), float(temp2[1]), float(temp2[4]), float(temp2[5])]  #temp3=[pol,ant,jds,freq,real,imag]
@@ -52,7 +58,6 @@ if opts.calpar != None: #create g0 if txt file is provided
                 g0[temp3[0][0]][temp3[1]] = []
             gg = complex(temp3[4],temp3[5])
             g0[temp3[0][0]][temp3[1]].append(gg.conjugate()/abs(gg))
-        print len(Ntimes),len(Nfreqs)
         for pp in g0.keys():
             for ant in g0[pp].keys():
                 g0[pp][ant] = numpy.array(g0[pp][ant])
@@ -61,18 +66,34 @@ if opts.calpar != None: #create g0 if txt file is provided
         for pp,p in enumerate(pols):
             g0[p[0]] = {}
             if p in fname:
-                print 'Reading: ', fname
+                print '   Reading: ', fname
                 cp = numpy.load(fname)
                 for i in cp.keys():
                     if i.isdigit():
                         g0[p[0]][int(i)] = cp[i] / numpy.abs(cp[i])
             else:
                 new_cp = fname.split('.npz')[0][:-2]+p+'.npz'
-                print 'Reading: ', new_cp
+                print '   Reading: ', new_cp
                 cp = numpy.load(new_cp)
                 for i in cp.keys():
                     if i.isdigit():
                         g0[p[0]][int(i)] = cp[i] / numpy.abs(cp[i])
+    elif fname.endswith('.fits'):
+        poldict = {'EE': 'xx', 'NN': 'yy', 'EN': 'xy', 'NE': 'yx'}
+        hdu = fits.open(fname)
+        Ntimes = hdu[0].header['NTIMES']
+        Nfreqs = hdu[0].header['NFREQS']
+        Npols = hdu[0].header['NPOLS']
+        Nants = hdu[0].header['NANTS']
+        ant_index = hdu[1].data['ANT INDEX'][0:Nants]
+        pol_list = hdu[1].data['POL'][0:Nfreqs*Nants*Npols].reshape(Npols,Nants*Nfreqs)[:,0]
+        data_list = hdu[1].data['GAIN'].reshape((Ntimes,Npols,Nfreqs,Nants)).swapaxes(0,1).swapaxes(2,3).swapaxes(1,2) #Npols,Nants,Ntimes,Nfreqs
+        for ii in range(0,Npols):
+            polarization = poldict[pol_list[ii]]
+            if not polarization in pols: continue
+            g0[polarization[0]] = {}
+            for jj in range(0,Nants):
+                g0[polarization[0]][ant_index[jj]]=numpy.conj(data_list[ii][jj]/numpy.abs(data_list[ii][jj]))
     else:
         raise IOError('invalid calpar file')
 
@@ -124,8 +145,8 @@ for f,filename in enumerate(args):
 
 
     file_group = files[filename] #dictionary with pol indexed files
-    print 'Reading:'
-    for key in file_group.keys(): print file_group[key]
+    print '   Reading:'
+    for key in file_group.keys(): print '   ', file_group[key]
 
     #pol = filename.split('.')[-2] #XXX assumes 1 pol per file
     timeinfo,d,f,ginfo,freqs = capo.wyl.uv_read([file_group[key] for key in file_group.keys()], filetype=opts.ftype, polstr=opts.pol, antstr='cross')
@@ -182,9 +203,17 @@ for f,filename in enumerate(args):
         scrpath = os.path.abspath(sys.argv[0])
         pathlist = os.path.split(scrpath)[0].split('/')
         repopath = '/'.join(pathlist[0:-1])+'/'
-        print 'writing to txt:'
+        print '   Writing to txt:'
         capo.wyl.writetxt([npzname], repopath, ex_ants)
-        print 'Saving txt file'
+        print '   Finish'
+
+    if opts.iffits: #if True, write npz gains to fits files
+        scrpath = os.path.abspath(sys.argv[0])
+        pathlist = os.path.split(scrpath)[0].split('/')
+        repopath = '/'.join(pathlist[0:-1])+'/'
+        print '   Writing to fits:'
+        capo.wyl.writefits([npzname], repopath, ex_ants)
+        print '   Finish'
 
 
-    
+
