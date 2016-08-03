@@ -1,16 +1,16 @@
 #! /bin/bash
 #SBATCH -t 1:00:00
 #SBATCH -n 2                                                                                                                                      
-#SBATCH --array=0-1000:1                                                                                                                                
+#SBATCH --array=0-177:1
 ###SBATCH --ntasks=1                                                                                                                                      
-#SBATCH --mem=6G                                                                                                                                        
-#SBATCH -p jpober-test 
+#SBATCH --mem=10G                                                                                                                                   
+####SBATCH -p jpober-test 
 #SBATCH --output=/users/jkerriga/brownscripts/jrk/SlurmOut/FGSub_%A_%a.out 
 ###SBATCH --output=/users/jkerriga/data/jkerriga/PFHDOutput/fhd_%a/FGSub_%A_%a.out
 ###SBATCH --error=/users/jkerriga/data/jkerriga/PFHDOutput/fhd_%a/FGSub_%A_%a.err 
 version=$(($SLURM_ARRAY_TASK_ID + 0))
-outdir=/users/jkerriga/data/jkerriga/PFHDOutput
-#mkdir $outdir/fhd_$version/grid_out
+vsname=''
+outdir=/users/jkerriga/data/jkerriga/ConFit2Day
 
 module load ghostscript
 module load imagemagick/6.6.4
@@ -20,14 +20,21 @@ ncores=2
 FHDpath=$(idl -e 'print,rootdir("fhd")')
 
 echo Using default output directory: $outdir
-mkdir -p ${outdir}/fhd_${version}
-mkdir -p ${outdir}/fhd_${version}/grid_out
-echo Output located at ${outdir}/fhd_${version}
+mkdir -p ${outdir}/fhd_${vsname}${version}
+mkdir -p ${outdir}/fhd_${vsname}${version}/grid_out
+echo Output located at ${outdir}/fhd_${vsname}${version}
 
 obs_list=($(cat obsfits.txt))
 
-#message=$(sbatch --mem=$mem -t ${wallclock_time} -n ${ncores} --export=ncores=$ncores,outdir=$outdir/fhd_${version},version=$version,thresh=$thresh -o ${outdir}/fhd_${version}/grid_out/firstpass-%A_%a.out -e ${outdir}/fhd_${version}/grid_out/firstpass-%A_%a.err ~/brownscripts/jrk/eor_firstpass_slurm_job.sh ${obs_list})
+
 echo ${obs_list[$version]}
-#./eor_firstpass_slurm_job.sh ${obs_list[$version]}
 obs_id=${obs_list[$version]}
-/usr/local/bin/idl -IDL_DEVICE ps -quiet -IDL_CPU_TPOOL_NTHREADS $ncores -e paper_psa64 -args $obs_id $outdir $version
+#/usr/local/bin/idl -IDL_DEVICE ps -quiet -IDL_CPU_TPOOL_NTHREADS $ncores -e paper_psa64 -args $obs_id $outdir ${vsname}${version}
+
+cd ${outdir}/fhd_${vsname}${version}/vis_data
+python ~/brownscripts/jrk/sav2miriad.py Pzen.* ../metadata/Pzen.* -s
+cp -rf *UcS ../../../PSPECLST/
+cp -rf *UcH ../../../PSPECLST/
+rm -r *UcS
+rm -r *UcH
+
