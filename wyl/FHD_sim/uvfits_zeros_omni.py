@@ -13,8 +13,8 @@ def decdeg2dms(dd):
     else: dp = dd
     mnt,sec=divmod(dp*3600,60)
     deg,mnt=divmod(mnt,60)
-    if dd<0: return str(-int(deg))+':'+str(int(mnt))+':%.2f'%(sec)
-    else: return str(int(deg))+':'+str(int(mnt))+':%.2f'%(sec)
+    if dd<0: return str(-int(deg))+':'+str(int(mnt))+':'+str(sec)
+    else: return str(int(deg))+':'+str(int(mnt))+':'+str(sec)
 
 d1 = '0,2,4,6,0,2,4,6,0,2,4,6,0,2,4,6'
 d2 = '0,1,2,3,0,1,2,3,0,1,2,3,0,1,2,3'
@@ -393,8 +393,8 @@ tzero = ephem.julian_date(tzero)
 tfin = ephem.julian_date(tfin)
 
 uvd.dateobs = tzero
-#dt = (tfin - tzero)/ float(uvd.Ntimes * int(nout))
-dt = timelist[en-1][2]
+dt = (tfin - tzero)/ float((uvd.Ntimes-1) * int(nout))
+#dt = timelist[en-1][2]
 
 try:
    uvd.x_telescope, uvd.y_telescope, uvd.z_telescope = aa.get_xyz_telescope()
@@ -429,8 +429,8 @@ uvd.ant_1_array, uvd.ant_2_array = \
 if uvd.instrument == 'MWA':
 	uvd.extra_keywords['delays'] = d3
 
-#t0 = tzero+(en-1)*uvd.Ntimes*dt
-t0 = timelist[en-1][0]
+t0 = tzero+(en-1)*uvd.Ntimes*dt
+#t0 = timelist[en-1][0]
 #Data array
 uvd.data_array = n.zeros((nbl * uvd.Ntimes, uvd.Nspws, uvd.Nfreqs, uvd.Npols), dtype=n.complex)
 
@@ -441,16 +441,16 @@ tims = n.arange(uvd.Ntimes, dtype=n.float) * dt + t0
 uvd.time_array = n.sort(n.tile(tims, nbl))    #Should be of length Nblts, baseline fast time slow
 uvd.Nblts = len(uvd.time_array)    #nbls * Ntimes
 
-t = t0 + dt
+t = t0
 #t0 = max(tims)
 aa.set_jultime(t)
-RA0 = RAlist[en-1]*3.14159265358979323846/180.
-DEC0 = DEClist[en-1]
-RA = ephem.hours(RA0)
-dec = decdeg2dms(DEC0)
-#RA = str(aa.sidereal_time())
-#dec = str(aa.lat)
-src = str(RA)+'_'+dec
+#RA0 = RAlist[en-1]*3.14159265358979323846/180.
+#DEC0 = DEClist[en-1]*3.14159265358979323846/180.
+#RA = ephem.hours(RA0)
+#DEC = ephem.hours(DEC0)
+RA = str(aa.sidereal_time())
+dec = str(aa.lat)
+src = RA+'_'+dec
 
 #Artificial point
 #src="23:43:06.0_-25:57:51.84"
@@ -461,8 +461,10 @@ print src
 
 #uvd.phase_center_ra.value= n.rad2deg(float(repr(ephem.hours(RA))))
 #uvd.phase_center_dec.value  = n.rad2deg(float(repr(ephem.degrees(dec))))
-uvd.phase_center_ra= ephem.hours(RA)
-uvd.phase_center_dec  = ephem.degrees(dec)
+#uvd.phase_center_ra= ephem.hours(RA)
+#uvd.phase_center_dec  = ephem.degrees(dec)
+uvd.phase_center_ra = None
+uvd.phase_center_dec = None
 uvd.object_name= "zenith"
 uvd.phase_center_epoch = 2000.
 uvd.history = ''
@@ -504,11 +506,14 @@ if nout > 1:
 else:
      ofi = ofile
 print ofi
+fRA = '03:22:41.7'
+fDEC = '-37:12:30'
+NRA = ephem.hours(fRA)
+NDEC = ephem.degrees(fDEC)
+uvd.phase(NRA,NDEC)
 uvd.write_uvfits(ofi, spoof_nonessential=True)
 
-hdu = fits.open(ofi,mode='update')
-hdu[0].header['DELAYS'] = delaylist[en-1]
-hdu[0].header['RAPHASE'] = 0.0
-hdu[0].header['DECPHASE'] = -27.0
-hdu.flush()
-hdu.close()
+#hdu = fits.open(ofi,mode='update')
+#hdu[0].header['DELAYS'] = d3
+#hdu.flush()
+#hdu.close()

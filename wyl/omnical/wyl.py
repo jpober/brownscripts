@@ -1,15 +1,104 @@
 import numpy as np, omnical, aipy, math
 import uvdata.uv as uvd
-import subprocess, datetime
+import subprocess, datetime, os
+from astropy.io import fits
+
+def writefits(npzfiles, repopath, ex_ants):
+    
+    p2pol = {'EE': 'x','NN': 'y','EN': 'cross', 'NE': 'cross'}
+
+    fn0 = npzfiles[0].split('.')
+    if len(npzfiles) > 1: fn0.remove[fn0[-2]]
+    fn0[-1] = 'fits'
+    outfn = '.'.join(fn0)
+    if os.path.exists(outfn):
+        print '   %s exists, skipping...' % outfn
+        return 0
+    githash = subprocess.check_output(['git','rev-parse','HEAD'], cwd=repopath)
+    today = datetime.date.today().strftime("Date: %d, %b %Y")
+    ori = subprocess.check_output(['git','remote','show','origin'], cwd=repopath)
+    ori = ori.split('\n')[1].split(' ')[-1]
+    githash = githash.replace('\n','')
+
+    datadict = {}
+    ant = []
+    for f,filename in enumerate(npzfiles):
+        data = np.load(filename)
+        for ii, ss in enumerate(data):
+            if ss[0].isdigit():
+                datadict[ss] = data[ss]
+                intss = int(ss[0:-1])
+                if not intss in ant:
+                    ant.append(intss)
+    ant.sort()
+    tot = ant + ex_ants
+    tot.sort()
+    time = data['jds']
+    freq = data['freqs']/1e6
+    pol = ['EE', 'NN', 'EN', 'NE']
+    nt = time.shape[0]
+    nf = freq.shape[0]
+    na = len(tot)
+    nam = []
+    for nn in range(0,na):
+        nam.append('ant'+str(tot[nn]))      #keep this for now, may change in the future
+    datarray = []
+    flgarray = []
+    for ii in range(0,4):
+        dd = []
+        fl = []
+        for jj in range(0,na):
+            try: dd.append(datadict[str(tot[jj])+p2pol[pol[ii]]])
+            except(KeyError): dd.append(np.ones((nt,nf)))
+            if tot[jj] in ex_ants: fl.append(np.ones((nt,nf),dtype=int))
+            else: fl.append(np.zeros((nt,nf),dtype=int))
+        datarray.append(dd)
+        flgarray.append(fl)
+    datarray = np.array(datarray)
+    datarray = datarray.swapaxes(0,2).swapaxes(1,2).swapaxes(2,3).reshape(4*nt*nf*na)
+    flgarray = np.array(flgarray)
+    flgarray = flgarray.swapaxes(0,2).swapaxes(1,2).swapaxes(2,3).reshape(4*nt*nf*na)
+    tarray = np.resize(time,(4*nf*na,nt)).transpose().reshape(4*nf*nt*na)
+    parray = np.array((['EE']*(nf*na)+['NN']*(nf*na)+['EN']*(nf*na)+['NE']*(nf*na))*nt)
+    farray = np.array(list(np.resize(freq,(na,nf)).transpose().reshape(na*nf))*4*nt)
+    numarray = np.array(tot*4*nt*nf)
+    namarray = np.array(nam*4*nt*nf)
+
+    prihdr = fits.Header()
+    prihdr['DATE'] = today
+    prihdr['ORIGIN'] = ori
+    prihdr['HASH'] = githash
+    prihdr['PROTOCOL'] = 'Divide uncalibrated data by these gains to obtain calibrated data.'
+    prihdr['NTIMES'] = nt
+    prihdr['NFREQS'] = nf
+    prihdr['NANTS'] = na
+    prihdr['NPOLS'] = 4
+    prihdu = fits.PrimaryHDU(header=prihdr)
+    colnam = fits.Column(name='ANT NAME', format='A10', array=namarray)
+    colnum = fits.Column(name='ANT INDEX', format='I',array=numarray)
+    colf = fits.Column(name='FREQ (MHZ)', format='E', array=farray)
+    colp = fits.Column(name='POL', format='A4', array=parray)
+    colt = fits.Column(name='TIME (JD)', format='D', array=tarray)
+    coldat = fits.Column(name='GAIN', format='M', array=datarray)
+    colflg = fits.Column(name='FLAG', format='L', array=flgarray)
+    cols = fits.ColDefs([colnam, colnum, colf, colp, colt, coldat, colflg])
+    tbhdu = fits.BinTableHDU.from_columns(cols)
+    hdulist = fits.HDUList([prihdu, tbhdu])
+    hdulist.writeto(outfn)
+
 
 def writetxt(npzfiles, repopath, ex_ants):
     
-    p2pol = {'EW': 'x','NS': 'y'}#,'EN': 'cross', 'NE': 'cross'}  #check the convension
+    p2pol = {'EE': 'x','NN': 'y','EN': 'cross', 'NE': 'cross'}  #check the convension
     
     #create output file
     fn0 = npzfiles[0].split('.')
+    if len(npzfiles) > 1: fn0.remove[fn0[-2]]
     fn0[-1] = 'txt'
     outfn = '.'.join(fn0)
+    if os.path.exists(outfn):
+        print '   %s exists, skipping...' % outfn
+        return 0
     outfile = open(outfn,'w')
     githash = subprocess.check_output(['git','rev-parse','HEAD'], cwd=repopath)
     today = datetime.date.today().strftime("Date: %d, %b %Y")
@@ -23,38 +112,39 @@ def writetxt(npzfiles, repopath, ex_ants):
     
     #read gain solutions from npz
     
-    #npzdict = {}
+    datadict = {}
+    ant = []
     for f,filename in enumerate(npzfiles):
         data = np.load(filename)
-        ant = []
         for ii, ss in enumerate(data):
             if ss[0].isdigit():
+                datadict[ss] = data[ss]
                 intss = int(ss[0:-1])
                 if not intss in ant:
                     ant.append(intss)
-        ant.sort()
-        tot = ant + ex_ants
-        tot.sort()
-        time = data['jds']
-        freq = data['freqs']/1e6
-        pol = ['EW', 'NS']#, 'EN', 'NE']
-        nt = time.shape[0]
-        nf = freq.shape[0]
-        na = len(tot)
-        for tt in range(0, nt):
-            for pp in range(0, 2):
-                for ff in range(0, nf):
-                    for iaa in range(0, na):
-                        aa = tot[iaa]
-                        dfl = 0
-                        if aa in ex_ants: dfl=1
-                        dt = time[tt]
-                        dp = pol[pp]
-                        df = freq[ff]
-                        stkey = str(aa) + p2pol[pol[pp]]
-                        try: da = data[stkey][tt][ff]
-                        except(KeyError): da = 1.0
-                        outfile.write("ant%d, %d, %f, %s, %.8f, %f, %f, %d\n"%(aa,aa,df,dp,dt,da.real,da.imag,dfl))
+    ant.sort()
+    tot = ant + ex_ants
+    tot.sort()
+    time = data['jds']
+    freq = data['freqs']/1e6
+    pol = ['EE', 'NN', 'EN', 'NE']
+    nt = time.shape[0]
+    nf = freq.shape[0]
+    na = len(tot)
+    for tt in range(0, nt):
+        for pp in range(0, 4):
+            for ff in range(0, nf):
+                for iaa in range(0, na):
+                    aa = tot[iaa]
+                    dfl = 0
+                    if aa in ex_ants: dfl=1
+                    dt = time[tt]
+                    dp = pol[pp]
+                    df = freq[ff]
+                    stkey = str(aa) + p2pol[pol[pp]]
+                    try: da = datadict[stkey][tt][ff]
+                    except(KeyError): da = 1.0
+                    outfile.write("ant%d, %d, %f, %s, %.8f, %f, %f, %d\n"%(aa,aa,df,dp,dt,da.real,da.imag,dfl))
     outfile.close()
 
 def uv_read(filenames, filetype=None, polstr=None,antstr='cross',recast_as_array=True):
@@ -79,12 +169,8 @@ def uv_read(filenames, filetype=None, polstr=None,antstr='cross',recast_as_array
         blt = len(tt)
         nbl = uvdata.Nbls
         nfreq = uvdata.Nfreqs
-#        timeinfo = []
-#        lstsinfo = []
 
-#        for ii in range(0,Nt):
-#            timeinfo.append(tt[ii*nbl])
-#            lstsinfo.append(tt[ii*nbl])   #not sure how to calculate lsts
+        #not sure how to calculate lsts
         info['times'] = uvdata.time_array[::nbl]
         info['lsts'] = uvdata.time_array[::nbl]
         pol = uvdata.polarization_array
@@ -102,12 +188,12 @@ def uv_read(filenames, filetype=None, polstr=None,antstr='cross',recast_as_array
         freqarr = uvdata.freq_array[0]
         auto = 0
         
-#        dindex = ant1 - ant2
-#        if 1 in dindex and -1 in dindex: #if both (i,j) and (j,i) are included, use -1 to flag (j,i) (if j>i)
-#            for ii in range(0,blt):
-#                if ant1[ii] > ant2[ii]:
-#                    ant1[ii]=-1
-#                    ant2[ii]=-1
+        dindex = ant1 - ant2
+        if 1 in dindex and -1 in dindex: #if both (i,j) and (j,i) are included, use -1 to flag (j,i) (if j>i)
+            for ii in range(0,nbl):
+                if ant1[ii] > ant2[ii]:
+                    ant1[ii]=-1
+                    ant2[ii]=-1
         for ii in range(0, nbl):
             if ant1[ii] == ant2[ii]:
                 auto += 1
@@ -123,7 +209,7 @@ def uv_read(filenames, filetype=None, polstr=None,antstr='cross',recast_as_array
             flgcut.append(flag[:,0][:,:,jj].reshape(uvdata.Ntimes,uvdata.Nbls,uvdata.Nfreqs))
     
         for ii in range(0,uvdata.Nbls):
-            #if ant1[ii] < 0: continue
+            if ant1[ii] < 0: continue
             if ant1[ii] == ant2[ii] and antstr == 'cross': continue
             bl = (ant1[ii],ant2[ii])
             if not dat.has_key(bl): dat[bl],flg[bl] = {},{}
@@ -135,7 +221,6 @@ def uv_read(filenames, filetype=None, polstr=None,antstr='cross',recast_as_array
                 flg[bl][pp] = flgcut[jj][:,ii]
 #                dat[bl][pp].append(data[:,0][:,:,jj][ii])
 #                flg[bl][pp].append(flag[:,0][:,:,jj][ii])
-        #ginfo = [nant, Nt, nfreq]
         ginfo[0] = nant
         ginfo[1] = Nt
         ginfo[2] = nfreq
