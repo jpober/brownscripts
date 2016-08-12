@@ -6,13 +6,14 @@ import aipy as a
 import sys, optparse, csv
 import numpy as n
 import ephem
-from uvdata.uv import UVData, UVProperty
-
+from uvdata.uvbase import UVBase
+import uvdata.parameter as uvp
+import uvdata.utils as utils
+from uvdata.uv import UVData
 
 ## NB -- pyuvdata and uvfits use Hz and Seconds for everything. AIPY assumes GHz and ns.
 
 #Parallel version of uvfits_zeros_gen
-
 
 o = optparse.OptionParser()
 o.set_usage('uvfits_zeros_gen [-o <outfile>] <cal file of coords> <sim_settings_file>')
@@ -47,60 +48,66 @@ default_attrs=[aa for aa in dir(uvd) if not aa.startswith('__')]
 
 for key, val in _sim_params.iteritems():
     if key in default_attrs:
-	uvp = getattr(uvd, key)
+	param = getattr(uvd, key)
     else:
-        uvp = UVProperty()
-    uvp.value= val
-    setattr(uvd,key,uvp)
+        param = uvp.UVParameter(key, description=key)
+    param = val
+    setattr(uvd,key,param)
+
 for key, val in _instr_params.iteritems():
     if key in default_attrs:
-	uvp = getattr(uvd, key)
+	param = getattr(uvd, key)
     else:
-        uvp = UVProperty()
-    uvp.value= val
-    setattr(uvd,key,uvp)
+        param = uvp.UVParameter(key, description=key)
+    param = val
+    setattr(uvd,key,param)
 
 
 # Generate an antenna array from a cal file.
-aa = a.cal.get_aa(args[0].split('.')[0], uvd.channel_width.value/1e9, uvd.sfreq.value/1e9, uvd.Nfreqs.value)  #Saved in Hz, AIPY expects GHz
+aa = a.cal.get_aa(args[0].split('.')[0], uvd.channel_width/1e9, uvd.sfreq/1e9, uvd.Nfreqs)  #Saved in Hz, AIPY expects GHz
 Nants = len(aa)
 
-uvd.Nants_telescope.value = Nants
-uvd.Nants_data.value = Nants
-uvd.latitude.value, uvd.longitude.value, uvd.altitude.value= aa.lat, aa.long, aa.elev    ### Altitude vs elevation?
+#Set telescope parameters
+uvd.Nants_telescope = Nants
+uvd.Nants_data = Nants
+uvd.set_telescope_params()
+uvd.antenna_numbers = n.arange(Nants)
+#uvd.latitude, uvd.longitude, uvd.altitude = aa.lat, aa.long, aa.elev    ### Altitude vs elevation?
 
-uvd.channel_width.value = uvd.channel_width.value
+#uvd.channel_width = uvd.channel_width
 
-polar = uvd.polarization_array.value
+uvd.is_phased = True
+
+polar = uvd.polarization_array
 
 if polar == 'stokes':
-    setattr(uvd.polarization_array, 'value', n.arange(1,5,1))
+    uvd.polarization_array = n.arange(1,5,1)
 elif polar == 'circ':
-    setattr(uvd.polarization_array, 'value', n.arange(-1,-5,-1))
+    uvd.polarization_array = n.arange(-1,-5,-1)
 elif polar == 'lin':
-    setattr(uvd.polarization_array, 'value', n.arange(-5,-9,-1))
+    uvd.polarization_array =  n.arange(-5,-9,-1)
 
 
 #Time -- The rest of this uses julian date. Take param from sim_prms (in uvd) and 
 # convert to ephem object. Then use that to get julian date.
 
-if uvd.time_format.value == 'julian':
-    tzero = ephem.date(uvd.start_time.value - 2415020.)
-    tfin = ephem.date(uvd.end_time.value - 2415020.)
+if uvd.time_format == 'julian':
+    tzero = ephem.date(uvd.start_time - 2415020.)
+    tfin = ephem.date(uvd.end_time - 2415020.)
 
 tzero = ephem.julian_date(tzero)
 tfin = ephem.julian_date(tfin)
 
-uvd.dateobs.value = tzero
-dt = (tfin - tzero)/ float(uvd.Ntimes.value * int(nout))
+uvd.dateobs = tzero
+dt = (tfin - tzero)/ float(uvd.Ntimes * int(nout))
 
 try:
-   uvd.x_telescope.value, uvd.y_telescope.value, uvd.z_telescope.value = aa.get_xyz_telescope()
+   uvd.x_telescope, uvd.y_telescope, uvd.z_telescope = aa.get_xyz_telescope()
 except AttributeError:
    pass
 
 #Frequency array
-uvd.freq_array.value = n.array([aa.get_afreqs()* 1e9])
+uvd.freq_array = n.array([aa.get_afreqs()* 1e9])
 
 #Baseline array:
 ant_exclude=[]
@@ -110,36 +117,46 @@ bls = n.array([uvd.antnums_to_baseline(j,i,attempt256=True)
        for i in range(0,len(aa)) 
        for j in range(i,len(aa)) if not j in ant_exclude and not i in ant_exclude ])
 
-uvd.baseline_array.value = n.tile(bls, uvd.Ntimes.value)
+uvd.baseline_array = n.tile(bls, uvd.Ntimes)
 
 #number of baselines
 nbl = len(bls)
-uvd.Nbls.value = nbl
+uvd.Nbls = nbl
 
 #Antennas
-uvd.antenna_indices.value = n.arange(1,Nants+1,1)       #1 indexed, not 0
-uvd.antenna_names.value = ["ANT"+str(i) for i in uvd.antenna_indices.value]
-uvd.antenna_positions.value = n.array([ant.pos for ant in aa])
-uvd.ant_1_array.value, uvd.ant_2_array.value = \
-          uvd.baseline_to_antnums(uvd.baseline_array.value)
+uvd.antenna_indices = n.arange(1,Nants+1,1)       #1 indexed, not 0
+uvd.antenna_names = ["ANT"+str(i) for i in uvd.antenna_indices]
+uvd.antenna_positions = n.array([ant.pos for ant in aa])
+uvd.ant_1_array, uvd.ant_2_array = \
+          uvd.baseline_to_antnums(uvd.baseline_array)
 
 #Delays
-if uvd.instrument.value == 'MWA':
-	uvd.extra_keywords.value['delays'] = '0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0'
+if uvd.instrument == 'MWA':
+	uvd.extra_keywords['delays'] = '0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0'
 
-t0 = tzero+en*uvd.Ntimes.value*dt
+t0 = tzero+en*uvd.Ntimes*dt
 #Data array
-uvd.data_array.value = n.zeros((nbl * uvd.Ntimes.value, uvd.Nspws.value, uvd.Nfreqs.value,uvd.Npols.value), dtype=n.complex)
+uvd.data_array = n.zeros((nbl * uvd.Ntimes, uvd.Nspws, uvd.Nfreqs,uvd.Npols), dtype=n.complex)
 
 #Time array:
 ## Format -- Repeat times for each baseline number.
 
-tims = n.arange(uvd.Ntimes.value, dtype=n.float) * dt + t0
-uvd.time_array.value = n.sort(n.tile(tims, nbl))    #Should be of length Nblts, baseline fast time slow
-uvd.Nblts.value = len(uvd.time_array.value)    #nbls * Ntimes
+tims = n.arange(uvd.Ntimes, dtype=n.float) * dt + t0
+uvd.time_array = n.sort(n.tile(tims, nbl))    #Should be of length Nblts, baseline fast time slow
+uvd.Nblts = len(uvd.time_array)    #nbls * Ntimes
 
-t = t0 + dt
+print uvd.Ntimes
+print uvd.Nblts
+sys.exit()
+
+t = t0 # + dt
 #t0 = max(tims)
+
+###
+#Temporary
+t = tzero
+###
+
 aa.set_jultime(t)
 RA = str(aa.sidereal_time())
 dec = str(aa.lat)
@@ -147,18 +164,15 @@ src = RA+'_'+dec
 
 #Artificial point
 #src="23:43:06.0_-25:57:51.84"
+#src="23:31:31.24_-30:43:17.5"
 RA,dec = src.split('_')
 print src
-#sys.exit()
 
-
-#uvd.phase_center_ra.value= n.rad2deg(float(repr(ephem.hours(RA))))
-#uvd.phase_center_dec.value  = n.rad2deg(float(repr(ephem.degrees(dec))))
-uvd.phase_center_ra.value= ephem.hours(RA)
-uvd.phase_center_dec.value  = ephem.degrees(dec)
-uvd.object_name.value= "zenith"
-uvd.phase_center_epoch.value = ephem.J2000
-uvd.history.value = ''
+uvd.phase_center_ra= ephem.hours(RA)
+uvd.phase_center_dec  = ephem.degrees(dec)
+uvd.object_name= "zenith"
+uvd.phase_center_epoch = 36525.0
+uvd.history = ''
 
 srclist,cutoff,catalogs = a.scripting.parse_srcs(src, 'helm')
 src = a.cal.get_catalog(args[0], srclist, cutoff, catalogs).values()[0]
@@ -174,14 +188,13 @@ for t in tims:
 		i,j = aa.bl2ij(bl)
 		uvw_array.append(aa.get_baseline(i,j,src=src))
 
-uvd.uvw_array.value = n.array(uvw_array).T * a.const.len_ns / 100.
-
+uvd.uvw_array = n.array(uvw_array).T * a.const.len_ns / 100.
 
 del uvw_array
 
 #TODO --- Check line below. uvd needs a flag array. True = flagged
-uvd.flag_array.value = n.zeros(shape=uvd.data_array.value.shape, dtype=n.bool)
-uvd.nsample_array.value = n.ones(shape=uvd.data_array.value.shape, dtype=n.intc)
+uvd.flag_array = n.zeros(shape=uvd.data_array.shape, dtype=n.bool)
+uvd.nsample_array = n.ones(shape=uvd.data_array.shape, dtype=n.intc)
 
 extra_attrs=[atr for atr in dir(uvd) if not atr.startswith('__') if not atr in default_attrs]
 
@@ -191,7 +204,6 @@ for attr in extra_attrs:
 #uvd.instrument.expected_type=str
 #delattr(uvd, 'end_time')
 uvd.set_lsts_from_time_array()
-#uvd.lst_array.value = n.zeros(uvd.Ntimes.value*nbl)
 if nout > 1:
      ofi = ofile.split(".")[0] +"_"  +  str(en) + ".uvfits"
 print ofi
