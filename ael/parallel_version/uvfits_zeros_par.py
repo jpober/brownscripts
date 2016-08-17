@@ -20,7 +20,7 @@ o.set_usage('uvfits_zeros_gen [-o <outfile>] <cal file of coords> <sim_settings_
 
 o.add_option('-o', dest='ofile', help='Destination filename')
 o.add_option('-i', dest='en', help='Which job?')
-o.add_option('-N', dest='nout', help='How many?')
+o.add_option('-N', dest='nout', help='How many files?')
 
 opts,args = o.parse_args(sys.argv[1:])
 
@@ -98,8 +98,11 @@ if uvd.time_format == 'julian':
 tzero = ephem.julian_date(tzero)
 tfin = ephem.julian_date(tfin)
 
+dayspersec = (1/24.)*(1/3600.)
+
 uvd.dateobs = tzero
-dt = (tfin - tzero)/ float(uvd.Ntimes * int(nout))
+#dt = (tfin - tzero)/ float(uvd.Ntimes * int(nout))
+dt = uvd.integration_time * dayspersec
 
 try:
    uvd.x_telescope, uvd.y_telescope, uvd.z_telescope = aa.get_xyz_telescope()
@@ -135,6 +138,8 @@ if uvd.instrument == 'MWA':
 	uvd.extra_keywords['delays'] = '0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0'
 
 t0 = tzero+en*uvd.Ntimes*dt
+
+print 't0: '+ str(t0)
 #Data array
 uvd.data_array = n.zeros((nbl * uvd.Ntimes, uvd.Nspws, uvd.Nfreqs,uvd.Npols), dtype=n.complex)
 
@@ -142,20 +147,12 @@ uvd.data_array = n.zeros((nbl * uvd.Ntimes, uvd.Nspws, uvd.Nfreqs,uvd.Npols), dt
 ## Format -- Repeat times for each baseline number.
 
 tims = n.arange(uvd.Ntimes, dtype=n.float) * dt + t0
+
+print "Ntimes: " + str(len(tims))
 uvd.time_array = n.sort(n.tile(tims, nbl))    #Should be of length Nblts, baseline fast time slow
 uvd.Nblts = len(uvd.time_array)    #nbls * Ntimes
 
-print uvd.Ntimes
-print uvd.Nblts
-sys.exit()
-
-t = t0 # + dt
-#t0 = max(tims)
-
-###
-#Temporary
-t = tzero
-###
+t = t0   # + dt
 
 aa.set_jultime(t)
 RA = str(aa.sidereal_time())
@@ -168,10 +165,10 @@ src = RA+'_'+dec
 RA,dec = src.split('_')
 print src
 
-uvd.phase_center_ra= ephem.hours(RA)
-uvd.phase_center_dec  = ephem.degrees(dec)
+#uvd.phase_center_ra= ephem.hours(RA)
+#uvd.phase_center_dec  = ephem.degrees(dec)
 uvd.object_name= "zenith"
-uvd.phase_center_epoch = 36525.0
+#uvd.phase_center_epoch = uvd.juldate2ephem(t) #36525.0
 uvd.history = ''
 
 srclist,cutoff,catalogs = a.scripting.parse_srcs(src, 'helm')
@@ -179,6 +176,7 @@ src = a.cal.get_catalog(args[0], srclist, cutoff, catalogs).values()[0]
 #src._epoch=36525.
 uvw_array = []
 curtime=-1
+
 for t in tims:
 	if curtime != t:
 		curtime = t
@@ -186,7 +184,8 @@ for t in tims:
 	src.compute(aa)
 	for bl in bls:
 		i,j = aa.bl2ij(bl)
-		uvw_array.append(aa.get_baseline(i,j,src=src))
+		uvw_array.append(aa.get_baseline(i,j,src='z'))
+		#uvw_array.append(aa.get_baseline(i,j,src=src))
 
 uvd.uvw_array = n.array(uvw_array).T * a.const.len_ns / 100.
 
@@ -201,10 +200,23 @@ extra_attrs=[atr for atr in dir(uvd) if not atr.startswith('__') if not atr in d
 for attr in extra_attrs:
 		delattr(uvd, attr)
 
+uvd.is_phased = False
+RA = ephem.hours(RA)
+dec = ephem.degrees(dec)
+epoch = uvd.juldate2ephem(t0)
+
+
+#uvd.unphase_to_drift()
+
 #uvd.instrument.expected_type=str
 #delattr(uvd, 'end_time')
 uvd.set_lsts_from_time_array()
+
+#uvd.phase_to_time(t0)
+uvd.phase(ra=RA, dec=dec, epoch=epoch)
 if nout > 1:
-     ofi = ofile.split(".")[0] +"_"  +  str(en) + ".uvfits"
-print ofi
-uvd.write_uvfits(ofi, spoof_nonessential=True)
+     ofiu = ofile.split(".")[0] +"_"  +  str(en) + ".uvfits"
+     ofim = ofile.split(".")[0] +"_"  +  str(en)   # For MIRIAD
+print ofiu
+uvd.write_uvfits(ofiu, spoof_nonessential=True)
+#uvd.write_miriad(ofim, clobber=True)
