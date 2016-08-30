@@ -143,12 +143,12 @@ def aa_pos_to_info(aa, pols=['x'], fcal=False, **kwargs):
         if y < ymin: ymin = y
     for ant in xrange(nant):
         bl = aa.get_baseline(0,ant,src='z')
-        x,y = bl[0] - xmin + 0.1, bl[1] - ymin + 0.1  #w is currently not included
+        x,y = bl[0] - xmin , bl[1] - ymin   #w is currently not included
         for z,pol in enumerate(pols):
             z = 2**z # exponential ensures diff xpols aren't redundant w/ each other
             i = Antpol(ant,pol,len(aa)) # creates index in POLNUM/NUMPOL for pol
             antpos[i,0],antpos[i,1],antpos[i,2] = x,y,z
-    reds = compute_reds(nant, pols, antpos[:nant],tol=0.0001) # only first nant b/c compute_reds treats pol redundancy separately
+    reds = compute_reds(nant, pols, antpos[:nant],tol=0.01) # only first nant b/c compute_reds treats pol redundancy separately
     # XXX haven't enforced xy = yx yet.  need to conjoin red groups for that
     ex_ants = [Antpol(i,nant).ant() for i in range(antpos.shape[0]) if antpos[i,0] < 0]
     kwargs['ex_ants'] = kwargs.get('ex_ants',[]) + ex_ants
@@ -162,7 +162,25 @@ def aa_pos_to_info(aa, pols=['x'], fcal=False, **kwargs):
     return info
 ####################################################################################################
 
-
+def pos_to_info(position, pols=['x'], fcal=False, **kwargs):
+    nant = len(position)
+    antpos = -np.ones((nant*len(pols),3))
+    for ant in position.keys():
+        x = position[ant]['top_x']
+        y = position[ant]['top_y']
+        for z, pol in enumerate(pols):
+            z = 2**z
+            i = Antpol(ant,pol,len(position))
+            antpos[i,0],antpos[i,1],antpos[i,2] = x,y,z
+    reds = compute_reds(nant, pols, antpos[:nant],tol=0.01)
+    ex_ants = [Antpol(i,nant).ant() for i in range(antpos.shape[0]) if antpos[i,0] < 0]
+    kwargs['ex_ants'] = kwargs.get('ex_ants',[]) + ex_ants
+    if fcal:
+        info = FirstCalRedundantInfo(nant)
+    else:
+        info = RedundantInfo(nant)
+    info.init_from_reds(reds,antpos)
+    return info
 
 def redcal(data, info, xtalk=None, gains=None, vis=None,removedegen=False, uselogcal=True, maxiter=50, conv=1e-3, stepsize=.3, computeUBLFit=True, trust_period=1):
     #add layer to support new gains format

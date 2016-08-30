@@ -2,7 +2,7 @@
 
 import omnical, aipy, numpy, capo
 import pickle, optparse, os, sys, glob
-import uvdata.uv as uvd
+import uvdata.uvdata as uvd
 
 ### Options ###
 o = optparse.OptionParser()
@@ -25,32 +25,40 @@ pols = opts.pol.split(',')
 files = {}
 for filename in args:
     files[filename] = {}
-    for p in pols:
-        if opts.intype == 'uvfits' or opts.intype == 'miriad':
+    if opts.intype == 'miriad':
+        for p in pols:
             fn = filename.split('.')
             fn[-2] = p
             files[filename][p] = '.'.join(fn)
-        elif opts.intype == 'fhd':
-            obs = filename + '*'
-            filelist = glob.glob(obs)
+    elif opts.intype == 'uvfits':
+        files[filename][filename] = filename
+    elif opts.intype == 'fhd':
+        obs = filename + '*'
+        filelist = glob.glob(obs)
+        if len(pols) == 1:
+            p = pols[0]
             if p == 'xx':
-                filelist.remove(filename + '_vis_YY.sav')
+                try: filelist.remove(filename + '_vis_YY.sav')
+                except: pass
             elif p == 'yy':
-                filelist.remove(filename + '_vis_XX.sav')
+                try: filelist.remove(filename + '_vis_XX.sav')
+                except: pass
             else:
                 raise IOError('do not support cross pol')
             files[filename][p] = filelist
         else:
-            raise IOError('invalid filetype, it should be miriad, uvfits, or fhd')
+            files[filename][filename] = filelist
+    else:
+        raise IOError('invalid filetype, it should be miriad, uvfits, or fhd')
 
 ### Read Data and Solutions ###
 for f,filename in enumerate(args):
-    if opts.intype == 'uvfits' or opts.intype == 'miriad':
+    if opts.intype == 'miriad':
         if len(pols)>1:
             omnifile = opts.omnipath % '.'.join(filename.split('/')[-1].split('.')[0:3])
         else:
             omnifile = opts.omnipath % '.'.join(filename.split('/')[-1].split('.')[0:4])
-    elif opts.intype == 'fhd':
+    else:
         if len(pols)>1:
             omnifile = opts.omnipath % filename.split('/')[-1]
         else:
@@ -58,10 +66,11 @@ for f,filename in enumerate(args):
     print '   Omnical npz:', omnifile
     _,gains,_,xtalk = capo.omni.from_npz(omnifile) #loads npz outputs from omni_run
 
-    for ip,p in enumerate(pols):
-        print 'Reading', files[filename][p]
+#    for ip,p in enumerate(pols):
+    for key in files[filename].keys():
+        print 'Reading', files[filename][key]
         if opts.outtype == 'uvfits':
-            newfn = files[filename][p].split('.')
+            newfn = files[filename][key].split('.')
             newfn[-1] = 'O.uvfits'
             newfile = '.'.join(newfn)
         if os.path.exists(newfile):
@@ -70,32 +79,33 @@ for f,filename in enumerate(args):
 
         uvi = uvd.UVData()
         if opts.intype == 'uvfits':
-            uvi.read_uvfits(files[filename][p])
+            uvi.read_uvfits(files[filename][key])
         elif opts.intype == 'miriad':
-            uvi.read_miriad(files[filename][p])
+            uvi.read_miriad(files[filename][key])
         elif opts.intype == 'fhd':
-            uvi.read_fhd(files[filename][p])
+            uvi.read_fhd(files[filename][key])
 
         Nblts = uvi.Nblts
         Nfreqs = uvi.Nfreqs
         Nbls = uvi.Nbls
         pollist = list(uvi.polarization_array)
-        pid = pollist.index(aipy.miriad.str2pol[p])
+        for p in pols:
+            pid = pollist.index(aipy.miriad.str2pol[p])
 
-        for ii in range(0,Nblts):
-            a1 = uvi.ant_1_array[ii]
-            a2 = uvi.ant_2_array[ii]
-            p1,p2 = p
-            ti = ii/Nbls
-            if opts.xtalk:
-                try: uvi.data_array[:,0][:,:,pid][ii] -= xtalk[p][(a1,a2)]
-                except(KeyError):
-                    try: uvi.data_array[:,0][:,:,pid][ii] -= xtalk[p][(a2,a1)].conj()
-                    except(KeyError): pass
-            try: uvi.data_array[:,0][:,:,pid][ii] /= gains[p1][a1][ti]
-            except(KeyError): pass
-            try: uvi.data_array[:,0][:,:,pid][ii] /= gains[p2][a2][ti].conj()
-            except(KeyError): pass
+            for ii in range(0,Nblts):
+                a1 = uvi.ant_1_array[ii]
+                a2 = uvi.ant_2_array[ii]
+                p1,p2 = p
+                ti = ii/Nbls
+                if opts.xtalk:
+                    try: uvi.data_array[:,0][:,:,pid][ii] -= xtalk[p][(a1,a2)]
+                    except(KeyError):
+                        try: uvi.data_array[:,0][:,:,pid][ii] -= xtalk[p][(a2,a1)].conj()
+                        except(KeyError): pass
+                try: uvi.data_array[:,0][:,:,pid][ii] /= gains[p1][a1][ti]
+                except(KeyError): pass
+                try: uvi.data_array[:,0][:,:,pid][ii] /= gains[p2][a2][ti].conj()
+                except(KeyError): pass
 #uvi.history = ''
         if opts.outtype == 'uvfits':
             print 'writing:' + newfile
