@@ -515,6 +515,7 @@ class UVData(uvbase.UVBase):
 
     def select(self, baselines=[], times=[], freqs=[]):
         # For now, assumes the object has been read into already
+        # freqs must be either empty, or have 2 values (lower bound, upper bound)
         if not baselines:
             baselines = list(set(self.baseline_array))
         
@@ -531,7 +532,7 @@ class UVData(uvbase.UVBase):
             freq_ind = range(len(self.freq_array[0]))
         else:
             for i in range(len(self.freq_array[0])):
-                if self.freq_array[0][i] in freqs:
+                if freqs[0] <= self.freq_array[0][i] <= freqs[1]:
                     freq_ind.append(i)
         
         d = {bl:{self.time_array[k]:np.array([self.data_array[k][0][j][0]
