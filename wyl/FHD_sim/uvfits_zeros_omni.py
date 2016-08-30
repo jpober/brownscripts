@@ -6,7 +6,10 @@ import aipy as a
 import sys, optparse, csv
 import numpy as n
 import ephem
-from uvdata.uv import UVData, UVParameter
+from uvdata.uvbase import UVBase
+from uvdata.uvdata import UVData
+from uvdata.parameter import UVParameter
+import uvdata.utils as utils
 
 def decdeg2dms(dd):
     if dd < 0: dp = -dd
@@ -361,16 +364,20 @@ for key, val in _instr_params.iteritems():
     uvp = val
     setattr(uvd,key,uvp)
 
-#print 'check:', uvd.channel_width, uvd.sfreq
+
 # Generate an antenna array from a cal file.
 aa = a.cal.get_aa(args[1].split('.')[0], uvd.channel_width/1e9, uvd.sfreq/1e9, uvd.Nfreqs)  #Saved in Hz, AIPY expects GHz
 Nants = len(aa)
 
 uvd.Nants_telescope = Nants
 uvd.Nants_data = Nants
-uvd.latitude, uvd.longitude, uvd.altitude = aa.lat, aa.long, aa.elev    ### Altitude vs elevation?
+uvd.set_telescope_params()
+uvd.antenna_numbers = n.arange(Nants)
+#uvd.latitude, uvd.longitude, uvd.altitude = aa.lat, aa.long, aa.elev    ### Altitude vs elevation?
 
-uvd.channel_width = uvd.channel_width
+#uvd.channel_width = uvd.channel_width
+
+uvd.is_phased = True
 
 polar = uvd.polarization_array
 
@@ -392,9 +399,12 @@ if uvd.time_format == 'julian':
 tzero = ephem.julian_date(tzero)
 tfin = ephem.julian_date(tfin)
 
+dayspersec = (1/24.)*(1/3600.)
+
 uvd.dateobs = tzero
 dt = (tfin - tzero)/ float((uvd.Ntimes-1) * int(nout))
 #dt = timelist[en-1][2]
+#dt = uvd.integration_time * dayspersec
 
 try:
    uvd.x_telescope, uvd.y_telescope, uvd.z_telescope = aa.get_xyz_telescope()
@@ -441,7 +451,7 @@ tims = n.arange(uvd.Ntimes, dtype=n.float) * dt + t0
 uvd.time_array = n.sort(n.tile(tims, nbl))    #Should be of length Nblts, baseline fast time slow
 uvd.Nblts = len(uvd.time_array)    #nbls * Ntimes
 
-t = t0
+t = tims[uvd.Ntimes/2]
 #t0 = max(tims)
 aa.set_jultime(t)
 #RA0 = RAlist[en-1]*3.14159265358979323846/180.
@@ -463,10 +473,10 @@ print src
 #uvd.phase_center_dec.value  = n.rad2deg(float(repr(ephem.degrees(dec))))
 #uvd.phase_center_ra= ephem.hours(RA)
 #uvd.phase_center_dec  = ephem.degrees(dec)
-uvd.phase_center_ra = None
-uvd.phase_center_dec = None
+#uvd.phase_center_ra = None
+#uvd.phase_center_dec = None
 uvd.object_name= "zenith"
-uvd.phase_center_epoch = 2000.
+#uvd.phase_center_epoch = 2000.
 uvd.history = ''
 
 srclist,cutoff,catalogs = a.scripting.parse_srcs(src, 'helm')
@@ -481,7 +491,7 @@ for t in tims:
 	src.compute(aa)
 	for bl in bls:
 		i,j = aa.bl2ij(bl)
-		uvw_array.append(aa.get_baseline(i,j,src=src))
+		uvw_array.append(aa.get_baseline(i,j,src='z'))
 
 uvd.uvw_array = n.array(uvw_array).T * a.const.len_ns / 100.
 
@@ -499,21 +509,23 @@ for attr in extra_attrs:
 
 #uvd.instrument.expected_type=str
 #delattr(uvd, 'end_time')
+uvd.is_phased = False
+#RA = ephem.degrees('5:0:0')
+#dec = ephem.degrees('-25:0:0')
+RA = ephem.hours(RA)
+dec = ephem.degrees(dec)
+epoch = uvd.juldate2ephem(tims[uvd.Ntimes/2])
 uvd.set_lsts_from_time_array()
 #uvd.lst_array.value = n.zeros(uvd.Ntimes.value*nbl)
+uvd.phase(ra=RA,dec=dec,epoch=epoch)
 if nout > 1:
      ofi = ofile.split(".")[0] +"_"  +  str(en) + ".uvfits"
 else:
      ofi = ofile
 print ofi
-fRA = '03:22:41.7'
-fDEC = '-37:12:30'
-NRA = ephem.hours(fRA)
-NDEC = ephem.degrees(fDEC)
-uvd.phase(NRA,NDEC)
+#fRA = '03:22:41.7'
+#fDEC = '-37:12:30'
+#NRA = ephem.hours(fRA)
+#NDEC = ephem.degrees(fDEC)
+#uvd.phase(NRA,NDEC)
 uvd.write_uvfits(ofi, spoof_nonessential=True)
-
-#hdu = fits.open(ofi,mode='update')
-#hdu[0].header['DELAYS'] = d3
-#hdu.flush()
-#hdu.close()
