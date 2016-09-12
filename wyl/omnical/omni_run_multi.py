@@ -8,7 +8,7 @@ from multiprocessing import Pool
 #from IPython import embed
 
 o = optparse.OptionParser()
-o.set_usage('omni_run.py [options] *uvcRRE')
+o.set_usage('omni_run_multi.py [options] *uvcRRE/obsid')
 o.set_description(__doc__)
 aipy.scripting.add_standard_options(o,cal=True,pol=True)
 o.add_option('--calpar',dest='calpar',type='string',default=None,
@@ -109,7 +109,7 @@ for filename in args:
             fn[-2] = p
             files[filename][p] = '.'.join(fn)
     elif opts.ftype == 'uvfits':
-        files[filename][filename] = filename
+        files[filename][filename] = filename + '.uvfits'
     elif opts.ftype == 'fhd':
         obs = filename + '*'
         filelist = glob.glob(obs)
@@ -221,8 +221,7 @@ for f,filename in enumerate(args):
         info_dict.append(infodict[p])
     par = Pool(2)
     npzlist = par.map(calibration, info_dict)
-#par.close()
-
+    par.close()
 
     if opts.iftxt: #if True, write npz gains to txt files
         scrpath = os.path.abspath(sys.argv[0])

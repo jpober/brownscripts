@@ -165,9 +165,14 @@ def aa_pos_to_info(aa, pols=['x'], fcal=False, **kwargs):
 def pos_to_info(position, pols=['x'], fcal=False, **kwargs):
     nant = len(position)
     antpos = -np.ones((nant*len(pols),3))
+    xmin = 0.
+    ymin = 0.
     for ant in position.keys():
-        x = position[ant]['top_x']
-        y = position[ant]['top_y']
+        if position[ant]['top_x'] < xmin: xmin = position[ant]['top_x']
+        if position[ant]['top_y'] < ymin: ymin = position[ant]['top_y']
+    for ant in position.keys():
+        x = position[ant]['top_x'] - xmin + 0.01
+        y = position[ant]['top_y'] - ymin + 0.01
         for z, pol in enumerate(pols):
             z = 2**z
             i = Antpol(ant,pol,len(position))

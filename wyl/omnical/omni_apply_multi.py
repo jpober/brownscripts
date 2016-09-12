@@ -1,12 +1,13 @@
 #! /usr/bin/env python
+# Do not support miriad
 
 import omnical, aipy, numpy, capo
 import pickle, optparse, os, sys, glob
-import uvdata.uv as uvd
+import uvdata.uvdata as uvd
 
 ### Options ###
 o = optparse.OptionParser()
-o.set_usage('omni_apply_fhd.py [options] obsid')
+o.set_usage('omni_apply_fhd.py [options] obsid (do not include .uvfits)')
 o.set_description(__doc__)
 aipy.scripting.add_standard_options(o,pol=True)
 o.add_option('--xtalk',dest='xtalk',default=False,action='store_true',
@@ -15,6 +16,8 @@ o.add_option('--omnipath',dest='omnipath',default='%s.npz',type='string',
             help='Format string (e.g. "path/%s.npz", where you actually type the "%s") which converts the input file name to the omnical npz path/file.')
 o.add_option('--outtype', dest='outtype', default='uvfits', type='string',
              help='Type of the output file, .uvfits, or miriad, or fhd')
+o.add_option('--intype', dest='intype', default=None, type='string',
+             help='Type of the input file, .uvfits or fhd')
 opts,args = o.parse_args(sys.argv[1:])
 
 
@@ -24,20 +27,22 @@ files = {}
 
 #create a dictionary of file lists
 for filename in args:
-    files[filename] = []
-    obs = filename + '*'
-    filelist = glob.glob(obs)
-    files[filename] = filelist
+    if opts.intype == 'fhd':
+        files[filename] = []
+        obs = filename + '*'
+        filelist = glob.glob(obs)
+        files[filename] = filelist
+    elif opts.intype == 'uvfits':
+        files[filename] = filename + '.uvfits'
+    else:
+        raise IOError('invalid filetype, it should be uvfits, or fhd')
 
 #start processing
 for f,filename in enumerate(args):
     
     #create an out put filename
     if opts.outtype == 'uvfits':
-        if len(pols) > 1:
-            newfile = filename + '.O.uvfits'
-        else:
-            newfile = filename + opts.pol + '.O.uvfits'
+        newfile = filename + '_O.uvfits'
     if os.path.exists(newfile):
         print '    %s exists.  Skipping...' % newfile
         continue
@@ -45,7 +50,10 @@ for f,filename in enumerate(args):
     #read in the file
     print '  Reading', files[filename]
     uvi = uvd.UVData()
-    uvi.read_fhd(files[filename])
+    if opts.intype == 'fhd':
+        uvi.read_fhd(files[filename])
+    elif opts.intype == 'uvfits':
+        uvi.read_uvfits(files[filename])
     Nblts = uvi.Nblts
     Nfreqs = uvi.Nfreqs
     Nbls = uvi.Nbls
