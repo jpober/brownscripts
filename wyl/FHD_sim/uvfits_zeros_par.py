@@ -528,8 +528,8 @@ uvd.antenna_positions = n.array([ant.pos for ant in aa])
 uvd.ant_1_array, uvd.ant_2_array =  uvd.baseline_to_antnums(uvd.baseline_array)
 
 #Delays
-if uvd.instrument == 'MWA':
-	uvd.extra_keywords['delays'] = d3
+#if uvd.instrument == 'MWA':
+#	uvd.extra_keywords['delays'] = d3
 
 #t0 = tzero+(en-1)*uvd.Ntimes*dt
 t0 = timelist[en-1][0]
@@ -583,9 +583,9 @@ for t in tims:
 		i,j = aa.bl2ij(bl)
 		uvw_array.append(aa.get_baseline(i,j,src='z'))
 
-uvd.uvw_array = n.array(uvw_array).T * a.const.len_ns / 100.
+uvd.uvw_array = n.array(uvw_array) * a.const.len_ns / 100.
 
-
+print uvd.uvw_array.shape
 del uvw_array
 
 #TODO --- Check line below. uvd needs a flag array. True = flagged
@@ -597,7 +597,8 @@ extra_attrs=[atr for atr in dir(uvd) if not atr.startswith('__') if not atr in d
 for attr in extra_attrs:
 		delattr(uvd, attr)
 
-uvd.is_phased = False
+#uvd.is_phased = False
+uvd.phase_type = 'drift'
 dec =ephem.degrees(dec)
 epoch = ephem.J2000
 #uvd.instrument.expected_type=str
@@ -606,7 +607,7 @@ uvd.set_lsts_from_time_array()
 #uvd.lst_array.value = n.zeros(uvd.Ntimes.value*nbl)
 uvd.phase(ra=RA, dec=dec, epoch=epoch)
 if nout > 1:
-     ofi = obsidlist[en-1]
+     ofi = './blank_data/'+obsidlist[en-1]
 else:
      ofi = ofile
 print ofi
