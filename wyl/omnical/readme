@@ -1,66 +1,32 @@
 # Program of origin: https://github.com/wenyang-li/capo.git
 
-1. modified omni.py, added function aa_pos_to_info, for generating redinfo from real positions (path: capo/src)
+1. omni_run_multi.py:
 
-2. omni_run_v1: modified version of omni_run, replaced aa_to_info with aa_pos_to_info  (path: capo/omni)
+Usage: omni_run_multi.py [options] *uvcRRE/obsid
 
-3. omni_run_v2: modified version of omni_run, replaced reading pickle file with reading txt file (path: capo/omni) 
+Options:
+  -h, --help           show this help message and exit
+  -p POL, --pol=POL    Choose polarization (xx, yy, xy, yx) to include.
+  -C CAL, --cal=CAL    Use specified <cal>.py for calibration information.
+  --calpar=CALPAR      Path and name of calpar file (txt or npz).
+  --redinfo=REDINFO    Path and name of .bin redundant info file.
+  --omnipath=OMNIPATH  Path to save .npz files. Include final / in path.
+  --ba=BA              Antennas to exclude, separated by commas.
+  --ftype=FTYPE        Type of the input file, .uvfits, or miriad, or fhd, to
+                       read fhd, simply type in the path/obsid
+  --iftxt              A switch to write the npz info to a ucla format txt
+                       file or not
+  --iffits             A switch to write the npz info to a ucla format fits
+                       file or not
 
-4. omni_run_ucla: merged all modified versions of omni_run above, added data file type option "--ftype" to specify file type. This version supports reading miriad, uvfits and fhd (path: capo/omni)
-   
-   How to run omni_run_ucla.py:
-   
-      python omni_run_ucla.py [-options] [filelists]
+2. omni_apply_multi.py:
 
-   for different file types:
-
-      ‘miriad’ or ‘uvfits’:
-
-         python omni_run_ucla.py [-options] /path/zen.jds.xx.uv (or *uvfits)
-
-      ‘fhd’:
-
-         python omni_run_ucla.py [-options] /path/obsid
-
-   options:
-
-     -h, --help           show this help message and exit
-     -p POL, --pol=POL    Choose polarization (xx, yy, xy, yx) to include.
-     -C CAL, --cal=CAL    Use specified <cal>.py for calibration information.
-     --calpar=CALPAR      Path and name of POL.p ("xx.p") calpar file.
-     --redinfo=REDINFO    Path and name of .bin redundant info file.
-     --omnipath=OMNIPATH  Path to save .npz files. Include final / in path.
-     --ba=BA              Antennas to exclude, separated by commas.
-     --ftype=FTYPE        Type of the input file, .uvfits, or miriad, or fhd, to
-                          read fhd, simply type in the path/obsid
-     --iftxt              A switch to write the npz info to a ucla txt file or
-                          not
-
-
-5. omni_apply_ucla: read in the data, interacting with pyuvdata object, apply the omnical solution to the data, then write out the intended file type. Added options to specify the input and output filetype. The default output file type is ‘uvfits’. The data files are entered the same way as omni_run_ucla.py in command line.
-
-   How to run omni_apply_ucla.py:
-   
-      python omni_apply_ucla.py [-options] [filelists]
-
-   for different file types:
-
-      ‘miriad’ or ‘uvfits’:
-
-         python omni_run_ucla.py [-options] /path/zen.jds.xx.uv (or *uvfits)
-
-      ‘fhd’:
-
-         python omni_run_ucla.py [-options] /path/obsid
-
-   Options:
-
-     -h, --help           show this help message and exit
-     -p POL, --pol=POL    Choose polarization (xx, yy, xy, yx) to include.
-     --xtalk              Toggle: apply xtalk solutions to data. Default=False
-     --omnipath=OMNIPATH  Format string (e.g. "path/%s.npz", where you actually
-                          type the "%s") which converts the input file name to
-                          the omnical npz path/file.
-     --intype=INTYPE      Type of the input file, .uvfits, or miriad, or fhd, to
-                          read fhd, simply type in the path/obsid
-     --outtype=OUTTYPE    Type of the output file, .uvfits, or miriad, or fhd
+Options:
+  -h, --help           show this help message and exit
+  -p POL, --pol=POL    Choose polarization (xx, yy, xy, yx) to include.
+  --xtalk              Toggle: apply xtalk solutions to data. Default=False
+  --omnipath=OMNIPATH  Format string (e.g. "path/%s.npz", where you actually
+                       type the "%s") which converts the input file name to
+                       the omnical npz path/file.
+  --outtype=OUTTYPE    Type of the output file, .uvfits, or miriad, or fhd
+  --intype=INTYPE      Type of the input file, .uvfits or fhd
