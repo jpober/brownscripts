@@ -37,7 +37,8 @@ def writefits(npzfiles, repopath, ex_ants=[], name_dict={}):
                 if not intss in ant:
                     ant.append(intss)
     ant.sort()
-    tot = ant + ex_ants
+    if name_dict == {}: tot = ant + ex_ants
+    else: tot = name_dict.keys()
     tot.sort()
     time = data['jds']
     freq = data['freqs']/1e6
