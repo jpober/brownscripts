@@ -4,9 +4,11 @@ import omnical, aipy, numpy, capo
 import optparse, os, sys, glob
 from astropy.io import fits
 import pickle
+from multiprocessing import Pool
+#from IPython import embed
 
 o = optparse.OptionParser()
-o.set_usage('omni_run.py [options] *uvcRRE')
+o.set_usage('omni_run_multi.py [options] *uvcRRE/obsid')
 o.set_description(__doc__)
 aipy.scripting.add_standard_options(o,cal=True,pol=True)
 o.add_option('--calpar',dest='calpar',type='string',default=None,
@@ -107,7 +109,7 @@ for filename in args:
             fn[-2] = p
             files[filename][p] = '.'.join(fn)
     elif opts.ftype == 'uvfits':
-        files[filename][filename] = filename
+        files[filename][filename] = filename + '.uvfits'
     elif opts.ftype == 'fhd':
         obs = filename + '*'
         filelist = glob.glob(obs)
@@ -127,43 +129,34 @@ for filename in args:
     else:
         raise IOError('invalid filetype, it should be miriad, uvfits, or fhd')
 
-
-#Create info
-if opts.redinfo != '': #reading redinfo file
-    print 'Reading',opts.redinfo
-    info = omnical.info.RedundantInfoLegacy()
-    print '   Getting reds from redundantinfo'
-    info.fromfile(opts.redinfo)
-else: #generate reds from calfile
-    aa = aipy.cal.get_aa(opts.cal,numpy.array([.15]))
+#################################################################################################
+def calibration(infodict):#dict=[filename, g0, timeinfo, d, f, ginfo, freqs, polar, cal, calpar]
+    filename = infodict['filename']
+    g0 = infodict['g0']
+    pos = infodict['position']
+    polar = infodict['pol']
+    d = infodict['data']
+    f = infodict['flag']
+    ginfo = infodict['ginfo']
+    freqs = infodict['freqs']
+    timeinfo = infodict['timeinfo']
+    calpar = infodict['calpar']
+    ex_ants = infodict['ex_ants']
     print 'Getting reds from calfile'
-    if opts.ba: #XXX assumes exclusion of the same antennas for every pol
-        ex_ants = []
-        for a in opts.ba.split(','):
-            ex_ants.append(int(a))
-        print '   Excluding antennas:',sorted(ex_ants)
-    else: ex_ants = []
-    info = capo.omni.aa_pos_to_info(aa, pols=list(set(''.join(pols))), ex_ants=ex_ants, crosspols=pols)
-reds = info.get_reds()
+    print 'generating info:'
+    info = capo.omni.pos_to_info(pos, pols=list(set(''.join([polar]))), ex_ants=ex_ants, crosspols=[polar])
 
 ### Omnical-ing! Loop Through Compressed Files ###
-for f,filename in enumerate(args):
 
-
-    file_group = files[filename] #dictionary with pol indexed files
-    print '   Reading:'
-    for key in file_group.keys(): print '   ', file_group[key]
-
-    #pol = filename.split('.')[-2] #XXX assumes 1 pol per file
-    timeinfo,d,f,ginfo,freqs = capo.wyl.uv_read([file_group[key] for key in file_group.keys()], filetype=opts.ftype, polstr=opts.pol, antstr='cross')
+    print '   Calibrating ' + polar + ': ' + filename
     
     #if txt file or first cal is not provided, g0 is initiated here, with all of them to be 1.0
-    if opts.calpar == None:
-        for p in pols:
+    if calpar == None:
+        for p in [polar]:
             if not g0.has_key(p[0]): g0[p[0]] = {}
             for iant in range(0, ginfo[0]):
                 g0[p[0]][iant] = numpy.ones((ginfo[1],ginfo[2]))
-    elif opts.calpar.endswith('.npz'):
+    elif calpar.endswith('.npz'):
         SH = (ginfo[1],ginfo[2])
         for p in g0.keys():
             for i in g0[p]: g0[p][i] = numpy.resize(g0[p][i],SH)
@@ -174,7 +167,7 @@ for f,filename in enumerate(args):
     data,wgts,xtalk = {}, {}, {}
     m2,g2,v2 = {}, {}, {}
     data = d #indexed by bl and then pol (backwards from everything else)
-    for p in pols:
+    for p in [polar]:
         wgts[p] = {} #weights dictionary by pol
         for bl in f: 
             i,j = bl
@@ -190,27 +183,69 @@ for f,filename in enumerate(args):
     m2['freqs'] = freqs
 
     if opts.ftype == 'miriad':
-        if len(pols)>1: #zen.jd.npz
-            npzname = opts.omnipath+'.'.join(filename.split('/')[-1].split('.')[0:3])+'.npz'
-        else: #zen.jd.pol.npz
-            npzname = opts.omnipath+'.'.join(filename.split('/')[-1].split('.')[0:4])+'.npz'
-
+        npzname = opts.omnipath+'.'.join(filename.split('/')[-1].split('.')[0:4])+'.npz'
     else:
-        if len(pols)>1: #obsid.npz
-            npzname = opts.omnipath+filename.split('/')[-1]+'.npz'
-        else: #obsid.pol.npz
-            npzname = opts.omnipath+filename.split('/')[-1]+'.'+pols[0]+'.npz'
+        npzname = opts.omnipath+filename.split('/')[-1]+'.'+polar+'.npz'
 
     print '   Saving %s'%npzname
     capo.omni.to_npz(npzname, m2, g2, v2, xtalk)
+    return npzname
+#######################################################################################################
 
+exec('from %s import antpos as _antpos'% opts.cal)
+for f,filename in enumerate(args):
+    name_dict = {}  #for writing to fits or txt if provided    
+    ex_ants = []
+    if opts.ba: #XXX assumes exclusion of the same antennas for every pol
+        for a in opts.ba.split(','):
+            ex_ants.append(int(a))
+    if opts.ftype == 'uvfits':
+        try:
+            hdu = fits.open(filename+'.metafits')
+            D = hdu[1].data
+            for ii in range(0,len(D)):
+                if D[ii][6]>0 and not D[ii][1] in ex_ants: ex_ants.append(D[ii][1])
+                if not name_dict.has_key(D[ii][1]): name_dict[D[ii][1]] = D[ii][2] 
+        except:
+            print "  Warning: Metafits missing. Cannot find flagged tile. Unless you specified flagged tile with --ba, this can potentially cause key error in later calibration."
+            pass
+    print '   Excluding antennas:',sorted(ex_ants)
+
+    npzlist = []
+    infodict = {}
+    filegroup = files[filename]
+    info_dict = []
+    print "  Reading data, which takes a while: " + filename
+    if opts.ftype == 'miriad':
+        for p in pols:
+            dict0 = capo.wyl.uv_read_v2([filegroup[p]], filetype = 'miriad', antstr='cross',p_list=[p])
+            infodict[p] = dict0[p]
+            infodict[p]['filename'] = filegroup[p]
+    else:
+        infodict = capo.wyl.uv_read_v2([filegroup[key] for key in filegroup.keys()], filetype=opts.ftype, antstr='cross', p_list=pols)
+        for p in pols:
+            infodict[p]['filename'] = filename
+    print "  Finish reading."
+    for p in pols:
+        if opts.calpar == None:
+            infodict[p]['g0'] = {}
+        else:
+            infodict[p]['g0'] = g0[p[0]]
+        infodict[p]['calpar'] = opts.calpar
+        infodict[p]['position'] = _antpos
+        infodict[p]['ex_ants'] = ex_ants
+        info_dict.append(infodict[p])
+    print "  Start Parallelism:"
+    par = Pool(2)
+    npzlist = par.map(calibration, info_dict)
+    par.close()
 
     if opts.iftxt: #if True, write npz gains to txt files
         scrpath = os.path.abspath(sys.argv[0])
         pathlist = os.path.split(scrpath)[0].split('/')
         repopath = '/'.join(pathlist[0:-1])+'/'
         print '   Writing to txt:'
-        capo.wyl.writetxt([npzname], repopath, ex_ants)
+        capo.wyl.writetxt(npzlist, repopath, ex_ants, name_dict)
         print '   Finish'
 
     if opts.iffits: #if True, write npz gains to fits files
@@ -218,7 +253,7 @@ for f,filename in enumerate(args):
         pathlist = os.path.split(scrpath)[0].split('/')
         repopath = '/'.join(pathlist[0:-1])+'/'
         print '   Writing to fits:'
-        capo.wyl.writefits([npzname], repopath, ex_ants)
+        capo.wyl.writefits(npzlist, repopath, ex_ants, name_dict)
         print '   Finish'
 
 

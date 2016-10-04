@@ -29,4 +29,3 @@ if length > 2:
     i2=p2.imshow(dd.imag, interpolation='nearest',aspect='auto')
     fig.colorbar(i2)
     plt.show()
-
