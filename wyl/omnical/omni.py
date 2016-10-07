@@ -5,6 +5,7 @@ import warnings
 with warnings.catch_warnings():
     warnings.filterwarnings("ignore",category=DeprecationWarning)
     import scipy.sparse as sps
+from fits_functions import *
     
 POL_TYPES = 'xylrab'
 #XXX this can't support restarts or changing # pols between runs
