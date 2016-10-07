@@ -3,7 +3,26 @@ import uvdata.uvdata as uvd
 import subprocess, datetime, os
 from astropy.io import fits
 
-def writefits(npzfiles, repopath, ex_ants, name_dict):
+def output_mask_array(filename, filetype, flag_array, auto):
+    outfn = ''
+    if filetype == 'fhd':
+        for fn in filename:
+            if fn.endswith('_params.sav'): outfn = ('_').join(fn.split('_')[0:-1]) + '_mask.npy'
+    ### there must be a params file, otherwise an error is already raised earlier ###
+    elif filetype == 'uvfits':
+        outfn = '.'.join(filename.split('.')[0:-1]) + '_mask.npy'
+    elif filetype == 'miriad':
+        outfn = '.'.join(filename.split('.')[0:-2]) + '_mask.npy'
+    mask_array = np.sum(np.int32(flag_array),axis=1)
+    if np.amin(mask_array) > 0:
+        if np.amin(mask_array) == auto: mask_array -= auto
+    mask_array = mask_array.astype(bool)
+    if np.amin(mask_array):
+        print "Warning: each time and frequency there is at least one baseline data flagged (excluding auto correlation)"
+    else: np.save(outfn,mask_array)
+
+
+def writefits(npzfiles, repopath, ex_ants=[], name_dict={}):
     
     p2pol = {'EE': 'x','NN': 'y','EN': 'cross', 'NE': 'cross'}
 
@@ -33,7 +52,8 @@ def writefits(npzfiles, repopath, ex_ants, name_dict):
                 if not intss in ant:
                     ant.append(intss)
     ant.sort()
-    tot = ant + ex_ants
+    if name_dict == {}: tot = ant + ex_ants
+    else: tot = name_dict.keys()
     tot.sort()
     time = data['jds']
     freq = data['freqs']/1e6
@@ -43,8 +63,8 @@ def writefits(npzfiles, repopath, ex_ants, name_dict):
     na = len(tot)
     nam = []
     for nn in range(0,na):
-        try: nam.append(str(name_dict[tot[nn]]))
-        except(KeyError): nam.append('ant'+str(tot[nn]))      #keep this for now, may change in the future
+        try: nam.append(name_dict[tot[nn]])
+        except(KeyError): nam.append('ant'+str(tot[nn]))
     datarray = []
     flgarray = []
     for ii in range(0,4):
@@ -53,8 +73,8 @@ def writefits(npzfiles, repopath, ex_ants, name_dict):
         for jj in range(0,na):
             try: dd.append(datadict[str(tot[jj])+p2pol[pol[ii]]])
             except(KeyError): dd.append(np.ones((nt,nf)))
-            if tot[jj] in ex_ants: fl.append(np.ones((nt,nf),dtype=int))
-            else: fl.append(np.zeros((nt,nf),dtype=int))
+            if tot[jj] in ex_ants: fl.append(np.ones((nt,nf),dtype=bool))
+            else: fl.append(np.zeros((nt,nf),dtype=bool))
         datarray.append(dd)
         flgarray.append(fl)
     datarray = np.array(datarray)
@@ -90,7 +110,7 @@ def writefits(npzfiles, repopath, ex_ants, name_dict):
     hdulist.writeto(outfn)
 
 
-def writetxt(npzfiles, repopath, ex_ants, name_dict):
+def writetxt(npzfiles, repopath, ex_ants=[], name_dict={}):
     
     p2pol = {'EE': 'x','NN': 'y','EN': 'cross', 'NE': 'cross'}  #check the convension
     
@@ -126,7 +146,8 @@ def writetxt(npzfiles, repopath, ex_ants, name_dict):
                 if not intss in ant:
                     ant.append(intss)
     ant.sort()
-    tot = ant + ex_ants
+    if name_dict == {}: tot = ant + ex_ants
+    else: tot = name_dict.keys()
     tot.sort()
     time = data['jds']
     freq = data['freqs']/1e6
@@ -147,7 +168,7 @@ def writetxt(npzfiles, repopath, ex_ants, name_dict):
                     stkey = str(aa) + p2pol[pol[pp]]
                     try: da = datadict[stkey][tt][ff]
                     except(KeyError): da = 1.0
-                    try: antstr = str(name_dict[aa])
+                    try: antstr = name_dict[aa]
                     except(KeyError): antstr = 'ant'+str(aa)
                     outfile.write("%s, %d, %f, %s, %.8f, %.8f, %.8f, %d\n"%(antstr,aa,df,dp,dt,da.real,da.imag,dfl))
     outfile.close()
@@ -157,16 +178,15 @@ def uv_read(filenames, filetype=None, polstr=None,antstr='cross',recast_as_array
     dat, flg = {},{}
     ginfo = [0,0,0]
     freqarr = []
-    #    uvdata=uvd.UVData()
     if type(filenames) == str: filenames = [filenames]
     for filename in filenames:
         uvdata = uvd.UVData()
         if filetype == 'miriad':
-            uvdata.read_miriad(filename)
+            uvdata.read_miriad(filename, run_check=False, run_sanity_check=False)
         elif filetype == 'uvfits':
-            uvdata.read_uvfits(filename)
+            uvdata.read_uvfits(filename, run_check=False, run_sanity_check=False)
         elif filetype == 'fhd':                #in this case filename should be a list of files
-            uvdata.read_fhd(filename)
+            uvdata.read_fhd(filename, use_model=False, run_check=False, run_sanity_check=False)
         else:
             raise IOError('invalid filetype, it should be miriad, uvfits, or fhd')
         tt = uvdata.time_array
@@ -175,7 +195,6 @@ def uv_read(filenames, filetype=None, polstr=None,antstr='cross',recast_as_array
         nbl = uvdata.Nbls
         nfreq = uvdata.Nfreqs
 
-        uvdata.set_lsts_from_time_array()
         info['times'] = uvdata.time_array[::nbl]
         info['lsts'] = uvdata.lst_array[::nbl]
         pol = uvdata.polarization_array
@@ -226,14 +245,14 @@ def uv_read(filenames, filetype=None, polstr=None,antstr='cross',recast_as_array
                 flg[bl][pp] = np.array(flgcut[jj][:,ii])
 #                dat[bl][pp].append(data[:,0][:,:,jj][ii])
 #                flg[bl][pp].append(flag[:,0][:,:,jj][ii])
+
         ginfo[0] = nant
         ginfo[1] = Nt
         ginfo[2] = nfreq
     return info, dat, flg, ginfo, freqarr
 
-def uv_read_v2(filenames, filetype=None, antstr='cross', p_list = ['xx','yy']):
+def uv_read_v2(filenames, filetype=None, antstr='cross', p_list = ['xx','yy'], output_mask = True):
     info = {'lsts':[], 'times':[]}
-    dat, flg = {},{}
     ginfo = [0,0,0]
     freqarr = []
     infodict = {}
@@ -242,11 +261,11 @@ def uv_read_v2(filenames, filetype=None, antstr='cross', p_list = ['xx','yy']):
     for filename in filenames:
         uvdata = uvd.UVData()
         if filetype == 'miriad':
-            uvdata.read_miriad(filename)
+            uvdata.read_miriad(filename, run_check=False, run_sanity_check=False)
         elif filetype == 'uvfits':
-            uvdata.read_uvfits(filename)
+            uvdata.read_uvfits(filename, run_check=False, run_sanity_check=False)
         elif filetype == 'fhd':                #in this case filename should be a list of files
-            uvdata.read_fhd(filename)
+            uvdata.read_fhd(filename, use_model=False, run_check=False, run_sanity_check=False)
         else:
             raise IOError('invalid filetype, it should be miriad, uvfits, or fhd')
         tt = uvdata.time_array
@@ -255,7 +274,6 @@ def uv_read_v2(filenames, filetype=None, antstr='cross', p_list = ['xx','yy']):
         nbl = uvdata.Nbls
         nfreq = uvdata.Nfreqs
         
-        #uvdata.set_lsts_from_time_array() to save some time for now
         info['times'] = uvdata.time_array[::nbl]
         info['lsts'] = uvdata.lst_array[::nbl]
         pol = uvdata.polarization_array
@@ -272,32 +290,25 @@ def uv_read_v2(filenames, filetype=None, antstr='cross', p_list = ['xx','yy']):
         
         freqarr = uvdata.freq_array[0]
         auto = 0
-        
+        exconj = 0
         dindex = ant1 - ant2
+        for ii in range(0, nbl):
+            if ant1[ii] == ant2[ii]:
+                auto += 1
         if 1 in dindex and -1 in dindex: #if both (i,j) and (j,i) are included, use -1 to flag (j,i) (if j>i)
             for ii in range(0,nbl):
                 if ant1[ii] > ant2[ii]:
                     ant1[ii]=-1
                     ant2[ii]=-1
-        for ii in range(0, nbl):
-            if ant1[ii] == ant2[ii]:
-                auto += 1
-        nbl -= auto
-        
+                    exconj += 1
+        nbl -= (auto + exconj)
         nant = int((1+math.sqrt(1+8*nbl))/2)
-        
-        datcut = []
-        flgcut = []
-
-        for jj in range(0,npol):
-            if not aipy.miriad.pol2str[pol[jj]] in p_list: continue
-            datcut.append(data[:,0][:,:,jj].reshape(uvdata.Ntimes,uvdata.Nbls,uvdata.Nfreqs))
-            flgcut.append(flag[:,0][:,:,jj].reshape(uvdata.Ntimes,uvdata.Nbls,uvdata.Nfreqs))
 
         for jj in range(0,npol):
             pp = aipy.miriad.pol2str[pol[jj]]
             if not pp in p_list: continue
             infodict[pp] = {}
+            dat, flg = {},{}
             for ii in range(0,uvdata.Nbls):
                 if ant1[ii] < 0: continue
                 if ant1[ii] == ant2[ii] and antstr == 'cross': continue
@@ -305,8 +316,8 @@ def uv_read_v2(filenames, filetype=None, antstr='cross', p_list = ['xx','yy']):
                 if not dat.has_key(bl): dat[bl],flg[bl] = {},{}
                 if not dat[bl].has_key(pp):
                     dat[bl][pp],flg[bl][pp] = [],[]
-                dat[bl][pp] = np.complex64(datcut[jj][:,ii])
-                flg[bl][pp] = np.array(flgcut[jj][:,ii])
+                dat[bl][pp] = np.complex64(data[:,0][:,:,jj].reshape(uvdata.Ntimes,uvdata.Nbls,uvdata.Nfreqs)[:,ii])
+                flg[bl][pp] = np.array(flag[:,0][:,:,jj].reshape(uvdata.Ntimes,uvdata.Nbls,uvdata.Nfreqs)[:,ii])
             ginfo[0] = nant
             ginfo[1] = Nt
             ginfo[2] = nfreq
@@ -316,6 +327,12 @@ def uv_read_v2(filenames, filetype=None, antstr='cross', p_list = ['xx','yy']):
             infodict[pp]['ginfo'] = ginfo
             infodict[pp]['freqs'] = freqarr
             infodict[pp]['pol'] = pp
+        infodict['name_dict'] = {}
+        for ii in range(0,uvdata.Nants_telescope):
+            if not infodict['name_dict'].has_key(uvdata.antenna_numbers[ii]):
+                infodict['name_dict'][uvdata.antenna_numbers[ii]] = uvdata.antenna_names[ii]
+        if output_mask:
+            output_mask_array(filename, filetype, flag[:,0][:,:,0].reshape(uvdata.Ntimes,uvdata.Nbls,uvdata.Nfreqs), auto)
     return infodict
 
 

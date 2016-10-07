@@ -160,6 +160,10 @@ def calibration(infodict):#dict=[filename, g0, timeinfo, d, f, ginfo, freqs, pol
         SH = (ginfo[1],ginfo[2])
         for p in g0.keys():
             for i in g0[p]: g0[p][i] = numpy.resize(g0[p][i],SH)
+#    else:
+#        SH = (ginfo[1],ginfo[2])
+#        for iant in range(0, ginfo[0]):
+#            if not g0[polar[0]].has_key(iant): g0[polar[0]][iant] = numpy.ones(SH)
 
     t_jd = timeinfo['times']
     t_lst = timeinfo['lsts']
@@ -194,7 +198,6 @@ def calibration(infodict):#dict=[filename, g0, timeinfo, d, f, ginfo, freqs, pol
 
 exec('from %s import antpos as _antpos'% opts.cal)
 for f,filename in enumerate(args):
-    name_dict = {}  #for writing to fits or txt if provided    
     ex_ants = []
     if opts.ba: #XXX assumes exclusion of the same antennas for every pol
         for a in opts.ba.split(','):
@@ -205,7 +208,6 @@ for f,filename in enumerate(args):
             D = hdu[1].data
             for ii in range(0,len(D)):
                 if D[ii][6]>0 and not D[ii][1] in ex_ants: ex_ants.append(D[ii][1])
-                if not name_dict.has_key(D[ii][1]): name_dict[D[ii][1]] = D[ii][2] 
         except:
             print "  Warning: Metafits missing. Cannot find flagged tile. Unless you specified flagged tile with --ba, this can potentially cause key error in later calibration."
             pass
@@ -221,6 +223,7 @@ for f,filename in enumerate(args):
             dict0 = capo.wyl.uv_read_v2([filegroup[p]], filetype = 'miriad', antstr='cross',p_list=[p])
             infodict[p] = dict0[p]
             infodict[p]['filename'] = filegroup[p]
+            infodict['name_dict'] = dict0['name_dict']
     else:
         infodict = capo.wyl.uv_read_v2([filegroup[key] for key in filegroup.keys()], filetype=opts.ftype, antstr='cross', p_list=pols)
         for p in pols:
@@ -230,7 +233,8 @@ for f,filename in enumerate(args):
         if opts.calpar == None:
             infodict[p]['g0'] = {}
         else:
-            infodict[p]['g0'] = g0[p[0]]
+            infodict[p]['g0'] = {}
+            infodict[p]['g0'][p[0]] = g0[p[0]]
         infodict[p]['calpar'] = opts.calpar
         infodict[p]['position'] = _antpos
         infodict[p]['ex_ants'] = ex_ants
@@ -239,13 +243,14 @@ for f,filename in enumerate(args):
     par = Pool(2)
     npzlist = par.map(calibration, info_dict)
     par.close()
+    name_dict = infodict['name_dict']
 
     if opts.iftxt: #if True, write npz gains to txt files
         scrpath = os.path.abspath(sys.argv[0])
         pathlist = os.path.split(scrpath)[0].split('/')
         repopath = '/'.join(pathlist[0:-1])+'/'
         print '   Writing to txt:'
-        capo.wyl.writetxt(npzlist, repopath, ex_ants, name_dict)
+        capo.wyl.writetxt(npzlist, repopath, ex_ants=ex_ants, name_dict=name_dict)
         print '   Finish'
 
     if opts.iffits: #if True, write npz gains to fits files
@@ -253,7 +258,7 @@ for f,filename in enumerate(args):
         pathlist = os.path.split(scrpath)[0].split('/')
         repopath = '/'.join(pathlist[0:-1])+'/'
         print '   Writing to fits:'
-        capo.wyl.writefits(npzlist, repopath, ex_ants, name_dict)
+        capo.wyl.writefits(npzlist, repopath, ex_ants=ex_ants, name_dict=name_dict)
         print '   Finish'
 
 
