@@ -2,6 +2,7 @@ import numpy as np, omnical, aipy, math
 import uvdata.uvdata as uvd
 import subprocess, datetime, os
 from astropy.io import fits
+from uv_data_only import *
 
 def output_mask_array(filename, filetype, flag_array, auto):
     outfn = ''
@@ -259,23 +260,24 @@ def uv_read_v2(filenames, filetype=None, antstr='cross', p_list = ['xx','yy'], o
     #    uvdata=uvd.UVData()
     if type(filenames) == str: filenames = [filenames]
     for filename in filenames:
-        uvdata = uvd.UVData()
         if filetype == 'miriad':
-            uvdata.read_miriad(filename, run_check=False, run_sanity_check=False)
+            uvdata = data_miriad()
+            uvdata.read_data_only(filename)
         elif filetype == 'uvfits':
-            uvdata.read_uvfits(filename, run_check=False, run_sanity_check=False)
-        elif filetype == 'fhd':                #in this case filename should be a list of files
-            uvdata.read_fhd(filename, use_model=False, run_check=False, run_sanity_check=False)
+            uvdata = data_uvfits()
+            uvdata.read_data_only(filename)
+        elif filetype == 'fhd':
+            uvdata = data_fhd()  #in this case filename should be a list of files
+            uvdata.read_data_only(filename)
         else:
             raise IOError('invalid filetype, it should be miriad, uvfits, or fhd')
-        tt = uvdata.time_array
         Nt = uvdata.Ntimes
-        blt = len(tt)
+        blt = uvdata.Nblts
         nbl = uvdata.Nbls
         nfreq = uvdata.Nfreqs
         
         info['times'] = uvdata.time_array[::nbl]
-        info['lsts'] = uvdata.lst_array[::nbl]
+        info['lsts'] = np.array([]) #uvdata.lst_array[::nbl]
         pol = uvdata.polarization_array
         npol = len(pol)
         data = uvdata.data_array
@@ -303,6 +305,7 @@ def uv_read_v2(filenames, filetype=None, antstr='cross', p_list = ['xx','yy'], o
                     exconj += 1
         nbl -= (auto + exconj)
         nant = int((1+math.sqrt(1+8*nbl))/2)
+        ex_ant = find_ex_ant(uvdata)
 
         for jj in range(0,npol):
             pp = aipy.miriad.pol2str[pol[jj]]
@@ -327,6 +330,7 @@ def uv_read_v2(filenames, filetype=None, antstr='cross', p_list = ['xx','yy'], o
             infodict[pp]['ginfo'] = ginfo
             infodict[pp]['freqs'] = freqarr
             infodict[pp]['pol'] = pp
+            infodict[pp]['ex_ants'] = ex_ant
         infodict['name_dict'] = {}
         for ii in range(0,uvdata.Nants_telescope):
             if not infodict['name_dict'].has_key(uvdata.antenna_numbers[ii]):

@@ -198,26 +198,12 @@ def calibration(infodict):#dict=[filename, g0, timeinfo, d, f, ginfo, freqs, pol
 
 exec('from %s import antpos as _antpos'% opts.cal)
 for f,filename in enumerate(args):
-    ex_ants = []
-    if opts.ba: #XXX assumes exclusion of the same antennas for every pol
-        for a in opts.ba.split(','):
-            ex_ants.append(int(a))
-    if opts.ftype == 'uvfits':
-        try:
-            hdu = fits.open(filename+'.metafits')
-            D = hdu[1].data
-            for ii in range(0,len(D)):
-                if D[ii][6]>0 and not D[ii][1] in ex_ants: ex_ants.append(D[ii][1])
-        except:
-            print "  Warning: Metafits missing. Cannot find flagged tile. Unless you specified flagged tile with --ba, this can potentially cause key error in later calibration."
-            pass
-    print '   Excluding antennas:',sorted(ex_ants)
 
     npzlist = []
     infodict = {}
     filegroup = files[filename]
     info_dict = []
-    print "  Reading data, which takes a while: " + filename
+    print "  Reading data: " + filename
     if opts.ftype == 'miriad':
         for p in pols:
             dict0 = capo.wyl.uv_read_v2([filegroup[p]], filetype = 'miriad', antstr='cross',p_list=[p])
@@ -237,7 +223,12 @@ for f,filename in enumerate(args):
             infodict[p]['g0'][p[0]] = g0[p[0]]
         infodict[p]['calpar'] = opts.calpar
         infodict[p]['position'] = _antpos
-        infodict[p]['ex_ants'] = ex_ants
+        if opts.ba:
+            for a in opts.ba.split(','):
+                if not int(a) in infodict[p]['ex_ants']:
+                    infodict[p]['ex_ants'].append(int(a))
+        print '   Excluding antennas:',sorted(infodict[p]['ex_ants'])
+
         info_dict.append(infodict[p])
     print "  Start Parallelism:"
     par = Pool(2)
