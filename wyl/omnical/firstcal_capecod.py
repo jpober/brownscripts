@@ -1,19 +1,23 @@
 # edited version of firstcal in capo/omni/
 #! /usr/bin/env python
-import capo,aipy
-import numpy as n
-import sys,optparse
-import glob
+import capo.hex as hx, capo.wyl as wyl, capo.red as red, capo.omni as omni
+import pylab as p, aipy as a
+import sys,optparse,glob
+import numpy as np
+from IPython import embed
 
 o = optparse.OptionParser()
-aipy.scripting.add_standard_options(o,cal=True,pol=True)
+a.scripting.add_standard_options(o,cal=True,pol=True)
 o.add_option('--ubls', default='', help='Unique baselines to use, separated by commas (ex: 1_4,64_49).')
 o.add_option('--ex_ants', default='', help='Antennas to exclude, separated by commas (ex: 1,4,64,49).')
+o.add_option('--outpath', default=None,help='Output path of solution npz files. Default will be the same directory as the data files.')
+o.add_option('--plot', action='store_true', default=False, help='Turn on plotting in firstcal class.')
+o.add_option('--verbose', action='store_true', default=False, help='Turn on verbose.')
 o.add_option('--ftype', dest='ftype', default='', type='string',
              help='Type of the input file, .uvfits, or miriad, or fhd, to read fhd, simply type in the path/obsid')
-o.add_option('--fcpath',dest='fcpath',default='',type='string',
-             help='Path to save .npz files. Include final / in path.')
 opts,args = o.parse_args(sys.argv[1:])
+print opts.plot
+print opts.verbose
 
 def flatten_reds(reds):
     freds = []
@@ -21,42 +25,11 @@ def flatten_reds(reds):
         freds += r
     return freds
 
-def save_gains(s,f,pol,fn):
-    s2 = {}
-    for k,i in s.iteritems():
-        s2[str(k)] = capo.omni.get_phase(f,i)
-    print 'Saving %s_fcgains.%s.npz'%(fn,pol)
-    n.savez('%s_fcgains.%s.npz'%(fn,pol),**s2)
 
-def normalize_data(datadict):
-    d = {}
-    for key in datadict.keys():
-        d[key] = datadict[key]/n.where(n.abs(datadict[key]) == 0., 1., n.abs(datadict[key]))
-    return d 
-
-files = {}
+#hera info assuming a hex of 19 and 128 antennas
+#aa = a.cal.get_aa(opts.cal, n.array([.150]))
+exec('from %s import antpos as _antpos'% opts.cal)
 pols = opts.pol.split(',')
-for filename in args:
-    files[filename] = {}
-    for p in pols:
-        if opts.ftype == 'uvfits' or opts.ftype == 'miriad':
-            fn = filename.split('.')
-            fn[-2] = p
-            files[filename][p] = '.'.join(fn)
-        elif opts.ftype == 'fhd':
-            obs = filename + '*'
-            filelist = glob.glob(obs)
-            if p == 'xx':
-                filelist.remove(filename + '_vis_YY.sav')
-            elif p == 'yy':
-                filelist.remove(filename + '_vis_XX.sav')
-            else:
-                raise IOError('do not support cross pol')
-            files[filename][p] = filelist
-        else:
-            raise IOError('invalid filetype, it should be miriad, uvfits, or fhd')
-
-aa = aipy.cal.get_aa(opts.cal, n.array([.150]))
 ex_ants = []
 ubls = []
 for a in opts.ex_ants.split(','):
@@ -69,43 +42,51 @@ for bl in opts.ubls.split(','):
     except: pass
 print 'Excluding Antennas:',ex_ants
 if len(ubls) != None: print 'Using Unique Baselines:',ubls
-info = capo.omni.aa_pos_to_info(aa, pols=list(set(''.join(pols))), fcal=True, ubls=ubls, ex_ants=ex_ants, crosspols=pols)
+info = omni.pos_to_info(_antpos, fcal=True, ubls=ubls, ex_ants=ex_ants)
 reds = flatten_reds(info.get_reds())
+#redstest = infotest.get_reds()#for plotting
 
 print 'Number of redundant baselines:',len(reds)
-
+#Read in data here.
 ant_string =','.join(map(str,info.subsetant))
 bl_string = ','.join(['_'.join(map(str,k)) for k in reds])
-
-for f,filename in enumerate(args):
-    
-    file_group = files[filename]
-    print 'Reading:'
-    for key in file_group.keys(): print file_group[key]
-    times,data,flags,ginfo,fqs = capo.wyl.uv_read([file_group[key] for key in file_group.keys()], filetype=opts.ftype, polstr=opts.pol, antstr='cross')
-    fqs /= 1e9
-    dd = {}
+file_group = []
+for fn in args:
+    if opts.ftype == 'fhd':
+        file_group.append(glob.glob(fn + '*'))
+    elif opts.ftype == 'uvfits' or opts.ftype == 'miriad':
+        file_group.append(fn)
+    else:
+        raise IOError('invalid filetype, it should be miriad, uvfits, or fhd')
+npzlist = []
+times, data, flags, ginfo, fqs = wyl.uv_read(file_group, filetype=opts.ftype, bl_str=bl_string, p_list=pols)
+for pp in pols:
+#arp.get_dict_of_uv_data(args, bl_string, opts.pol, verbose=True)
+    datapack,wgtpack = {},{}
     for (i,j) in data.keys():
-        for pp in file_group.keys():
-            dd[(i,j)] = data[(i,j)][pp]
-
-    dlys = n.fft.fftshift(n.fft.fftfreq(fqs.size, fqs[1]-fqs[0]))
-
+        datapack[(i,j)] = data[(i,j)][pp]
+        wgtpack[(i,j)] = np.logical_not(flags[(i,j)][pp])
+#    nfreq = datapack[datapack.keys()[0]].shape[1] #XXX less hacky than previous hardcode, but always safe?
+    fqs = fqs/1e9 #  in GHz
+    dlys = np.fft.fftshift(np.fft.fftfreq(fqs.size, np.diff(fqs)[0]))
 
 #gets phase solutions per frequency.
-    print 'First Calibrating...'
-    fc = capo.omni.FirstCal(dd,fqs,info)
-    sols = fc.run(tune=True)
-    fn = ''
-    if opts.ftype == 'miriad' or 'uvfits':
-        fn = opts.fcpath + '.'.join(filename.split('.'))[0:-2]
-    elif opts.ftype == 'fhd':
-        fn = opts.fcpath + filename
+    fc = omni.FirstCal(datapack,wgtpack,fqs,info)
+    sols = fc.run(tune=True,verbose=opts.verbose,offset=True,plot=opts.plot)
 
-    pstr = ''.join(pols)
 #Save solutions
-    print 'Saving FirstCal solution...'
-    save_gains(sols,fqs, pstr, fn)
+    if len(args)==1: filename=args[0]
+    else: filename='fcgains.%s.npz'%pp #if averaging a bunch together of files together.
+    if not opts.outpath is None:
+        outname='%s/%s'%(opts.outpath,filename.split('/')[-1])
+    else:
+        outname='%s'%filename
+#    embed()
+    omni.save_gains_fc(sols,fqs, pp[0], outname, ubls=ubls, ex_ants=ex_ants)
+    npzlist.append(outname+'.fc.npz')
+
+
+
 
 
 
