@@ -227,7 +227,8 @@ for f,filename in enumerate(args):
             for a in opts.ba.split(','):
                 if not int(a) in infodict[p]['ex_ants']:
                     infodict[p]['ex_ants'].append(int(a))
-        print '   Excluding antennas:',sorted(infodict[p]['ex_ants'])
+        ex_ants = sorted(infodict[p]['ex_ants'])
+        print '   Excluding antennas:', ex_ants
 
         info_dict.append(infodict[p])
     print "  Start Parallelism:"

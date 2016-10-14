@@ -445,5 +445,6 @@ def save_gains_fc(s,f,pol,filename,ubls=None,ex_ants=None,verbose=False):
     outname='%s.fc.npz'%filename
     import sys
     s2['cmd'] = ' '.join(sys.argv)
+    s2['freqs'] = f*1e9 # in Hz
     print 'Saving fcgains to %s'%outname
     np.savez(outname,**s2)

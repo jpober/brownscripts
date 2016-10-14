@@ -174,30 +174,32 @@ def writetxt(npzfiles, repopath, ex_ants=[], name_dict={}):
                     outfile.write("%s, %d, %f, %s, %.8f, %.8f, %.8f, %d\n"%(antstr,aa,df,dp,dt,da.real,da.imag,dfl))
     outfile.close()
 
-def uv_read(filenames, filetype=None, polstr=None,antstr='cross',recast_as_array=True):
+def uv_read(filenames, filetype=None, bl_str=None,antstr='cross',p_list = ['xx','yy']):
     info = {'lsts':[], 'times':[]}
     dat, flg = {},{}
     ginfo = [0,0,0]
     freqarr = []
     if type(filenames) == str: filenames = [filenames]
     for filename in filenames:
-        uvdata = uvd.UVData()
         if filetype == 'miriad':
-            uvdata.read_miriad(filename, run_check=False, run_sanity_check=False)
+            uvdata = data_miriad()
+            uvdata.read_data_only(filename)
         elif filetype == 'uvfits':
-            uvdata.read_uvfits(filename, run_check=False, run_sanity_check=False)
-        elif filetype == 'fhd':                #in this case filename should be a list of files
-            uvdata.read_fhd(filename, use_model=False, run_check=False, run_sanity_check=False)
+            uvdata = data_uvfits()
+            uvdata.read_data_only(filename)
+        elif filetype == 'fhd':
+            uvdata = data_fhd()       #in this case filename should be a list of files
+            uvdata.read_data_only(filename)
         else:
             raise IOError('invalid filetype, it should be miriad, uvfits, or fhd')
-        tt = uvdata.time_array
         Nt = uvdata.Ntimes
-        blt = len(tt)
+        blt = uvdata.Nblts
         nbl = uvdata.Nbls
         nfreq = uvdata.Nfreqs
 
-        info['times'] = uvdata.time_array[::nbl]
-        info['lsts'] = uvdata.lst_array[::nbl]
+        try: info['times'] = np.append(info['times'],uvdata.time_array[::nbl],axis=0)
+        except: info['times'] = uvdata.time_array[::nbl]
+        info['lsts'] = np.array([])   #uvdata.lst_array[::nbl]
         pol = uvdata.polarization_array
         npol = len(pol)
         data = uvdata.data_array
@@ -212,40 +214,42 @@ def uv_read(filenames, filetype=None, polstr=None,antstr='cross',recast_as_array
 
         freqarr = uvdata.freq_array[0]
         auto = 0
-        
+        exconj = 0
+
         dindex = ant1 - ant2
+        for ii in range(0, nbl):
+            if ant1[ii] == ant2[ii]: auto += 1
+
         if 1 in dindex and -1 in dindex: #if both (i,j) and (j,i) are included, use -1 to flag (j,i) (if j>i)
             for ii in range(0,nbl):
                 if ant1[ii] > ant2[ii]:
                     ant1[ii]=-1
                     ant2[ii]=-1
-        for ii in range(0, nbl):
-            if ant1[ii] == ant2[ii]:
-                auto += 1
-        nbl -= auto
+                    exconj += 1
+
+        nbl -= (auto + exconj)
         
         nant = int((1+math.sqrt(1+8*nbl))/2)
-
-        datcut = []
-        flgcut = []
-
-        for jj in range(0,npol):
-            datcut.append(data[:,0][:,:,jj].reshape(uvdata.Ntimes,uvdata.Nbls,uvdata.Nfreqs))
-            flgcut.append(flag[:,0][:,:,jj].reshape(uvdata.Ntimes,uvdata.Nbls,uvdata.Nfreqs))
-    
+        bl_list = bl_str.split(',')
         for ii in range(0,uvdata.Nbls):
             if ant1[ii] < 0: continue
             if ant1[ii] == ant2[ii] and antstr == 'cross': continue
+            ss1 = str(int(ant1[ii]))+'_'+str(int(ant2[ii]))
+            ss2 = str(int(ant2[ii]))+'_'+str(int(ant1[ii]))
+            if not (ss1 in bl_list or ss2 in bl_list): continue
             bl = (ant1[ii],ant2[ii])
             if not dat.has_key(bl): dat[bl],flg[bl] = {},{}
             for jj in range(0,npol):
                 pp = aipy.miriad.pol2str[pol[jj]]
+                if not pp in p_list: continue
                 if not dat[bl].has_key(pp):
                     dat[bl][pp],flg[bl][pp] = [],[]
-                dat[bl][pp] = np.complex64(datcut[jj][:,ii])
-                flg[bl][pp] = np.array(flgcut[jj][:,ii])
-#                dat[bl][pp].append(data[:,0][:,:,jj][ii])
-#                flg[bl][pp].append(flag[:,0][:,:,jj][ii])
+                datcopy = np.complex64(data[:,0][:,:,jj].reshape(uvdata.Ntimes,uvdata.Nbls,uvdata.Nfreqs)[:,ii])
+                flgcopy = np.array(flag[:,0][:,:,jj].reshape(uvdata.Ntimes,uvdata.Nbls,uvdata.Nfreqs)[:,ii])
+                try: dat[bl][pp] = np.append(dat[bl][pp],datcopy,axis=0)
+                except: dat[bl][pp] = datcopy
+                try: flg[bl][pp] = np.append(flg[bl][pp],flgcopy,axis=0)
+                except: flg[bl][pp] = flgcopy
 
         ginfo[0] = nant
         ginfo[1] = Nt
@@ -253,6 +257,7 @@ def uv_read(filenames, filetype=None, polstr=None,antstr='cross',recast_as_array
     return info, dat, flg, ginfo, freqarr
 
 def uv_read_v2(filenames, filetype=None, antstr='cross', p_list = ['xx','yy'], output_mask = True):
+    ### Now only support reading in one data file once, don't load in multiple obs ids ###
     info = {'lsts':[], 'times':[]}
     ginfo = [0,0,0]
     freqarr = []
