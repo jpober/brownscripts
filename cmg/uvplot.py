@@ -29,7 +29,7 @@ args = parser.parse_args()
 #print args
 
 class UVData(uvdata.UVData):
-    def select(self, antnums=[], times=[], freqs=[]):
+    def select(self, antnums=[], times=[], freqs=[],flags=None):
         # For now, assumes the object has been read into already
         # freqs must be either empty, or have 2 values [lower bound, upper bound]
         baselines = self.antnum_list_to_baselines(antnums)
