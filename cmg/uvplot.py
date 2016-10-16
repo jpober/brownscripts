@@ -1,3 +1,5 @@
+#! /usr/bin/env python
+
 from mpl_toolkits.mplot3d import Axes3D
 from matplotlib import cm
 
@@ -24,6 +26,75 @@ args = parser.parse_args()
 
 print args
 
+class UVData(uvdata.UVData):
+    def select(self, antnums=[], times=[], freqs=[]):
+        # For now, assumes the object has been read into already
+        # freqs must be either empty, or have 2 values [lower bound, upper bound]
+        baselines = self.antnum_list_to_baselines(antnums)
+        if not baselines:
+            baselines = set(self.baseline_array)
+        
+        baseline_map = {k:[] for k in baselines}
+        for i in range(len(self.baseline_array)):
+            if self.baseline_array[i] in baselines:
+                baseline_map[self.baseline_array[i]].append(i)
+    
+        if not times:
+            times = list(set(self.time_array))
+        
+        freq_ind = []
+        if not freqs:
+            freq_ind = range(len(self.freq_array[0]))
+        else:
+            for i in range(len(self.freq_array[0])):
+                if freqs[0] <= self.freq_array[0][i] <= freqs[1]:
+                    freq_ind.append(i)
+        
+        d = {bl:{self.time_array[k]:np.array([self.data_array[k][0][j][0]
+                                             if not self.flag_array[k][0][j][0]
+                                             else 0
+                                             for j in freq_ind], dtype=np.complex64)
+                for k in baseline_map[bl]
+                if self.time_array[k] in times}
+            for bl in baseline_map.keys()}
+
+        #for bl in baseline_map.keys():
+        #    for k in baseline_map[bl]:
+        #        if self.time_array[k] in times:
+        #            for j in freq_ind:
+        #                self.data_array[k][0][j][0]
+
+        return (d, sorted(times), sorted([self.freq_array[0][i] for i in freq_ind]))
+    def antnum_list_to_baselines(self, antnums=[]):
+        '''
+        antnums will be a list of either tuples of strings, or strings
+        this implementation allows the user to input both 0_1 and 1_0
+        and it will return the expected baseline (0_1) in both cases
+        '''
+        antnums_in_data = set(self.ant_1_array)
+        baselines = set()
+        
+        for i in antnums:
+            if isinstance(i, tuple):
+                ant1, ant2 = np.int64(i)
+                
+                if ant1 not in antnums_in_data:
+                    raise ValueError('No antenna {} found in data.'.format(ant1))
+                if ant2 not in antnums_in_data:
+                    raise ValueError('No antenna {} found in data.'.format(ant2))
+                
+                baselines.add(self.antnums_to_baseline(min(ant1, ant2), max(ant1, ant2)))
+            
+            else:
+                ant = np.int64(i)
+
+                if ant not in antnums_in_data:
+                    raise ValueError('No antenna {} found in data.'.format(ant))
+                
+                for j in antnums_in_data:
+                    baselines.add(self.antnums_to_baseline(min(ant, j), max(ant, j)))
+
+        return baselines
 
 
 def create_antenna_list(antennas):
@@ -81,7 +152,7 @@ antenna_list = create_antenna_list(args.antennas)
 times_list = create_times_list(args.times)
 freqs_list = create_freqs_list(args.freqs)
 
-obj = uvdata.UVData()
+obj = UVData()
 obj.read_miriad(args.data[0])
 data = obj.select(antenna_list, times_list, freqs_list)
 # data is in the form (dictionary, list of times in dictionary, list of freqs in dictionary)
