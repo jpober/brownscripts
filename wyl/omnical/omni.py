@@ -165,24 +165,27 @@ def aa_pos_to_info(aa, pols=['x'], fcal=False, **kwargs):
 ####################################################################################################
 
 def pos_to_info(position, pols=['x'], fcal=False, **kwargs):
-    nant = len(position)
+### the position is a dictionary, containing only antennas involved in redundant groups.  ###
+### position dict should have keys of ant inds, with values of ideal positions, and a key ###
+### named 'nant', indicate the number of total antennas across the array                  ###
+    nant = position['nant']
     antpos = -np.ones((nant*len(pols),3))
     xmin = 0
     ymin = 0
-    wmin = 0
-    for ant in position.keys():
-        if position[ant]['top_x'] < xmin: xmin = position[ant]['top_x']
-        if position[ant]['top_y'] < ymin: ymin = position[ant]['top_y']
-        if position[ant]['top_z'] < wmin: wmin = position[ant]['top_z']
-    for ant in position.keys():
-        x = position[ant]['top_x'] - xmin + 0.1
-        y = position[ant]['top_y'] - ymin + 0.1
-        w = position[ant]['top_z'] - wmin + 0.1
+    for key in position.keys():
+        if key == 'nant': continue
+        if position[key]['top_x'] < xmin: xmin = position[key]['top_x']
+        if position[key]['top_y'] < ymin: ymin = position[key]['top_y']
+    for ant in range(0,nant):
+        try:
+            x = position[ant]['top_x'] - xmin + 0.1
+            y = position[ant]['top_y'] - ymin + 0.1
+        except(KeyError): continue
         for z, pol in enumerate(pols):
-            z = 10**z
-            i = Antpol(ant,pol,len(position))
-            antpos[i,0],antpos[i,1],antpos[i,2] = x,y,w+z
-    reds = compute_reds(nant, pols, antpos[:nant],tol=0.192) # 1/3 meters threshold, divided by sqrt3
+            z = 2**z
+            i = Antpol(ant,pol,nant)
+            antpos[i,0],antpos[i,1],antpos[i,2] = x,y,z
+    reds = compute_reds(nant, pols, antpos[:nant],tol=0.01)
     ex_ants = [Antpol(i,nant).ant() for i in range(antpos.shape[0]) if antpos[i,0] < 0]
     kwargs['ex_ants'] = kwargs.get('ex_ants',[]) + ex_ants
     reds = filter_reds(reds, **kwargs)

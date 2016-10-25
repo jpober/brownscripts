@@ -81,21 +81,25 @@ if opts.calpar != None: #create g0 if txt file is provided
                     if i.isdigit():
                         g0[p[0]][int(i)] = cp[i] / numpy.abs(cp[i])
     elif fname.endswith('.fits'):
-        poldict = {'EE': 'xx', 'NN': 'yy', 'EN': 'xy', 'NE': 'yx'}
-        hdu = fits.open(fname)
-        Ntimes = hdu[0].header['NTIMES']
-        Nfreqs = hdu[0].header['NFREQS']
-        Npols = hdu[0].header['NPOLS']
-        Nants = hdu[0].header['NANTS']
-        ant_index = hdu[1].data['ANT INDEX'][0:Nants]
-        pol_list = hdu[1].data['POL'][0:Nfreqs*Nants*Npols].reshape(Npols,Nants*Nfreqs)[:,0]
-        data_list = hdu[1].data['GAIN'].reshape((Ntimes,Npols,Nfreqs,Nants)).swapaxes(0,1).swapaxes(2,3).swapaxes(1,2) #Npols,Nants,Ntimes,Nfreqs
-        for ii in range(0,Npols):
-            polarization = poldict[pol_list[ii]]
-            if not polarization in pols: continue
-            g0[polarization[0]] = {}
-            for jj in range(0,Nants):
-                g0[polarization[0]][ant_index[jj]]=numpy.conj(data_list[ii][jj]/numpy.abs(data_list[ii][jj]))
+        g0 = capo.omni.fc_gains_from_fits(opts.calpar)
+        for key1 in g0:
+            for key2 in g0[key1]:
+                g0[key1][key2] /= numpy.abs(g0[key1][key2])
+#        poldict = {'EE': 'xx', 'NN': 'yy', 'EN': 'xy', 'NE': 'yx'}
+#        hdu = fits.open(fname)
+#        Ntimes = hdu[0].header['NTIMES']
+#        Nfreqs = hdu[0].header['NFREQS']
+#        Npols = hdu[0].header['NPOLS']
+#        Nants = hdu[0].header['NANTS']
+#        ant_index = hdu[1].data['ANT INDEX'][0:Nants]
+#        pol_list = hdu[1].data['POL'][0:Nfreqs*Nants*Npols].reshape(Npols,Nants*Nfreqs)[:,0]
+#        data_list = hdu[1].data['GAIN'].reshape((Ntimes,Npols,Nfreqs,Nants)).swapaxes(0,1).swapaxes(2,3).swapaxes(1,2) #Npols,Nants,Ntimes,Nfreqs
+#        for ii in range(0,Npols):
+#            polarization = poldict[pol_list[ii]]
+#            if not polarization in pols: continue
+#            g0[polarization[0]] = {}
+#            for jj in range(0,Nants):
+#                g0[polarization[0]][ant_index[jj]]=numpy.conj(data_list[ii][jj]/numpy.abs(data_list[ii][jj]))
     else:
         raise IOError('invalid calpar file')
 
@@ -156,7 +160,7 @@ def calibration(infodict):#dict=[filename, g0, timeinfo, d, f, ginfo, freqs, pol
             if not g0.has_key(p[0]): g0[p[0]] = {}
             for iant in range(0, ginfo[0]):
                 g0[p[0]][iant] = numpy.ones((ginfo[1],ginfo[2]))
-    elif calpar.endswith('.npz'):
+    elif calpar.endswith('.npz') or calpar.endswith('.fits'):
         SH = (ginfo[1],ginfo[2])
         for p in g0.keys():
             for i in g0[p]: g0[p][i] = numpy.resize(g0[p][i],SH)

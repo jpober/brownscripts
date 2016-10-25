@@ -4,9 +4,11 @@ import capo.hex as hx, capo.wyl as wyl, capo.red as red, capo.omni as omni
 import pylab as p, aipy as a
 import sys,optparse,glob
 import numpy as np
+from multiprocessing import Pool
 from IPython import embed
 
 o = optparse.OptionParser()
+o.set_usage('firstcal_capecod.py [options] *zen.jds.pol.uv/obsid')
 a.scripting.add_standard_options(o,cal=True,pol=True)
 o.add_option('--ubls', default='', help='Unique baselines to use, separated by commas (ex: 1_4,64_49).')
 o.add_option('--ex_ants', default='', help='Antennas to exclude, separated by commas (ex: 1,4,64,49).')
@@ -25,9 +27,33 @@ def flatten_reds(reds):
         freds += r
     return freds
 
+def firstcal(datdict):
+    datapack = datdict['dat']
+    wgtpack = datdict['wgt']
+    pp = datdict['pol']
+    fqs = datdict['fqs']
+    fqs = fqs/1e9 #  in GHz
+    dlys = np.fft.fftshift(np.fft.fftfreq(fqs.size, np.diff(fqs)[0]))
+    #gets phase solutions per frequency.
+    info = omni.pos_to_info(datdict['antpos'], fcal=True, ubls=datdict['ubls'], ex_ants=datdict['ex_ants'])
+    fc = omni.FirstCal(datapack,wgtpack,fqs,info)
+    sols = fc.run(tune=True,verbose=False,offset=True,plot=False)
+    
+    #Save solutions
+    filename = datdict['filename']
+#    if len(args)==1: filename=args[0]
+#    else: filename='fcgains.%s.npz'%pp #if averaging a bunch together of files together.
+    if not datdict['outpath'] is None:
+        outname='%s/%s'%(datdict['outpath'],filename.split('/')[-1])+'.'+pp
+    else:
+        outname='%s'%filename+'.'+pp
+    #    embed()
+    omni.save_gains_fc(sols,fqs, pp[0], outname, ubls=ubls, ex_ants=ex_ants)
+    return (outname+'.fc.npz')
 
+
+### Main ###
 #hera info assuming a hex of 19 and 128 antennas
-#aa = a.cal.get_aa(opts.cal, n.array([.150]))
 exec('from %s import antpos as _antpos'% opts.cal)
 pols = opts.pol.split(',')
 ex_ants = []
@@ -50,40 +76,53 @@ print 'Number of redundant baselines:',len(reds)
 #Read in data here.
 ant_string =','.join(map(str,info.subsetant))
 bl_string = ','.join(['_'.join(map(str,k)) for k in reds])
+
 file_group = []
+if not len(args) == 1: raise IOError('Do not support multiple files.')
 for fn in args:
     if opts.ftype == 'fhd':
         file_group.append(glob.glob(fn + '*'))
-    elif opts.ftype == 'uvfits' or opts.ftype == 'miriad':
-        file_group.append(fn)
+    elif opts.ftype == 'uvfits':
+        file_group.append(fn+'.uvfits')
+    elif opts.ftype == 'miriad':
+        if len(pols) == 1:
+            file_group.append(fn)
+        else:
+            for pp in pols:
+                fnlist = fn.split('.')
+                fnlist[-2] = pp
+                file_group.append('.'.join(fnlist))
     else:
         raise IOError('invalid filetype, it should be miriad, uvfits, or fhd')
 npzlist = []
 times, data, flags, ginfo, fqs = wyl.uv_read(file_group, filetype=opts.ftype, bl_str=bl_string, p_list=pols)
+arglist = []
+if opts.ftype == 'miriad': fn = '.'.join(args[0].split('.')[0:-2])
+else: fn = args[0]
 for pp in pols:
-#arp.get_dict_of_uv_data(args, bl_string, opts.pol, verbose=True)
+    dict = {}
+    dict['pol'] = pp
+    dict['fqs'] = fqs
     datapack,wgtpack = {},{}
     for (i,j) in data.keys():
         datapack[(i,j)] = data[(i,j)][pp]
         wgtpack[(i,j)] = np.logical_not(flags[(i,j)][pp])
-#    nfreq = datapack[datapack.keys()[0]].shape[1] #XXX less hacky than previous hardcode, but always safe?
-    fqs = fqs/1e9 #  in GHz
-    dlys = np.fft.fftshift(np.fft.fftfreq(fqs.size, np.diff(fqs)[0]))
+    dict['dat'] = datapack
+    dict['wgt'] = wgtpack
+    dict['outpath'] = opts.outpath
+    dict['filename'] = fn
+    dict['ubls'] = ubls
+    dict['ex_ants'] = ex_ants
+    dict['antpos'] = _antpos
+    arglist.append(dict)
 
-#gets phase solutions per frequency.
-    fc = omni.FirstCal(datapack,wgtpack,fqs,info)
-    sols = fc.run(tune=True,verbose=opts.verbose,offset=True,plot=opts.plot)
+print "  Start Parallelism:"
+par = Pool(2)
+npzlist = par.map(firstcal, arglist)
+par.close()
+#npzlist.append(outname+'.fc.npz')
 
-#Save solutions
-    if len(args)==1: filename=args[0]
-    else: filename='fcgains.%s.npz'%pp #if averaging a bunch together of files together.
-    if not opts.outpath is None:
-        outname='%s/%s'%(opts.outpath,filename.split('/')[-1])
-    else:
-        outname='%s'%filename
-#    embed()
-    omni.save_gains_fc(sols,fqs, pp[0], outname, ubls=ubls, ex_ants=ex_ants)
-    npzlist.append(outname+'.fc.npz')
+omni.fc_gains_to_fits(npzlist,fn)
 
 
 

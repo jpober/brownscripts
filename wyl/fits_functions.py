@@ -1,7 +1,6 @@
 import numpy as np
 import subprocess, datetime, os
 from astropy.io import fits
-import capo.omni as omni
 import sys
 
 def writefits(npzfiles, repopath=None, ex_ants=[], name_dict={}):
