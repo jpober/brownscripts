@@ -258,7 +258,7 @@ def uv_read(filenames, filetype=None, bl_str=None,antstr='cross',p_list = ['xx',
         ginfo[2] = nfreq
     return info, dat, flg, ginfo, freqarr
 
-def uv_read_v2(filenames, filetype=None, antstr='cross', p_list = ['xx','yy'], output_mask = True):
+def uv_read_v2(filenames, filetype=None, antstr='cross', p_list = ['xx','yy'], output_mask = False):
     ### Now only support reading in one data file once, don't load in multiple obs ids ###
     info = {'lsts':[], 'times':[]}
     ginfo = [0,0,0]
