@@ -28,7 +28,7 @@
 
 \usepackage{times} % Use the times font
 %\usepackage{palatino} % Uncomment to use the Palatino font
-
+\usepackage{float} % Allows putting an [H] in \begin{figure} to specify the exact location of the figure
 \usepackage{graphicx} % Required for including images
 \graphicspath{{figures/}} % Location of the graphics files
 \usepackage{booktabs} % Top and bottom rules for table
@@ -49,7 +49,7 @@
 % The widths of these boxes can be easily edited to accommodate your content as you see fit
 
 \begin{minipage}[b]{0.55\linewidth}
-\veryHuge \color{NavyBlue} \textbf{21cm Cosmology In Pober Lab} \color{Black}\\ % Title
+\veryHuge \color{NavyBlue} \textbf{Radio Cosmology Lab} \color{Black}\\ % Title
 \Huge\textit{Exploring the Epoch of Reionization}\\[1cm] % Subtitle
 \huge \textbf{Joshua Kerrigan, Adam Lanman, Wenyang Li}\\ % Author(s)
 \huge Brown University Physics\\ % University/organization
@@ -141,21 +141,14 @@ Fusce magna risus, molestie ut porttitor in, consectetur sed mi. Vestibulum ante
 
 \subsection*{Foreground Subtraction and Avoidance}
 
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.55\linewidth]{figures/foreground_figure.png}
+\caption{The various cosmological and galactic sources that contribute to the measured sky temperature, and their relative strengths. Source: Saleem Zaroubi, https://ned.ipac.caltech.edu/level5/March14/Zaroubi/Zaroubi5.html}
+\end{figure}
+
 [The wedge, and Josh's work. This might do better earlier on]
 
-Nulla vel nisl sed mauris auctor mollis non sed. 
-
-\begin{equation}
-E = mc^{2}
-\label{eqn:Einstein}
-\end{equation}
-
-Curabitur mi sem, pulvinar quis aliquam rutrum. (1) edf (2)
-, $\Omega=[-1,1]^3$, maecenas leo est, ornare at. $z=-1$ edf $z=1$ sed interdum felis dapibus sem. $x$ set $y$ ytruem. 
-Turpis $j$ amet accumsan enim $y$-lacina; 
-ref $k$-viverra nec porttitor $x$-lacina. 
-
-Vestibulum ac diam a odio tempus congue. Vivamus id enim nisi:
 
 \begin{eqnarray}
 \cos\bar{\phi}_k Q_{j,k+1,t} + Q_{j,k+1,x}+\frac{\sin^2\bar{\phi}_k}{T\cos\bar{\phi}_k} Q_{j,k+1} &=&\nonumber\\ 
