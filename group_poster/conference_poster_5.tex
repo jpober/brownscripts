@@ -49,11 +49,16 @@
 % The third is 19% wide and houses a logo for your university/organization or a photo of you
 % The widths of these boxes can be easily edited to accommodate your content as you see fit
 
-\begin{minipage}[b]{0.55\linewidth}
+\begin{minipage}[b]{0.55\textwidth}
 \veryHuge \color{NavyBlue} \textbf{Radio Cosmology Lab} \color{Black}\\ % Title
 \Huge\textit{Exploring the Epoch of Reionization}\\[1cm] % Subtitle
 \huge \textbf{Joshua Kerrigan, Adam Lanman, Wenyang Li}\\ % Author(s)
 \huge Brown University Physics\\ % University/organization
+\end{minipage}
+\begin{minipage}[b]{0.5\linewidth}
+\begin{tabular}[t]{l@{}}
+\includegraphics[width=15cm]{brown-logo.png} % Logo or a photo of you, adjust its dimensions here
+\end{tabular}
 \end{minipage}
 
 
@@ -82,12 +87,9 @@
 %\end{minipage}
 %
 % Maybe we don't need the Brown logo, consider replacing with PAPER,HERA,MWA logos?
-%\begin{minipage}[b]{0.19\linewidth}
-%\includegraphics[width=15cm]{HERA.png} % Logo or a photo of you, adjust its dimensions here
-%PAPER
-%\end{minipage}
 
-\vspace{1cm} % A bit of extra whitespace between the header and poster content
+
+%\vspace{1cm} % A bit of extra whitespace between the header and poster content
 
 %----------------------------------------------------------------------------------------
 
@@ -144,20 +146,27 @@ $\delta T_b$ also describes an important relationship between cosmological and a
 %	OBJECTIVES
 %----------------------------------------------------------------------------------------
 \color{DarkSlateGray} % DarkSlateGray color for the rest of the content
-\subsection*{The Foreground Problem}
-Galactic and extragalactic foregrounds pose a difficult problem when trying to measure the 21cm EoR signal. Relative to galactic foregrounds, the EoR signal is $\sim$ 5 orders of magnitude smaller than the galactic emissions that exist between our observing radio telescope arrays and the highly redshifted 21cm signal. The overlapping sources of power in our observations can be seen in Fig. \ref{foregroundsrcs}.
+\section*{The Foreground Problem} %[I dont need all of these plots, they're just there to be cut as needed or if necessary to take up more space]
+Galactic and extragalactic foregrounds pose a difficult problem when trying to measure the 21cm EoR signal. Relative to galactic foregrounds, the EoR signal is $\sim$ 5 orders of magnitude smaller than the galactic emissions that exist between our observing radio telescope arrays and the highly redshifted 21cm signal. The overlapping sources of power in our observations can be seen in Fig. \ref{fig:foregroundsrcs}.
 
 
 \begin{figure}[H]
 \centering
-\label{foregroundsrcs}
 \includegraphics[width=0.55\linewidth]{figures/foreground_figure.png}
-\caption{The various cosmological and galactic sources that contribute to the measured sky temperature, and their relative strengths. Source: Saleem Zaroubi, https://ned.ipac.caltech.edu/level5/March14/Zaroubi/Zaroubi5.html}
+\caption{The various cosmological and galactic sources that contribute to the measured sky temperature, and their relative strengths. Source: Saleem Zaroubi, https://ned.ipac.caltech.edu/level5/March14/Zaroubi/Zaroubi5.html}\label{fig:foregroundsrcs}
 \end{figure}
-
-The issue of foreground emission dominance in our power spectrum can be overcome through the mixed use of the following traditional and novel foreground mitigation techniques. \\
+To overcome foreground dominance in our power spectrum analysis we can use a combination of foreground power mitigating techniques as outlined in the following subsections.
+%The issue of foreground emission dominance in our power spectrum can be overcome through the mixed use of the following traditional and novel foreground mitigation techniques. \\
 \subsubsection*{Foreground Subtraction}
 Baseline visibilities are gridded to form an image which are calibrated to a catalog model. The catalog model contains point sources from surveys which contain the sources' right ascension, declination, and flux in stokes I. The model built from the catalog of sources is additionally convolved with the telescope arrays synthesized beam model. The resulting model which has been built can then be subtracted from the observation leaving behind the EoR signal and diffuse emissions.
+\begin{figure}[H]
+\centering
+\label{foregroundsrcs}
+\includegraphics[width=0.6\linewidth]{figures/foresub.png}
+\caption{LST binned visibility of a 30m East-West baseline from the PAPER-64 array. The left plots show a baseline visibility pre- and post subtraction. The right plots show the delay transform of the left plots, demonstrating the foreground power being concentrated within the horizon limit (dotted lines).}
+\end{figure}
+
+
 \subsubsection*{Foreground Avoidance}
 \begin{equation}
 \label{delaytransform}
@@ -173,7 +182,7 @@ Taking the Fourier transform of a baseline visibility over frequency with the ge
 \end{figure}
 
 \subsubsection*{Inverse Covariance Weighting}
-
+%[dunno if this should be covered]
 
 
 
@@ -205,6 +214,26 @@ The most common techniques we use on visibility calibration are redundant calibr
 %----------------------------------------------------------------------------------------
 
 \section*{Radio Telescope Arrays}
+\begin{figure}[H]
+\centering
+\label{fig:PAPER}
+\includegraphics[width=0.6\linewidth]{figures/paper}
+\caption{Precision Array for Probing the Epoch of Reioniation (PAPER) - Located in South Africa in the Karoo desert, consists of 128 dipole antennas and is considered a $1^{st}$ generation radio telescope array.}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\label{fig:MWA}
+\includegraphics[width=0.6\linewidth]{figures/phaseII_tiles.jpg}
+\caption{Murchison Widefield Array (MWA) - Located in Western Australia in the Murchison Radio Astronomy Observatory. The MWA is a multipurpose array that is used for additional observations such as ionosphere studies and transient radio signals. It consists of 128 tiles which are each made up of 16 dipole antennae. MWA is a pathfinder project for the Square Kilometer Array (SKA).}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\label{fig:HERA}
+\includegraphics[width=0.6\linewidth]{figures/HERA19.png}
+\caption{Hydrogen Epoch of Reionization Array (HERA) - Located at the same site as PAPER in the Karoo desert. The current phase of HERA consists of 19 dual polarization dish receivers}
+\end{figure}
 
 [Should probably move this section earlier. Description and pictures of the MWA Phase II, PAPER-64, and HERA-19. Good place to explain redundancy in the configurations]
 
@@ -225,28 +254,25 @@ The most common techniques we use on visibility calibration are redundant calibr
 %	FORTHCOMING RESEARCH
 %----------------------------------------------------------------------------------------
 
-\section*{Forthcoming Research}
+%\section*{Forthcoming Research}
+%Probably not necessary because we can just add a blurb in the Radio Telescope arrays section about HERA?
+%[Picture of HERA-331?]
 
-[Picture of HERA-331?]
-
-Vivamus molestie, risus tempor vehicula mattis, libero arcu volutpat purus, sed blandit sem nibh eget turpis. Maecenas rutrum dui blandit lorem vulputate gravida. Praesent venenatis mi vel lorem tempor at varius diam sagittis. Nam eu leo id turpis interdum luctus a sed augue. Nam tellus.
 
  %----------------------------------------------------------------------------------------
 %	REFERENCES
 %----------------------------------------------------------------------------------------
-
-\nocite{*} % Print all references regardless of whether they were cited in the poster or not
-\bibliographystyle{plain} % Plain referencing style
-\bibliography{sample} % Use the example bibliography file sample.bib
+% We referenced all the best people
+%\nocite{*} % Print all references regardless of whether they were cited in the poster or not
+%\bibliographystyle{plain} % Plain referencing style
+%\bibliography{sample} % Use the example bibliography file sample.bib
 
 %----------------------------------------------------------------------------------------
 %	ACKNOWLEDGEMENTS
 %----------------------------------------------------------------------------------------
 
-\section*{Acknowledgements}
-
-Etiam fermentum, arcu ut gravida fringilla, dolor arcu laoreet justo, ut imperdiet urna arcu a arcu. Donec nec ante a dui tempus consectetur. Cras nisi turpis, dapibus sit amet mattis sed, laoreet.
-
+%\section*{Acknowledgements}
+%I refuse to acknowledge anyone or any thing!!!!!!!
 
 
 %----------------------------------------------------------------------------------------
