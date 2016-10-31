@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.14159265-2.6-1.40.16 (TeX Live 2015) (preloaded format=pdflatex 2015.5.24)  31 OCT 2016 16:24
+This is pdfTeX, Version 3.14159265-2.6-1.40.16 (TeX Live 2015) (preloaded format=pdflatex 2015.5.24)  31 OCT 2016 16:26
 entering extended mode
  restricted \write18 enabled.
  file:line:error style messages enabled.
@@ -636,7 +636,7 @@ ng> <./figures/omnical_on_ORBCOMM.png> <./figures/sim_flowchart.png> <./figures
 Here is how much of TeX's memory you used:
  4950 strings out of 493089
  74649 string characters out of 6134842
- 187897 words of memory out of 5000000
+ 187639 words of memory out of 5000000
  8321 multiletter control sequences out of 15000+600000
  39419 words of font info for 105 fonts, out of 8000000 for 9000
  1141 hyphenation exceptions out of 8191
@@ -651,7 +651,7 @@ uler/eufm10.pfb></usr/local/texlive/2015/texmf-dist/fonts/type1/public/amsfonts
 ts/euler/eusm10.pfb></usr/local/texlive/2015/texmf-dist/fonts/type1/urw/times/u
 tmb8a.pfb></usr/local/texlive/2015/texmf-dist/fonts/type1/urw/times/utmr8a.pfb>
 </usr/local/texlive/2015/texmf-dist/fonts/type1/urw/times/utmri8a.pfb>
-Output written on conference_poster_5.pdf (1 page, 6120660 bytes).
+Output written on conference_poster_5.pdf (1 page, 6120551 bytes).
 PDF statistics:
  63 PDF objects out of 1000 (max. 8388607)
  33 compressed objects within 1 object stream
