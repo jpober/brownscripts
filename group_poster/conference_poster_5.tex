@@ -52,7 +52,7 @@
 \begin{minipage}[b]{0.55\textwidth}
 \veryHuge \color{NavyBlue} \textbf{Radio Cosmology Lab} \color{Black}\\ % Title
 \Huge\textit{Exploring the Epoch of Reionization}\\[1cm] % Subtitle
-\huge \textbf{Joshua Kerrigan, Adam Lanman, Wenyang Li}\\ % Author(s)
+\huge \textbf{Joshua Kerrigan, Adam Lanman, Wenyang Li, Jonathan Pober}\\ % Author(s)
 \huge Brown University Physics\\ % University/organization
 \end{minipage}
 \begin{minipage}[b]{0.5\linewidth}
@@ -119,9 +119,6 @@ The Pober lab is part of an international effort to build instruments capable of
 
 \section*{Introduction}
 
-[The spin-flip transition and global history of the signal. Good place for pictures of bubble simulations]
-
-
 
 \begin{figure}[H]
 \centering
@@ -139,7 +136,7 @@ Eqn. \ref{difftemp}}.
 \delta T_{b} = 28mK(1+\delta)x_{HI}\Big(1-\frac{T_{CMB}}{T_{spin}}\Big)\Big(\frac{\sigma_{b}h^2}{0.0223}\Big)\sqrt{\Big(\frac{1+z}{10}\Big)\Big(\frac{0.24}{\sigma_m}\Big)}\Big[ \frac{H(z)/(1+z)}{dv_{||}/dr_{||}}\Big]$}
 \end{equation}
 The differential brightness temperature describes the complex nature of the neutral hydrogen spin temperature,$T_S$ decoupling from the CMB background temperature $T_{CMB}$, the neutral fraction of Hydrogen, $x_{HI}$, and the mass density contrast, $\delta$.
-$\delta T_b$ also describes an important relationship between cosmological and astrophysical parameters, showing that measuring what is seen as a cosmological epoch has astrophysical relevance. 
+$\delta T_b$ also describes an important relationship between cosmological and astrophysical parameters, showing that measuring what is seen as a cosmological epoch has astrophysical relevance.
 
 
 %----------------------------------------------------------------------------------------
@@ -158,7 +155,7 @@ Galactic and extragalactic foregrounds pose a difficult problem when trying to m
 To overcome foreground dominance in our power spectrum analysis we can use a combination of foreground power mitigating techniques as outlined in the following subsections.
 %The issue of foreground emission dominance in our power spectrum can be overcome through the mixed use of the following traditional and novel foreground mitigation techniques. \\
 \subsubsection*{Foreground Subtraction}
-Baseline visibilities are gridded to form an image which are calibrated to a catalog model. The catalog model contains point sources from surveys which contain the sources' right ascension, declination, and flux in stokes I. The model built from the catalog of sources is additionally convolved with the telescope arrays synthesized beam model. The resulting model which has been built can then be subtracted from the observation leaving behind the EoR signal and diffuse emissions.
+Baseline visibilities are gridded to form an image which is calibrated to a catalog model. The catalog model contains point sources from surveys which contain the sources' right ascension, declination, and flux in stokes I. The model built from the catalog of sources is additionally convolved with the telescope arrays synthesized beam model. The resulting model which has been built can then be subtracted from the observation leaving behind the EoR signal and diffuse emissions.
 \begin{figure}[H]
 \centering
 \label{foregroundsrcs}
@@ -181,11 +178,6 @@ Taking the Fourier transform of a baseline visibility over frequency with the ge
 \caption{Delay transform visibilities of two different baseline types. Smooth spectral sources moving between delays over time can be seen to remain within the horizon limit (dotted), while unsmooth spectral sources (light blue) extend beyond the horizon limit.  Source: Aaron Parsons, A Per Baseline Delay-Spectrum Technique for Accessing the 21cm Cosmic Reionization Signature, Apj. 2012}
 \end{figure}
 
-\subsubsection*{Inverse Covariance Weighting}
-%[dunno if this should be covered]
-
-
-
 %----------------------------------------------------------------------------------------
 %	MATERIALS AND METHODS
 %----------------------------------------------------------------------------------------
@@ -194,7 +186,12 @@ Taking the Fourier transform of a baseline visibility over frequency with the ge
 
 The particular characteristics of an array can introduce unexpected effects into the data. To detect a signal as weak as the EoR, understanding and mitigating instrumental effects is critical. For this reason, much effort has been put into simulating the full analysis pipeline, from the point and diffuse sources on the sky to the raw visibilities that come out to the power spectrum estimations.
 
-Fast Holographic Deconvolution (FHD) is a purpose-built software framework for analyzing MWA data. FHD does foreground subtraction by \emph{forward modeling}, which builds a simulated data set, including instrumental effects, and subtracts it from the actual data. This forward modeling feature can also be used as a standalong simulation tool, to generate raw visibilities of foregrounds, noise, and EoR off of existing and future 21cm experiments.
+Fast Holographic Deconvolution (FHD) is a purpose-built software framework for analyzing MWA data. FHD does foreground subtraction by \emph{forward modeling}, which builds a simulated data set, including instrumental effects, and subtracts it from the actual data. This forward modeling feature can also be used as a standalone simulation tool, to generate raw visibilities of foregrounds, noise, and EoR off of existing and future 21cm experiments.
+\begin{figure}[H]
+\centering
+\includegraphics[scale=1]{figures/sim_flowchart.png}
+\caption{A sample data file (or generated data file) holds array coordinates over time and the frequency channels of the instrument. Given a beam model for the antenna, FHD calculates the full synthesized beam (or point-spread function) for a particular time and set of frequencies. The synthesized beam can then convert a sky catalog into a set of foreground visibilities for the instrument. External EoR simulations can also be fed in to test EoR sensitivity, or Gaussian noise can be injected to simulate noise.}
+\end{figure}
 
 %------------------------------------------------
 
