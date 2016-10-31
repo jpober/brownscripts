@@ -114,17 +114,10 @@
 \color{DarkSlateGray}  % SaddleBrown color for the introduction
 
 \section*{Introduction}
-Following the recombination of hydrogen and release of the cosmic microwave background radiation at redshift $z \sim 1100$, the baryonic matter of the universe consisted mostly of neutral hydrogen and helium. Gradually, small inhomogeneities collapsed and ignited the first luminous structures. Energetic photons emitted from the first stars and quasars reionized the surrounding medium, producing ionized bubbles which grew and merged into the fully ionized intergalactic medium we see today. This \emph{Epoch of Reionization} (EoR) remains a poorly-understood period of the universe's history which offers a wealth of cosmological and astrophysical information.
+Following the recombination of hydrogen and release of the cosmic microwave background radiation, the baryonic matter of the universe consisted mostly of neutral hydrogen and helium. Gradually, small inhomogeneities collapsed and ignited into the first luminous structures. Energetic photons emitted from the first stars and quasars reionized the surrounding medium, producing ionized bubbles which grew and merged into the fully ionized intergalactic medium we see today. This \emph{Epoch of Reionization} (EoR) remains a poorly-understood period of the universe's history which offers a wealth of cosmological and astrophysical information.
 
-The Pober lab is part of an international effort to build instruments capable of studying the EoR. The neutral hydrogen (HI) of the EoR emits faintly at a wavelength of 21cm, due to the hyperfine transition. This emission is unique to neutral hydrogen, and is anti-correlated with the ionized (HII) regions that fill the universe through the EoR. CMB constraints and quasar absorption spectra put the EoR as occurring within the redshift range $6 < z < 12$, which means 21cm emissions will redshift to meter scale wavelengths. This is accessible to modern radio interferometers, including the \emph{Donald C. Backer Precision Array for Probing the Epoch of Reionization} (PAPER), the \emph{Murchison Widefield Array} (MWA), and the recently-funded \emph{Hydrogen Epoch of Reionization Array} (HERA).
+The Pober lab is part of an international effort to build instruments capable of studying the EoR. The neutral hydrogen (HI) of the EoR emits faintly at a wavelength of 21cm due to the hyperfine transition. This emission is unique to neutral hydrogen, and is anti-correlated with the ionized (HII) regions that fill the universe through the EoR. CMB constraints and quasar absorption spectra place the EoR within the redshift range $6 < z < 12$, which means 21cm emissions will reach us at meter scale wavelengths. This is accessible to modern radio interferometers, including the \emph{Donald C. Backer Precision Array for Probing the Epoch of Reionization} (PAPER), the \emph{Murchison Widefield Array} (MWA), and the recently-funded \emph{Hydrogen Epoch of Reionization Array} (HERA). Extracting this weak signal remains a challenge unprecedented in radio astronomy.
 
-\begin{figure}[H]
-\centering
-\includegraphics[width=1.0\linewidth]{figures/global_history.png}
-\caption{The global differential brightness temperature, $\delta T_b$, evolution over redshift 6 $<$ z $<$ 160. $\delta T_b$ becomes observable when 
-the spin temperature $T_S$ decouples from the CMB temperature, $T_{CMB}$ through the Wouthyusen-Field effect, this can be seen in 
-Eqn. \ref{difftemp}}.
-\end{figure}
 
 
 \subsubsection*{Differential Brightness Temperature}
@@ -136,19 +129,29 @@ Eqn. \ref{difftemp}}.
 The differential brightness temperature describes the complex nature of the neutral hydrogen spin temperature,$T_S$ decoupling from the CMB background temperature $T_{CMB}$, the neutral fraction of Hydrogen, $x_{HI}$, and the mass density contrast, $\delta$.
 $\delta T_b$ also describes an important relationship between cosmological and astrophysical parameters, showing that measuring what is seen as a cosmological epoch has astrophysical relevance.
 
+\begin{figure}[H]
+\centering
+\includegraphics[width=1.0\linewidth]{figures/global_history.png}
+\caption{The global differential brightness temperature, $\delta T_b$, evolution over redshift 6 $<$ z $<$ 160. $\delta T_b$ becomes observable when 
+the spin temperature $T_S$ decouples from the CMB temperature, $T_{CMB}$ through the Wouthyusen-Field effect, this can be seen in 
+Eqn. \ref{difftemp}. Source: Pritchard \& Loeb. Nature 468.7325 (2010): 772-773. }.
+\end{figure}
 
 %----------------------------------------------------------------------------------------
 %	OBJECTIVES
 %----------------------------------------------------------------------------------------
 % DarkSlateGray color for the rest of the content
 \section*{The Foreground Problem} %[I dont need all of these plots, they're just there to be cut as needed or if necessary to take up more space]
-Galactic and extragalactic foregrounds pose a difficult problem when trying to measure the 21cm EoR signal. Relative to galactic foregrounds, the EoR signal is $\sim$ 5 orders of magnitude smaller than the galactic emissions that exist between our observing radio telescope arrays and the highly redshifted 21cm signal. The overlapping sources of power in our observations can be seen in Fig. \ref{fig:foregroundsrcs}.
+%Galactic and extragalactic foregrounds pose a difficult problem when trying to measure the 21cm EoR signal. Relative to galactic foregrounds, the EoR signal is $\sim$ 5 orders of magnitude smaller than the galactic emissions that exist between our observing radio telescope arrays and the highly redshifted 21cm signal. The overlapping sources of power in our observations can be seen in Fig. \ref{fig:foregroundsrcs}.  -- Just making this shorter, and clarifying a bit on what the foregrounds are.
+
+The expected EoR signal is $\sim$ 5 orders of magnitude smaller than known foreground sources, such as diffuse emission from the Galaxy and extragalactic point sources. Removing these foregrounds, as well as instrumental noise, is a nontrivial problem. The overlapping sources of power in our observations can be seen in Fig. \ref{fig:foregroundsrcs}.
+
 
 
 \begin{figure}[H]
 \centering
 \includegraphics[width=0.55\linewidth]{figures/foreground_figure.png}
-\caption{The various cosmological and galactic sources that contribute to the measured sky temperature, and their relative strengths. \textbf{Source}: Saleem Zaroubi, \textit{https://ned.ipac.caltech.edu/level5/March14/Zaroubi/Zaroubi5.html}}\label{fig:foregroundsrcs}
+\caption{The various cosmological and galactic sources that contribute to the measured sky temperature, and their relative strengths. \textbf{Source}: Zaroubi, Saleem. \textbf{The First Galaxies} Springer Berlin Heidelberg, 2013. 45-101.}}\label{fig:foregroundsrcs}
 \end{figure}
 To overcome foreground dominance in our power spectrum analysis we can use a combination of foreground power mitigating techniques as outlined in the following subsections.
 %The issue of foreground emission dominance in our power spectrum can be overcome through the mixed use of the following traditional and novel foreground mitigation techniques. \\
@@ -171,7 +174,9 @@ Foreground subtraction is performed in the image domain using an extragalactic s
 \label{delaytransform}
 V_b(\tau) = \int dl dm d\nu A(l,m,\nu)I(l,m,\nu)e^{-2\pi i\nu(\tau_g -\tau)}
 \end{equation}
-Equation \ref{delaytransform} demonstrates the delay transform used to transform a visibility to delay space. By working in delay space it can be seen in both Figs. \ref{foregroundsrcs1} \& \ref{foregroundsrcs2} that power from foreground sources are confined within a delay limit known as the horizon limit.
+%Equation \ref{delaytransform} demonstrates the delay transform used to transform a visibility to delay space. By working in delay space it can be seen in both Figs. \ref{foregroundsrcs1} \& \ref{foregroundsrcs2} that power from foreground sources are confined within a delay limit known as the horizon limit. --- this seemed unclear, so I made it a little longe
+
+Equation \ref{delaytransform} demonstrates the \emph{delay transform}: A Fourier transform of frequency to its conjugate \emph{delay}. There is a natural limit in delay, set by the time it takes light from a source at the horizon to travel between the two antennas of a baseline. Power from foreground sources is confined within this \emph{horizon limit}, as shown by Figs. \ref{foregroundsrcs1} \& \ref{foregroundsources2}.
 
 %Taking the Fourier transform of a baseline visibility over frequency with the geometric group delay offset (eqn. \ref{delaytransform}) results %in smooth spectrum foregrounds bunching up nearest to the delay of $\tau = 0$. This is because foreground sources have a maximal %geometric delay associated with a baseline length, $|\vec{b}|$, which is also known as the horizon limit. The EoR signal is unsmooth %spectrally, distinguishing it from foreground sources, and pushing it beyond the horizon limit imposed by the baseline length. Using this %information, delays below the horizon limit can be filtered giving significant foreground power removal.
 
@@ -188,19 +193,23 @@ Equation \ref{delaytransform} demonstrates the delay transform used to transform
 
 \section*{Simulation}
 
-The particular characteristics of an array can introduce unexpected effects into the data. To detect a signal as weak as the EoR, understanding and mitigating instrumental effects is critical. For this reason, much effort has been put into simulating the full analysis pipeline, from the point and diffuse sources on the sky to the raw visibilities that come out to the power spectrum estimations.
+The particular characteristics of an array can introduce unexpected effects into the data. Understanding and mitigating instrumental effects is critical to making a confident detection of the EoR. For this reason, much effort has been put into simulating the full analysis pipeline -- from the point and diffuse sources on the sky, to the raw visibilities that come out of the correlator, to the power spectrum estimations.
 
 Fast Holographic Deconvolution (FHD) is a purpose-built software framework for analyzing MWA data. FHD does foreground subtraction by \emph{forward modeling}, which builds a simulated data set, including instrumental effects, and subtracts it from the actual data. This forward modeling feature can also be used as a standalone simulation tool, to generate raw visibilities of foregrounds, noise, and EoR off of existing and future 21cm experiments.
+
 \begin{figure}[H]
 \centering
 \includegraphics[scale=1]{figures/sim_flowchart.png}
 \caption{A sample data file (or generated data file) holds array coordinates over time and the frequency channels of the instrument. Given a beam model for the antenna, FHD calculates the full synthesized beam (or point-spread function) for a particular time and set of frequencies. The synthesized beam can then convert a sky catalog into a set of foreground visibilities for the instrument. External EoR simulations can also be fed in to test EoR sensitivity, or Gaussian noise can be injected to simulate noise.}
 \end{figure}
 
+
 %------------------------------------------------
 \section*{Calibration}
 
-The most common techniques we use on visibility calibration are redundant calibration and sky model based calibration. Sky model calibration requires some preknowledges about the sky. With our assumptions about source structures of the sky and understanding of our instrument, we use FHD (Fast Holographic Deconvolution) to calibrate visibility data. The algorithm FHD uses is basically 'CLEAN' algorithm. Redundant calibration is sky model independent. All it assumes is that same antenna separations should measure exact the same Fourier mode of the sky. Redundant calibration requires antenna array with good redundant calibratability, like PAPER64, MWA PhaseII hexes and HERA.
+%The most common techniques we use on visibility calibration are redundant calibration and sky model based calibration. Sky model calibration requires some preknowledge about the sky. With our assumptions about source structures of the sky and understanding of our instrument, we use FHD (Fast Holographic Deconvolution) to calibrate visibility data. The algorithm FHD uses is basically 'CLEAN' algorithm. Redundant calibration is sky model independent. All it assumes is that same antenna separations should measure exact the same Fourier mode of the sky. Redundant calibration requires antenna array with good redundant calibratability, like PAPER64, MWA PhaseII hexes and HERA.  -- [I cut the (Fast Holographic Deconvolution) since I gave the acronym earlier.]
+
+We perform calibration primarily by two methods: sky model based calibration and redundant calibration. Sky model calibration requires some preknowledge about the sky. We use a CLEAN-like algorithm in FHD to calibrate visibility data using known source structures. Redundant calibration is sky model independent, relying only on the assumption that identical baselines measure exact the same Fourier mode of the sky. Redundant calibration requires antenna arrays with much baseline redundancy, like PAPER64, MWA PhaseII hexes, and HERA.
 
 \begin{figure}[H]
 \centering
