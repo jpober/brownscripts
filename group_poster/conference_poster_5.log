@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.14159265-2.6-1.40.16 (TeX Live 2015) (preloaded format=pdflatex 2015.5.24)  30 OCT 2016 12:48
+This is pdfTeX, Version 3.14159265-2.6-1.40.16 (TeX Live 2015) (preloaded format=pdflatex 2015.5.24)  31 OCT 2016 11:01
 entering extended mode
  restricted \write18 enabled.
  file:line:error style messages enabled.
@@ -391,11 +391,7 @@ LaTeX Font Info:    Redeclaring math symbol \sharp on input line 209.
 LaTeX Font Info:    Redeclaring math symbol \smile on input line 210.
 LaTeX Font Info:    Redeclaring math symbol \frown on input line 211.
 LaTeX Font Info:    Redeclaring math accent \hat on input line 254.
-) (./conference_poster_5.aux
-
-LaTeX Warning: Label `foregroundsrcs' multiply defined.
-
-)
+) (./conference_poster_5.aux)
 \openout1 = `conference_poster_5.aux'.
 
 LaTeX Font Info:    Checking defaults for OML/cmm/m/it on input line 40.
@@ -411,7 +407,8 @@ LaTeX Font Info:    ... okay on input line 40.
 LaTeX Font Info:    Checking defaults for U/cmr/m/n on input line 40.
 LaTeX Font Info:    ... okay on input line 40.
 LaTeX Font Info:    Try loading font information for OT1+ptm on input line 40.
- (/usr/local/texlive/2015/texmf-dist/tex/latex/psnfss/ot1ptm.fd
+
+(/usr/local/texlive/2015/texmf-dist/tex/latex/psnfss/ot1ptm.fd
 File: ot1ptm.fd 2001/06/04 font definitions for OT1/ptm.
 )
 (/usr/local/texlive/2015/texmf-dist/tex/context/base/supp-pdf.mkii
@@ -510,112 +507,104 @@ LaTeX Font Info:    Overwriting math alphabet `\mathsf' in version `bold'
 LaTeX Font Info:    Overwriting math alphabet `\mathit' in version `bold'
 (Font)                  OT1/ptm/m/it --> OT1/ptm/bx/it on input line 40.
 LaTeX Font Info:    Font shape `OT1/ptm/bx/n' in size <74.3> not available
-(Font)              Font shape `OT1/ptm/b/n' tried instead on input line 53.
+(Font)              Font shape `OT1/ptm/b/n' tried instead on input line 52.
 LaTeX Font Info:    Font shape `OT1/ptm/bx/n' in size <51.6> not available
-(Font)              Font shape `OT1/ptm/b/n' tried instead on input line 55.
+(Font)              Font shape `OT1/ptm/b/n' tried instead on input line 54.
 
-Underfull \hbox (badness 10000) in paragraph at lines 53--57
+Underfull \hbox (badness 10000) in paragraph at lines 52--56
 
  []
 
-LaTeX Font Info:    Try loading font information for U+eur on input line 59.
+LaTeX Font Info:    Font shape `OT1/ptm/bx/n' in size <20.74> not available
+(Font)              Font shape `OT1/ptm/b/n' tried instead on input line 103.
+LaTeX Font Info:    Try loading font information for U+eur on input line 105.
 (/usr/local/texlive/2015/texmf-dist/tex/latex/amsfonts/ueur.fd
 File: ueur.fd 2013/01/14 v3.01 Euler Roman
 )
-LaTeX Font Info:    Try loading font information for U+msa on input line 59.
+LaTeX Font Info:    Try loading font information for U+msa on input line 105.
 
 (/usr/local/texlive/2015/texmf-dist/tex/latex/amsfonts/umsa.fd
 File: umsa.fd 2013/01/14 v3.01 AMS symbols A
 )
-LaTeX Font Info:    Try loading font information for U+msb on input line 59.
+LaTeX Font Info:    Try loading font information for U+msb on input line 105.
 
 (/usr/local/texlive/2015/texmf-dist/tex/latex/amsfonts/umsb.fd
 File: umsb.fd 2013/01/14 v3.01 AMS symbols B
 )
-LaTeX Font Info:    Try loading font information for U+euf on input line 59.
+LaTeX Font Info:    Try loading font information for U+euf on input line 105.
 
 (/usr/local/texlive/2015/texmf-dist/tex/latex/amsfonts/ueuf.fd
 File: ueuf.fd 2013/01/14 v3.01 Euler Fraktur
 )
-LaTeX Font Info:    Try loading font information for U+eus on input line 59.
+LaTeX Font Info:    Try loading font information for U+eus on input line 105.
 
 (/usr/local/texlive/2015/texmf-dist/tex/latex/amsfonts/ueus.fd
 File: ueus.fd 2013/01/14 v3.01 Euler Script
 )
-LaTeX Font Info:    Try loading font information for U+euex on input line 59.
+LaTeX Font Info:    Try loading font information for U+euex on input line 105.
 
 (/usr/local/texlive/2015/texmf-dist/tex/latex/amsfonts/ueuex.fd
 File: ueuex.fd 2013/01/14 v3.01 Euler extra symbols
 )
-<figures/brown-logo.png, id=1, 3017.2725pt x 1505.625pt>
-File: figures/brown-logo.png Graphic file (type png)
-
-<use figures/brown-logo.png>
-Package pdftex.def Info: figures/brown-logo.png used on input line 60.
-(pdftex.def)             Requested size: 426.79134pt x 212.96858pt.
-
-Overfull \hbox (183.08449pt too wide) in paragraph at lines 52--63
-[][] [] 
- []
-
-LaTeX Font Info:    Font shape `OT1/ptm/bx/n' in size <20.74> not available
-(Font)              Font shape `OT1/ptm/b/n' tried instead on input line 104.
 LaTeX Font Info:    Font shape `OT1/ptm/bx/n' in size <24.88> not available
-(Font)              Font shape `OT1/ptm/b/n' tried instead on input line 120.
+(Font)              Font shape `OT1/ptm/b/n' tried instead on input line 119.
 LaTeX Font Info:    Font shape `OT1/ptm/bx/n' in size <35.83> not available
-(Font)              Font shape `OT1/ptm/b/n' tried instead on input line 120.
-<figures/global_history.png, id=3, 1041.8925pt x 441.65pt>
+(Font)              Font shape `OT1/ptm/b/n' tried instead on input line 119.
+
+<figures/global_history.png, id=1, 1041.8925pt x 441.65pt>
 File: figures/global_history.png Graphic file (type png)
 
 <use figures/global_history.png>
-Package pdftex.def Info: figures/global_history.png used on input line 128.
+Package pdftex.def Info: figures/global_history.png used on input line 123.
 (pdftex.def)             Requested size: 741.7364pt x 314.41606pt.
 
-<figures/foreground_figure.png, id=4, 528.97626pt x 399.4925pt>
+<figures/foreground_figure.png, id=3, 528.97626pt x 399.4925pt>
 File: figures/foreground_figure.png Graphic file (type png)
 
 <use figures/foreground_figure.png>
-Package pdftex.def Info: figures/foreground_figure.png used on input line 155.
+Package pdftex.def Info: figures/foreground_figure.png used on input line 150.
 (pdftex.def)             Requested size: 407.95728pt x 308.09782pt.
 
-<figures/foresub.png, id=5, 752.8125pt x 580.1675pt>
+<figures/foresub.png, id=4, 752.8125pt x 580.1675pt>
 File: figures/foresub.png Graphic file (type png)
  <use figures/foresub.png>
-Package pdftex.def Info: figures/foresub.png used on input line 165.
+Package pdftex.def Info: figures/foresub.png used on input line 160.
 (pdftex.def)             Requested size: 445.04636pt x 342.99521pt.
 
-<figures/delaytransform.png, id=6, 968.61874pt x 357.335pt>
+<figures/delaytransform.png, id=5, 968.61874pt x 357.335pt>
 File: figures/delaytransform.png Graphic file (type png)
 
 <use figures/delaytransform.png>
-Package pdftex.def Info: figures/delaytransform.png used on input line 180.
+Package pdftex.def Info: figures/delaytransform.png used on input line 178.
 (pdftex.def)             Requested size: 593.39137pt x 218.9173pt.
 
-<figures/omnical_on_ORBCOMM.png, id=7, 2409.0pt x 1204.5pt>
+<figures/omnical_on_ORBCOMM.png, id=6, 2409.0pt x 1204.5pt>
 File: figures/omnical_on_ORBCOMM.png Graphic file (type png)
 
 <use figures/omnical_on_ORBCOMM.png>
 Package pdftex.def Info: figures/omnical_on_ORBCOMM.png used on input line 207.
 
 (pdftex.def)             Requested size: 630.48047pt x 315.23946pt.
+LaTeX Font Info:    Font shape `OT1/ptm/bx/n' in size <29.86> not available
+(Font)              Font shape `OT1/ptm/b/n' tried instead on input line 217.
 
-<figures/paper.jpg, id=8, 1003.75pt x 667.49374pt>
+<figures/paper.jpg, id=7, 1003.75pt x 667.49374pt>
 File: figures/paper.jpg Graphic file (type jpg)
  <use figures/paper.jpg>
-Package pdftex.def Info: figures/paper.jpg used on input line 220.
+Package pdftex.def Info: figures/paper.jpg used on input line 221.
 (pdftex.def)             Requested size: 445.04636pt x 295.95926pt.
 
-<figures/phaseII_tiles.jpg, id=9, 5492.52pt x 3661.68pt>
+<figures/phaseII_tiles.jpg, id=8, 5492.52pt x 3661.68pt>
 File: figures/phaseII_tiles.jpg Graphic file (type jpg)
 
 <use figures/phaseII_tiles.jpg>
-Package pdftex.def Info: figures/phaseII_tiles.jpg used on input line 227.
+Package pdftex.def Info: figures/phaseII_tiles.jpg used on input line 229.
 (pdftex.def)             Requested size: 445.04636pt x 296.68385pt.
 
-<figures/HERA19.png, id=10, 770.88pt x 578.16pt>
+<figures/HERA19.png, id=9, 770.88pt x 578.16pt>
 File: figures/HERA19.png Graphic file (type png)
  <use figures/HERA19.png>
-Package pdftex.def Info: figures/HERA19.png used on input line 234.
+Package pdftex.def Info: figures/HERA19.png used on input line 237.
 (pdftex.def)             Requested size: 445.04636pt x 333.78036pt.
 
 [1
@@ -623,36 +612,34 @@ Package pdftex.def Info: figures/HERA19.png used on input line 234.
 
 Non-PDF special ignored!
 Non-PDF special ignored!{/usr/local/texlive/2015/texmf-var/fonts/map/pdftex/upd
-map/pdftex.map} <./figures/brown-logo.png> <./figures/global_history.png> <./fi
-gures/foreground_figure.png> <./figures/foresub.png> <./figures/delaytransform.
-png> <./figures/omnical_on_ORBCOMM.png> <./figures/paper.jpg> <./figures/phaseI
-I_tiles.jpg> <./figures/HERA19.png>] (./conference_poster_5.aux)
-
-LaTeX Warning: There were multiply-defined labels.
-
- ) 
+map/pdftex.map} <./figures/global_history.png> <./figures/foreground_figure.png
+> <./figures/foresub.png> <./figures/delaytransform.png> <./figures/omnical_on_
+ORBCOMM.png> <./figures/paper.jpg> <./figures/phaseII_tiles.jpg> <./figures/HER
+A19.png>] (./conference_poster_5.aux) ) 
 Here is how much of TeX's memory you used:
- 4914 strings out of 493089
- 74047 string characters out of 6134842
- 185245 words of memory out of 5000000
- 8287 multiletter control sequences out of 15000+600000
- 30796 words of font info for 75 fonts, out of 8000000 for 9000
+ 4917 strings out of 493089
+ 74042 string characters out of 6134842
+ 189106 words of memory out of 5000000
+ 8289 multiletter control sequences out of 15000+600000
+ 34106 words of font info for 79 fonts, out of 8000000 for 9000
  1141 hyphenation exceptions out of 8191
- 38i,12n,38p,1008b,422s stack positions out of 5000i,500n,10000p,200000b,80000s
-{/usr/local/texlive/2015/texmf-dist/fonts/enc/dvips/base/8r.enc}</usr/local/t
-exlive/2015/texmf-dist/fonts/type1/public/amsfonts/cm/cmex10.pfb></usr/local/te
-xlive/2015/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi12.pfb></usr/local/tex
-live/2015/texmf-dist/fonts/type1/public/amsfonts/euler/euex10.pfb></usr/local/t
-exlive/2015/texmf-dist/fonts/type1/public/amsfonts/euler/eufm10.pfb></usr/local
-/texlive/2015/texmf-dist/fonts/type1/public/amsfonts/euler/eurm10.pfb></usr/loc
-al/texlive/2015/texmf-dist/fonts/type1/public/amsfonts/euler/eusm10.pfb></usr/l
-ocal/texlive/2015/texmf-dist/fonts/type1/urw/times/utmb8a.pfb></usr/local/texli
-ve/2015/texmf-dist/fonts/type1/urw/times/utmr8a.pfb></usr/local/texlive/2015/te
-xmf-dist/fonts/type1/urw/times/utmri8a.pfb>
-Output written on conference_poster_5.pdf (1 page, 6106994 bytes).
+ 38i,8n,38p,1008b,428s stack positions out of 5000i,500n,10000p,200000b,80000s
+{/usr/local/texlive/2015/texmf-dist/font
+s/enc/dvips/base/8r.enc}</usr/local/texlive/2015/texmf-dist/fonts/type1/public/
+amsfonts/cm/cmex10.pfb></usr/local/texlive/2015/texmf-dist/fonts/type1/public/a
+msfonts/cm/cmmi12.pfb></usr/local/texlive/2015/texmf-dist/fonts/type1/public/am
+sfonts/cm/cmsy10.pfb></usr/local/texlive/2015/texmf-dist/fonts/type1/public/ams
+fonts/euler/euex10.pfb></usr/local/texlive/2015/texmf-dist/fonts/type1/public/a
+msfonts/euler/eufm10.pfb></usr/local/texlive/2015/texmf-dist/fonts/type1/public
+/amsfonts/euler/eurm10.pfb></usr/local/texlive/2015/texmf-dist/fonts/type1/publ
+ic/amsfonts/euler/eusm10.pfb></usr/local/texlive/2015/texmf-dist/fonts/type1/ur
+w/times/utmb8a.pfb></usr/local/texlive/2015/texmf-dist/fonts/type1/urw/times/ut
+mr8a.pfb></usr/local/texlive/2015/texmf-dist/fonts/type1/urw/times/utmri8a.pfb>
+
+Output written on conference_poster_5.pdf (1 page, 6000666 bytes).
 PDF statistics:
- 62 PDF objects out of 1000 (max. 8388607)
- 33 compressed objects within 1 object stream
+ 64 PDF objects out of 1000 (max. 8388607)
+ 36 compressed objects within 1 object stream
  0 named destinations out of 1000 (max. 500000)
- 46 words of extra memory for PDF output out of 10000 (max. 10000000)
+ 41 words of extra memory for PDF output out of 10000 (max. 10000000)
 
