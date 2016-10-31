@@ -185,18 +185,6 @@ Taking the Fourier transform of a baseline visibility over frequency with the ge
 %	MATERIALS AND METHODS
 %----------------------------------------------------------------------------------------
 
-\section*{Simulation}
-
-The particular characteristics of an array can introduce unexpected effects into the data. To detect a signal as weak as the EoR, understanding and mitigating instrumental effects is critical. For this reason, much effort has been put into simulating the full analysis pipeline, from the point and diffuse sources on the sky to the raw visibilities that come out to the power spectrum estimations.
-
-Fast Holographic Deconvolution (FHD) is a purpose-built software framework for analyzing MWA data. FHD does foreground subtraction by \emph{forward modeling}, which builds a simulated data set, including instrumental effects, and subtracts it from the actual data. This forward modeling feature can also be used as a standalone simulation tool, to generate raw visibilities of foregrounds, noise, and EoR off of existing and future 21cm experiments.
-\begin{figure}[H]
-\centering
-\includegraphics[scale=1]{figures/sim_flowchart.png}
-\caption{A sample data file (or generated data file) holds array coordinates over time and the frequency channels of the instrument. Given a beam model for the antenna, FHD calculates the full synthesized beam (or point-spread function) for a particular time and set of frequencies. The synthesized beam can then convert a sky catalog into a set of foreground visibilities for the instrument. External EoR simulations can also be fed in to test EoR sensitivity, or Gaussian noise can be injected to simulate noise.}
-\end{figure}
-
-%------------------------------------------------
 
 \section*{Calibration}
 
@@ -211,6 +199,18 @@ The most common techniques we use on visibility calibration are redundant calibr
 
 
 %----------------------------------------------------------------------------------------
+\section*{Simulation}
+
+The particular characteristics of an array can introduce unexpected effects into the data. To detect a signal as weak as the EoR, understanding and mitigating instrumental effects is critical. For this reason, much effort has been put into simulating the full analysis pipeline, from the point and diffuse sources on the sky to the raw visibilities that come out to the power spectrum estimations.
+
+Fast Holographic Deconvolution (FHD) is a purpose-built software framework for analyzing MWA data. FHD does foreground subtraction by \emph{forward modeling}, which builds a simulated data set, including instrumental effects, and subtracts it from the actual data. This forward modeling feature can also be used as a standalone simulation tool, to generate raw visibilities of foregrounds, noise, and EoR off of existing and future 21cm experiments.
+\begin{figure}[H]
+\centering
+\includegraphics[scale=1]{figures/sim_flowchart.png}
+\caption{A sample data file (or generated data file) holds array coordinates over time and the frequency channels of the instrument. Given a beam model for the antenna, FHD calculates the full synthesized beam (or point-spread function) for a particular time and set of frequencies. The synthesized beam can then convert a sky catalog into a set of foreground visibilities for the instrument. External EoR simulations can also be fed in to test EoR sensitivity, or Gaussian noise can be injected to simulate noise.}
+\end{figure}
+
+%------------------------------------------------
 %	RESULTS 
 %----------------------------------------------------------------------------------------
 
