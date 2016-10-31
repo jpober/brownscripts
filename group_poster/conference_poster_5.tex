@@ -199,13 +199,13 @@ Fast Holographic Deconvolution (FHD) is a purpose-built software framework for a
 
 \section*{Calibration}
 
-The most common techniques we use on visibility calibration are redundant calibration and sky model based calibration. Sky model calibration requires some preknowledges about the sky. With some assumptions about source structures about the sky and understanding of our instrument, we use FHD (Fast Holographic Deconvolution) to calibrate visibility data. The algorithm FHD uses is basically 'CLEAN' algorithm. Redundant calibration is sky model independent. All it assumes is that same antenna separations should measure exact the same Fourier mode of the sky. Redundant calibration requires antenna array with good redundant calibratability, like PAPER (The Precision Array for Probing the Epoch of Reionization), MWA (Murchison WideField Array) PhaseII, HERA (Hydrogen Epoch of Reionization Array).
+The most common techniques we use on visibility calibration are redundant calibration and sky model based calibration. Sky model calibration requires some preknowledges about the sky. With some assumptions about source structures about the sky and understanding of our instrument, we use FHD (Fast Holographic Deconvolution) to calibrate visibility data. The algorithm FHD uses is basically 'CLEAN' algorithm. Redundant calibration is sky model independent. All it assumes is that same antenna separations should measure exact the same Fourier mode of the sky. Redundant calibration requires antenna array with good redundant calibratability, like PAPER64 (The Precision Array for Probing the Epoch of Reionization), MWA (Murchison WideField Array) PhaseII hexes, HERA (Hydrogen Epoch of Reionization Array).
 
 \begin{figure}[H]
 \centering
 \label{Redundant calibration on MWA PhaseII ORBCOMM data}
 \includegraphics[width=0.85\linewidth]{figures/omnical_on_ORBCOMM.png}
-\caption{Top left: MWA PhaseII configuration. Bottom left: Zoom in into PhaseII hexes. Middle top: raw ORBCOMM complex visibility data at 137.1MHz. Each combination of color and shape stands for data from a unique type of baseline. Middle bottom: ORBCOMM data after redundant calibration. Right top and left: raw 14m baseline data and calibrated 14m baseline data.}
+\caption{Top left: MWA PhaseII configuration. Bottom left: Zoom in into PhaseII hexes. Middle top: raw ORBCOMM complex visibility data at 137.1MHz. Each combination of color and shape stands for data from a unique type of baseline. Middle bottom: ORBCOMM data after redundant calibration. Right top: raw 14m baseline data. Right bottom: calibrated 14m baseline data.}
 \end{figure}
 
 
