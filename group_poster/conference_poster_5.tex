@@ -121,20 +121,21 @@ The Pober lab is part of an international effort to build instruments capable of
 
 
 \subsubsection*{Differential Brightness Temperature}
-\begin{equation}
-\label{difftemp}
-\resizebox{.9\hsize}{!}{$
-\delta T_{b} = 28mK(1+\delta)x_{HI}\Big(1-\frac{T_{CMB}}{T_{spin}}\Big)\Big(\frac{\Omega_{b}h^2}{0.0223}\Big)\sqrt{\Big(\frac{1+z}{10}\Big)\Big(\frac{0.24}{\Omega_m}\Big)}\Big[ \frac{H(z)/(1+z)}{dv_{||}/dr_{||}}\Big]$}
-\end{equation}
-The differential brightness temperature describes the complex nature of the neutral hydrogen spin temperature,$T_S$ decoupling from the CMB background temperature $T_{CMB}$, the neutral fraction of Hydrogen, $x_{HI}$, and the mass density contrast, $\delta$.
-$\delta T_b$ also describes an important relationship between cosmological and astrophysical parameters, showing that measuring what is seen as a cosmological epoch has astrophysical relevance.
+%\begin{equation}
+%\label{difftemp}
+%\resizebox{.9\hsize}{!}{$
+%\delta T_{b} = 28mK(1+\delta)x_{HI}\Big(1-\frac{T_{CMB}}{T_{spin}}\Big)\Big(\frac{\Omega_{b}h^2}{0.0223}\Big)%\sqrt{\Big(\frac{1+z}{10}\Big)\Big(\frac{0.24}{\Omega_m}\Big)}\Big[ \frac{H(z)/(1+z)}{dv_{||}/dr_{||}}\Big]$}%
+%\end{equation}
+
+
+\includegraphics[scale=1]{figures/differential_brightness.png}
+The differential brightness temperature $\delta T_b$ is the contrast between the intensity of 21 cm emissions/absorptions against the Cosmic Microwave Background. Its full expression is related to cosmological (green) and astrophysical (red) parameters. Figure \ref{global} shows the evolution of the spherically-averaged \emph{global} 21 cm brightness temperature.
 
 \begin{figure}[H]
 \centering
 \includegraphics[width=1.0\linewidth]{figures/global_history.png}
-\caption{The global differential brightness temperature, $\delta T_b$, evolution over redshift 6 $<$ z $<$ 160. $\delta T_b$ becomes observable when 
-the spin temperature $T_S$ decouples from the CMB temperature, $T_{CMB}$ through the Wouthyusen-Field effect, this can be seen in 
-Eqn. \ref{difftemp}. Source: Pritchard \& Loeb. Nature 468.7325 (2010): 772-773. }.
+\caption{The global differential brightness temperature, $\delta T_b$, evolution over redshift $6<z<160$. $\delta T_b$ becomes observable when the spin temperature $T_S$ decouples from the CMB temperature, $T_{CMB}$.
+Eqn. \ref{difftemp}. Source: Pritchard \& Loeb. Nature 468.7325 (2010): 772-773. }\label{global}
 \end{figure}
 
 %----------------------------------------------------------------------------------------
@@ -147,11 +148,11 @@ Eqn. \ref{difftemp}. Source: Pritchard \& Loeb. Nature 468.7325 (2010): 772-773.
 The expected EoR signal is $\sim$ 5 orders of magnitude smaller than known foreground sources, such as diffuse emission from the Galaxy and extragalactic point sources. Removing these foregrounds, as well as instrumental noise, is a nontrivial problem. The overlapping sources of power in our observations can be seen in Fig. \ref{fig:foregroundsrcs}.
 
 
-
 \begin{figure}[H]
 \centering
 \includegraphics[width=0.55\linewidth]{figures/foreground_figure.png}
-\caption{The various cosmological and galactic sources that contribute to the measured sky temperature, and their relative strengths. \textbf{Source}: Zaroubi, Saleem. \textbf{The First Galaxies} Springer Berlin Heidelberg, 2013. 45-101.}\label{fig:foregroundsrcs}
+\caption{The various cosmological and galactic sources that contribute to the measured sky temperature, and their relative strengths.\\\hspace{\textwidth}
+Source: Zaroubi, Saleem. \textit`{The First Galaxies}. Springer Berlin Heidelberg, 2013. 45-101.}\label{fig:foregroundsrcs}
 \end{figure}
 To overcome foreground dominance in our power spectrum analysis we can use a combination of foreground power mitigating techniques as outlined in the following subsections.
 %The issue of foreground emission dominance in our power spectrum can be overcome through the mixed use of the following traditional and novel foreground mitigation techniques. \\
@@ -227,22 +228,22 @@ We perform calibration primarily by two methods: sky model based calibration and
 \begin{figure}[H]
 \centering
 \label{fig:PAPER}
-\includegraphics[width=0.8\linewidth]{figures/paper}
-\caption{PAPER - Located in South Africa in the Karoo desert, consists of 128 dipole antennas and is considered a $1^{st}$ generation radio telescope array. PAPER is a redundant array configuration, which means it redundantly probes many of the same $k_\perp$ modes and allows for the use of redundant calibration.}
+\includegraphics[width=0.85\linewidth]{figures/paper}
+\caption{PAPER - A first-generation array located in the Karoo desert of South Africa. Designed specifically for EoR research, PAPER is designed for maximum redundancy. Several baselines sample each $k_\perp$ modes, which allows for the use of redundant calibration.}
 \end{figure}
 
 \begin{figure}[H]
 \centering
 \label{fig:MWA}
-\includegraphics[width=0.8\linewidth]{figures/phaseII_tiles.jpg}
-\caption{MWA - Located in Western Australia in the Murchison Radio Astronomy Observatory. The MWA is a multipurpose array that is used for additional observations such as ionosphere studies and transient radio signals. It consists of 128 tiles which are each made up of 16 dipole antennae.The MWA array configuration is maximized for uv coverage which improves the imaging capability of the array. MWA is a pathfinder project for the Square Kilometer Array (SKA).}
+\includegraphics[width=0.85\linewidth]{figures/phaseII_tiles.jpg}
+\caption{MWA - Located in Western Australia at the Murchison Radio Astronomy Observatory. The MWA serves multiple functions, including ionosphere studies and detection of transient radio signals. Phase I consisted of 128 tiles which are each made up of 16 dipole antennae. The Phase I configuration maximized uv coverage, improving imaging capability. It has since been partially reconfigured into Phase II, which includes two hexagonal grids of tiles designed for high-redundancy EoR research. MWA is a pathfinder project for the Square Kilometer Array (SKA).}
 \end{figure}
 
 \begin{figure}[H]
 \centering
 \label{fig:HERA}
-\includegraphics[width=0.8\linewidth]{figures/HERA19.png}
-\caption{HERA - Located at the same site as PAPER in the Karoo desert. The current phase of HERA consists of 19 14m parabolic dishes. HERA is also a pathfinder project for the SKA.}
+\includegraphics[width=0.85\linewidth]{figures/HERA19.png}
+\caption{HERA - Located at the same site as PAPER in the Karoo desert. The current phase of HERA consists of 19 14m parabolic dishes. In its final form, HERA will comprise 331 dishes in a closely-packed hexagonal grid. HERA is also a pathfinder project for the SKA.}
 \end{figure}
 
 %----------------------------------------------------------------------------------------
