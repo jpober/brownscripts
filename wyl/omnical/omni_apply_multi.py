@@ -7,7 +7,7 @@ import uvdata.uvdata as uvd
 
 ### Options ###
 o = optparse.OptionParser()
-o.set_usage('omni_apply_fhd.py [options] obsid (do not include .uvfits)')
+o.set_usage('omni_apply_fhd.py [options] obsid(do not include .uvfits) or zen.jds.pol.uv')
 o.set_description(__doc__)
 aipy.scripting.add_standard_options(o,pol=True)
 o.add_option('--xtalk',dest='xtalk',default=False,action='store_true',
@@ -34,8 +34,14 @@ for filename in args:
         files[filename] = filelist
     elif opts.intype == 'uvfits':
         files[filename] = filename + '.uvfits'
+    elif opts.intype == 'miriad':
+        files[filename] = {}
+        for p in pols:
+            fn = filename.split('.')
+            fn[-2] = p
+            files[filename][p] = '.'.join(fn)
     else:
-        raise IOError('invalid filetype, it should be uvfits, or fhd')
+        raise IOError('invalid filetype, it should be miriad, uvfits, or fhd')
 
 #start processing
 for f,filename in enumerate(args):

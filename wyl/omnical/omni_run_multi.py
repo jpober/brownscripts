@@ -81,21 +81,25 @@ if opts.calpar != None: #create g0 if txt file is provided
                     if i.isdigit():
                         g0[p[0]][int(i)] = cp[i] / numpy.abs(cp[i])
     elif fname.endswith('.fits'):
-        poldict = {'EE': 'xx', 'NN': 'yy', 'EN': 'xy', 'NE': 'yx'}
-        hdu = fits.open(fname)
-        Ntimes = hdu[0].header['NTIMES']
-        Nfreqs = hdu[0].header['NFREQS']
-        Npols = hdu[0].header['NPOLS']
-        Nants = hdu[0].header['NANTS']
-        ant_index = hdu[1].data['ANT INDEX'][0:Nants]
-        pol_list = hdu[1].data['POL'][0:Nfreqs*Nants*Npols].reshape(Npols,Nants*Nfreqs)[:,0]
-        data_list = hdu[1].data['GAIN'].reshape((Ntimes,Npols,Nfreqs,Nants)).swapaxes(0,1).swapaxes(2,3).swapaxes(1,2) #Npols,Nants,Ntimes,Nfreqs
-        for ii in range(0,Npols):
-            polarization = poldict[pol_list[ii]]
-            if not polarization in pols: continue
-            g0[polarization[0]] = {}
-            for jj in range(0,Nants):
-                g0[polarization[0]][ant_index[jj]]=numpy.conj(data_list[ii][jj]/numpy.abs(data_list[ii][jj]))
+        g0 = capo.omni.fc_gains_from_fits(opts.calpar)
+        for key1 in g0:
+            for key2 in g0[key1]:
+                g0[key1][key2] /= numpy.abs(g0[key1][key2])
+#        poldict = {'EE': 'xx', 'NN': 'yy', 'EN': 'xy', 'NE': 'yx'}
+#        hdu = fits.open(fname)
+#        Ntimes = hdu[0].header['NTIMES']
+#        Nfreqs = hdu[0].header['NFREQS']
+#        Npols = hdu[0].header['NPOLS']
+#        Nants = hdu[0].header['NANTS']
+#        ant_index = hdu[1].data['ANT INDEX'][0:Nants]
+#        pol_list = hdu[1].data['POL'][0:Nfreqs*Nants*Npols].reshape(Npols,Nants*Nfreqs)[:,0]
+#        data_list = hdu[1].data['GAIN'].reshape((Ntimes,Npols,Nfreqs,Nants)).swapaxes(0,1).swapaxes(2,3).swapaxes(1,2) #Npols,Nants,Ntimes,Nfreqs
+#        for ii in range(0,Npols):
+#            polarization = poldict[pol_list[ii]]
+#            if not polarization in pols: continue
+#            g0[polarization[0]] = {}
+#            for jj in range(0,Nants):
+#                g0[polarization[0]][ant_index[jj]]=numpy.conj(data_list[ii][jj]/numpy.abs(data_list[ii][jj]))
     else:
         raise IOError('invalid calpar file')
 
@@ -141,13 +145,9 @@ def calibration(infodict):#dict=[filename, g0, timeinfo, d, f, ginfo, freqs, pol
     freqs = infodict['freqs']
     timeinfo = infodict['timeinfo']
     calpar = infodict['calpar']
+    ex_ants = infodict['ex_ants']
     print 'Getting reds from calfile'
-    if opts.ba: #XXX assumes exclusion of the same antennas for every pol
-        ex_ants = []
-        for a in opts.ba.split(','):
-            ex_ants.append(int(a))
-        print '   Excluding antennas:',sorted(ex_ants)
-    else: ex_ants = []
+    print 'generating info:'
     info = capo.omni.pos_to_info(pos, pols=list(set(''.join([polar]))), ex_ants=ex_ants, crosspols=[polar])
 
 ### Omnical-ing! Loop Through Compressed Files ###
@@ -160,10 +160,14 @@ def calibration(infodict):#dict=[filename, g0, timeinfo, d, f, ginfo, freqs, pol
             if not g0.has_key(p[0]): g0[p[0]] = {}
             for iant in range(0, ginfo[0]):
                 g0[p[0]][iant] = numpy.ones((ginfo[1],ginfo[2]))
-    elif calpar.endswith('.npz'):
+    elif calpar.endswith('.npz') or calpar.endswith('.fits'):
         SH = (ginfo[1],ginfo[2])
         for p in g0.keys():
             for i in g0[p]: g0[p][i] = numpy.resize(g0[p][i],SH)
+#    else:
+#        SH = (ginfo[1],ginfo[2])
+#        for iant in range(0, ginfo[0]):
+#            if not g0[polar[0]].has_key(iant): g0[polar[0]][iant] = numpy.ones(SH)
 
     t_jd = timeinfo['times']
     t_lst = timeinfo['lsts']
@@ -198,37 +202,51 @@ def calibration(infodict):#dict=[filename, g0, timeinfo, d, f, ginfo, freqs, pol
 
 exec('from %s import antpos as _antpos'% opts.cal)
 for f,filename in enumerate(args):
+
     npzlist = []
     infodict = {}
     filegroup = files[filename]
     info_dict = []
+    print "  Reading data: " + filename
     if opts.ftype == 'miriad':
         for p in pols:
-            dict0 = capo.wyl.uv_read_v2([filegroup[p]], filetype = 'miriad', antstr='cross')
+            dict0 = capo.wyl.uv_read_v2([filegroup[p]], filetype = 'miriad', antstr='cross',p_list=[p])
             infodict[p] = dict0[p]
             infodict[p]['filename'] = filegroup[p]
+            infodict['name_dict'] = dict0['name_dict']
     else:
-        infodict = capo.wyl.uv_read_v2([filegroup[key] for key in filegroup.keys()], filetype=opts.ftype, antstr='cross')
+        infodict = capo.wyl.uv_read_v2([filegroup[key] for key in filegroup.keys()], filetype=opts.ftype, antstr='cross', p_list=pols)
         for p in pols:
             infodict[p]['filename'] = filename
+    print "  Finish reading."
     for p in pols:
         if opts.calpar == None:
             infodict[p]['g0'] = {}
         else:
-            infodict[p]['g0'] = g0[p[0]]
+            infodict[p]['g0'] = {}
+            infodict[p]['g0'][p[0]] = g0[p[0]]
         infodict[p]['calpar'] = opts.calpar
         infodict[p]['position'] = _antpos
+        if opts.ba:
+            for a in opts.ba.split(','):
+                if not int(a) in infodict[p]['ex_ants']:
+                    infodict[p]['ex_ants'].append(int(a))
+        ex_ants = sorted(infodict[p]['ex_ants'])
+        print '   Excluding antennas:', ex_ants
+
         info_dict.append(infodict[p])
+    print "  Start Parallelism:"
     par = Pool(2)
     npzlist = par.map(calibration, info_dict)
     par.close()
+    name_dict = infodict['name_dict']
 
     if opts.iftxt: #if True, write npz gains to txt files
         scrpath = os.path.abspath(sys.argv[0])
         pathlist = os.path.split(scrpath)[0].split('/')
         repopath = '/'.join(pathlist[0:-1])+'/'
         print '   Writing to txt:'
-        capo.wyl.writetxt(npzlist, repopath, ex_ants)
+        capo.wyl.writetxt(npzlist, repopath, ex_ants=ex_ants, name_dict=name_dict)
         print '   Finish'
 
     if opts.iffits: #if True, write npz gains to fits files
@@ -236,7 +254,7 @@ for f,filename in enumerate(args):
         pathlist = os.path.split(scrpath)[0].split('/')
         repopath = '/'.join(pathlist[0:-1])+'/'
         print '   Writing to fits:'
-        capo.wyl.writefits(npzlist, repopath, ex_ants)
+        capo.wyl.writefits(npzlist, repopath, ex_ants=ex_ants, name_dict=name_dict)
         print '   Finish'
 
 

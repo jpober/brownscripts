@@ -5,6 +5,8 @@ import warnings
 with warnings.catch_warnings():
     warnings.filterwarnings("ignore",category=DeprecationWarning)
     import scipy.sparse as sps
+    import scipy.sparse.linalg as spsla
+from fits_functions import *
     
 POL_TYPES = 'xylrab'
 #XXX this can't support restarts or changing # pols between runs
@@ -163,29 +165,37 @@ def aa_pos_to_info(aa, pols=['x'], fcal=False, **kwargs):
 ####################################################################################################
 
 def pos_to_info(position, pols=['x'], fcal=False, **kwargs):
-    nant = len(position)
+### the position is a dictionary, containing only antennas involved in redundant groups.  ###
+### position dict should have keys of ant inds, with values of ideal positions, and a key ###
+### named 'nant', indicate the number of total antennas across the array                  ###
+    nant = position['nant']
     antpos = -np.ones((nant*len(pols),3))
-    xmin = 0.
-    ymin = 0.
-    for ant in position.keys():
-        if position[ant]['top_x'] < xmin: xmin = position[ant]['top_x']
-        if position[ant]['top_y'] < ymin: ymin = position[ant]['top_y']
-    for ant in position.keys():
-        x = position[ant]['top_x'] - xmin + 0.01
-        y = position[ant]['top_y'] - ymin + 0.01
+    xmin = 0
+    ymin = 0
+    for key in position.keys():
+        if key == 'nant': continue
+        if position[key]['top_x'] < xmin: xmin = position[key]['top_x']
+        if position[key]['top_y'] < ymin: ymin = position[key]['top_y']
+    for ant in range(0,nant):
+        try:
+            x = position[ant]['top_x'] - xmin + 0.1
+            y = position[ant]['top_y'] - ymin + 0.1
+        except(KeyError): continue
         for z, pol in enumerate(pols):
             z = 2**z
-            i = Antpol(ant,pol,len(position))
+            i = Antpol(ant,pol,nant)
             antpos[i,0],antpos[i,1],antpos[i,2] = x,y,z
     reds = compute_reds(nant, pols, antpos[:nant],tol=0.01)
     ex_ants = [Antpol(i,nant).ant() for i in range(antpos.shape[0]) if antpos[i,0] < 0]
     kwargs['ex_ants'] = kwargs.get('ex_ants',[]) + ex_ants
+    reds = filter_reds(reds, **kwargs)
     if fcal:
         info = FirstCalRedundantInfo(nant)
     else:
         info = RedundantInfo(nant)
     info.init_from_reds(reds,antpos)
     return info
+
 
 def redcal(data, info, xtalk=None, gains=None, vis=None,removedegen=False, uselogcal=True, maxiter=50, conv=1e-3, stepsize=.3, computeUBLFit=True, trust_period=1):
     #add layer to support new gains format
@@ -281,7 +291,7 @@ def from_npz(filename, verbose=False):
             pol,bl = parse_key(k)
             if not xtalk.has_key(pol): xtalk[pol] = {}
             dat = np.resize(np.copy(npz[k]),vismdl[pol][vismdl[pol].keys()[0]][0].shape) #resize xtalk to be like vismdl (with a time dimension too)
-            if xtalk[pol].get(bl) == None: #no bl key yet
+            if xtalk[pol].get(bl) is None: #no bl key yet
                 xtalk[pol][bl] = dat
             else: #append to array
                 xtalk[pol][bl] = np.vstack((xtalk[pol].get(bl),dat))
@@ -305,54 +315,99 @@ def from_npz(filename, verbose=False):
     return meta, gains, vismdl, xtalk
 
 class FirstCal(object):
-    def __init__(self, data, fqs, info):
+    def __init__(self, data, wgts, fqs, info):
         self.data = data
         self.fqs = fqs
         self.info = info
+        self.wgts = wgts
+        #if wgts != None: self.wgts = wgts
+        #else: self.wgts = np.ones_like(self.data)
     def data_to_delays(self, verbose=False, **kwargs):
         '''data = dictionary of visibilities. 
            info = FirstCalRedundantInfo class
            can give it kwargs:
                 supports 'window': window function for fourier transform. default is none
-           Returns a dictionary with keys baseline pairs and values delays.'''
+                         'tune'  : to fit and remove a linear slope to phase.
+                         'plot'  : Low level plotting in the red.redundant_bl_cal_simple script.
+                         'clean' : Clean level when deconvolving sampling function out.
+           Returns 2 dictionaries:
+                1. baseline pair : delays
+                2. baseline pari : offset 
+        '''
         window=kwargs.get('window','none')
-        tune=kwargs.get('tune','True')
-        self.blpair2delay = {}
+        tune=kwargs.get('tune',True)
+        plot=kwargs.get('plot',False)
+        clean=kwargs.get('clean',1e-4)
+#        use_offset = kwargs.get('use_offset',False)
+        blpair2delay = {}
+        blpair2offset = {}
         dd = self.info.order_data(self.data)
-#        ww = self.info.order_data(self.wgts)
+        ww = self.info.order_data(self.wgts)
         for (bl1,bl2) in self.info.bl_pairs:
             if verbose:
                 print (bl1, bl2)
             d1 = dd[:,:,self.info.bl_index(bl1)]
-#            w1 = ww[:,:,self.info.bl_index(bl1)]
+            w1 = ww[:,:,self.info.bl_index(bl1)]
             d2 = dd[:,:,self.info.bl_index(bl2)]
-#            w2 = ww[:,:,self.info.bl_index(bl2)]
-            #delay = red.redundant_bl_cal_simple(d1,w1,d2,w2,self.fqs)
-            delay = red.redundant_bl_cal_simple(d1,d2,self.fqs,window=window,tune=tune)
-            self.blpair2delay[(bl1,bl2)] = delay
-        return self.blpair2delay
+            w2 = ww[:,:,self.info.bl_index(bl2)]
+            if True:
+                delay,offset = red.redundant_bl_cal_simple(d1,w1,d2,w2,self.fqs,window=window,tune=tune,plot=plot,verbose=verbose,clean=clean)
+            if False:
+                _,(delay,offset),_ = red.redundant_bl_cal(d1,w1,d2,w2,self.fqs,window=window,verbose=verbose,use_offset=use_offset)
+            blpair2delay[(bl1,bl2)] = delay
+            blpair2offset[(bl1,bl2)] = offset
+        return blpair2delay, blpair2offset
     def get_N(self,nblpairs):
-        return np.identity(nblpairs) 
+        return sps.eye(nblpairs) 
     def get_M(self, verbose=False, **kwargs):
         M = np.zeros((len(self.info.bl_pairs),1))
-        blpair2delay = self.data_to_delays(verbose=verbose, **kwargs)
+        O = np.zeros((len(self.info.bl_pairs),1))
+        blpair2delay,blpair2offset = self.data_to_delays(verbose=verbose, **kwargs)
         for pair in blpair2delay:
             M[self.info.blpair_index(pair)] = blpair2delay[pair]
-        return M
-    def run(self, verbose=False, **kwargs):
+            O[self.info.blpair_index(pair)] = blpair2offset[pair]
+            
+        return M,O
+    def run(self, verbose=False, offset=False, **kwargs):
         #make measurement matrix 
-        self.M = self.get_M(verbose=verbose, **kwargs)
+        print "Geting M,O matrix"
+        self.M,self.O = self.get_M(verbose=verbose, **kwargs)
+        #self.M = np.append(self.M, [0.0,0.0,0.0])
+        #self.O = np.append(self.O, [0.0,0.0,0.0])
         #make noise matrix
+        #N = self.get_N(len(self.info.bl_pairs)+3) 
+        print "Geting N matrix"
+        #import IPython; IPython.embed()
         N = self.get_N(len(self.info.bl_pairs)) 
-        self._N = np.linalg.inv(N)
+        #self._N = np.linalg.inv(N)
+        self._N = N #since just using identity now
         #get coefficients matrix,A
-        self.A = self.info.A
+        self.A = sps.csr_matrix(self.info.A)
+        print 'Shape of coefficient matrix: ', self.A.shape
+#        ones = np.ones((1,self.A.shape[1]))
+        #index:antenna => 9:80, 11:104, 13:53
+#        deg1 = np.zeros((1,self.A.shape[1])); deg1[:,9] = 1.0; deg1[:,11] = 1.0
+#        deg2 = np.zeros((1,self.A.shape[1])); deg2[:,9] = 1.0; deg2[:,13] = 1.0
+#        self.A = np.concatenate([self.A,ones,deg1,deg2])
         #solve for delays
-        invert = np.dot(self.A.T,np.dot(self._N,self.A))
-        dontinvert = np.dot(self.A.T,np.dot(self._N,self.M))
-        self.xhat = np.dot(np.linalg.pinv(invert), dontinvert)
-        #turn solutions into dictionary
-        return dict(zip(self.info.subsetant,self.xhat))
+        print "Inverting A.T*N^{-1}*A matrix"
+        invert = self.A.T.dot(self._N.dot(self.A)).todense() #make it dense for pinv
+#        invert = np.dot(self.A.T,np.dot(self._N,self.A))
+        dontinvert = self.A.T.dot(self._N.dot(self.M)) #converts it all to a dense matrix
+        #definitely want to use pinv here and not solve since invert is probably singular. 
+        self.xhat = np.dot(np.linalg.pinv(invert),dontinvert)
+        #solve for offset
+        if offset:
+            print "Inverting A.T*N^{-1}*A matrix"
+            invert = self.A.T.dot(self._N.dot(self.A)).todense()
+            dontinvert =self.A.T.dot(self._N.dot(self.O))
+            self.ohat = np.dot(np.linalg.pinv(invert),dontinvert)
+            #turn solutions into dictionary
+#            import IPython; IPython.embed()
+            return dict(zip(self.info.subsetant,zip(self.xhat,self.ohat)))
+        else:
+            #turn solutions into dictionary
+            return dict(zip(self.info.subsetant,self.xhat))
     def get_solved_delay(self):
         solved_delays = []
         for pair in self.info.bl_pairs:
@@ -361,9 +416,41 @@ class FirstCal(object):
             solved_delays.append(dlys[0]-dlys[1]-dlys[2]+dlys[3])
         self.solved_delays = np.array(solved_delays)
 
+def get_phase(fqs,tau, offset=False):
+    fqs = fqs.reshape(-1,1) #need the extra axis
+    if offset:
+        delay = tau[0]
+        offset = tau[1]
+        return np.exp(-1j*(2*np.pi*fqs*delay) - offset)
+    else:
+        return np.exp(-2j*np.pi*fqs*tau)
 
-def get_phase(fqs,tau):
-    return np.exp(-2j*np.pi*fqs*tau)
-
-
-
+def save_gains_fc(s,f,pol,filename,ubls=None,ex_ants=None,verbose=False):
+    """
+    s: solutions
+    f: frequencies
+    pol: polarization of single antenna i.e. 'x', or 'y'.
+    filename: if a specific file was used (instead of many), change output name
+    ubls: unique baselines used to solve for s'
+    ex_ants: antennae excluded to solve for s'
+    """
+#    if isinstance(filename, list): filename=filename[0] #XXX this is evil. why?
+    s2 = {}
+    for k,i in s.iteritems():
+        if len(i)>1:
+            #len > 1 means that one is using the "tune" parameter in omni.firstcal
+            s2[str(k)+pol] = get_phase(f,i,offset=True).reshape(1,-1) #reshape plays well with omni apply
+            s2['d'+str(k)] = i[0]
+            if verbose: print 'dly=%f , off=%f'%i
+        else:
+            s2[str(k)+pol] = omni.get_phase(f,i).reshape(1,-1) #reshape plays well with omni apply
+            s2['d'+str(k)] = i
+            if verbose: print 'dly=%f'%i
+    if not ubls is None: s2['ubls']=ubls
+    if not ex_ants is None: s2['ex_ants']=ex_ants
+    outname='%s.fc.npz'%filename
+    import sys
+    s2['cmd'] = ' '.join(sys.argv)
+    s2['freqs'] = f*1e9 # in Hz
+    print 'Saving fcgains to %s'%outname
+    np.savez(outname,**s2)
