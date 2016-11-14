@@ -1,16 +1,18 @@
 #! /bin/bash
-#SBATCH -t 1:00:00
+#SBATCH -t 0:20:00
 #SBATCH -n 2                                                                                                                                      
-#SBATCH --array=0-177:1
+#SBATCH --array=0-999:1%25
 ###SBATCH --ntasks=1                                                                                                                                      
 #SBATCH --mem=10G                                                                                                                                   
-####SBATCH -p jpober-test 
+#SBATCH -p jpober-test 
 #SBATCH --output=/users/jkerriga/brownscripts/jrk/SlurmOut/FGSub_%A_%a.out 
 ###SBATCH --output=/users/jkerriga/data/jkerriga/PFHDOutput/fhd_%a/FGSub_%A_%a.out
 ###SBATCH --error=/users/jkerriga/data/jkerriga/PFHDOutput/fhd_%a/FGSub_%A_%a.err 
-version=$(($SLURM_ARRAY_TASK_ID + 0))
+source activate PAPER
+version=$(($SLURM_ARRAY_TASK_ID + 3999))
+
 vsname=''
-outdir=/users/jkerriga/data/jkerriga/ConFit2Day
+outdir=/users/jkerriga/data/jkerriga/AnalysisOutput
 
 module load ghostscript
 module load imagemagick/6.6.4
@@ -24,17 +26,17 @@ mkdir -p ${outdir}/fhd_${vsname}${version}
 mkdir -p ${outdir}/fhd_${vsname}${version}/grid_out
 echo Output located at ${outdir}/fhd_${vsname}${version}
 
-obs_list=($(cat obsfits.txt))
+obs_list=($(cat Analysis_obsfits.txt))
 
 
 echo ${obs_list[$version]}
 obs_id=${obs_list[$version]}
-#/usr/local/bin/idl -IDL_DEVICE ps -quiet -IDL_CPU_TPOOL_NTHREADS $ncores -e paper_psa64 -args $obs_id $outdir ${vsname}${version}
+/usr/local/bin/idl -IDL_DEVICE ps -quiet -IDL_CPU_TPOOL_NTHREADS $ncores -e paper_psa64 -args $obs_id $outdir ${vsname}${version}
 
-cd ${outdir}/fhd_${vsname}${version}/vis_data
-python ~/brownscripts/jrk/sav2miriad.py Pzen.* ../metadata/Pzen.* -s
-cp -rf *UcS ../../../PSPECLST/
-cp -rf *UcH ../../../PSPECLST/
-rm -r *UcS
-rm -r *UcH
+#cd ${outdir}/fhd_${vsname}${version}/vis_data
+#python ~/brownscripts/jrk/sav2miriad.py Pzen.* ../metadata/Pzen.* -s
+#cp -rf *UcS ../../../PSA64FHDLST/
+#cp -rf *UcH ../../../PSA64FHDLST/
+#rm -r *UcS
+#rm -r *UcH
 
