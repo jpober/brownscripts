@@ -1,11 +1,9 @@
-### Submit the sbatch array command to do omnical
+### Submit the sbatch array command to do omniapply
 
 obs_file_name='/users/wl42/IDL/FHD/Observations/PhaseII_EoR0_obs'
-poscal='PhaseII_cal'
-#pol='xx,yy'
-mem='50G'
-time='10:00:00'
-
+mem='60G'
+time='10:00:00
+'
 #Read the obs file and put into an array, skipping blank lines if they exist
 i=0
 while read line
@@ -24,5 +22,8 @@ done
 
 #Find the number of obsids to run in array
 N=${#good_obs_list[@]}                    #Number of files
+
+#N=$(python nfiles.py $paramfile)   	#Generated based on the number of samples per file, the integration time, and the total length
+
 #sbatch -o /dev/null  --array=1-$N --mem=$mem -t $time -n 3 --export=N=$N,fname=$fname,paramfile=$paramfile,calfile=$calfile zeros_job.sh
-sbatch -p default-batch --array=0-$(($N - 1)) --mem=$mem -t $time -n 10 --export=N=$N,poscal=$poscal, omnical.sh ${good_obs_list[@]}
+sbatch -p default-batch --array=0-$(($N-1)) --mem=$mem -t $time -n 10 --export=N=$N, omniapply.sh ${good_obs_list[@]}
