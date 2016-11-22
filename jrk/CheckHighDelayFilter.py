@@ -15,10 +15,10 @@ d = n.zeros((2,203),dtype=complex)
 
 model = n.zeros((1,203),dtype=complex)#[]
 modelF = n.zeros((1,203),dtype=complex) #[]
-blk = AP.dsp.gen_window(203,window='blackman-harris')
-#blk = n.ones(203)
-dirtlist = glob('*'+opts.dirty)
-reslist = glob('*'+opts.residual)
+#blk = AP.dsp.gen_window(203,window='blackman-harris')
+blk = n.ones(203)
+dirtlist = glob(opts.dirty)
+reslist = glob(opts.residual)
 print dirtlist,reslist
 for i in dirtlist:
     print i

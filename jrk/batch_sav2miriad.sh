@@ -11,13 +11,13 @@
 ###SBATCH --error=/users/jkerriga/data/jkerriga/PFHDOutput/fhd_%a/FGSub_%A_%a.err 
 source activate PAPER
 #2300
-version=$(($SLURM_ARRAY_TASK_ID + 999))
+version=$(($SLURM_ARRAY_TASK_ID + 3999))
 vsname=''
 outdir=/users/jkerriga/data/jkerriga/AnalysisOutput
 
-obs_list=($(cat Analysis_obsfits.txt))
+#obs_list=($(cat Analysis_obsfits.txt))
 
-echo ${obs_list[$version]}
+#echo ${obs_list[$version]}
 #obs_id=${obs_list[$version]}
 
 cd ${outdir}/fhd_${vsname}${version}/vis_data
@@ -36,8 +36,8 @@ python ~/brownscripts/jrk/uv_sub.py *HPA *MPFA -s SPA
 #~/brownscripts/jrk/batch_submodel.sh
 #cp -rf *[HS]P ../../../PaperAnalysis/AllSeps/
 if [ $(du -sh *SPA|wc -l) = 1 ];then
-    cp -rf Pzen*HPA Pzen*SPA ../../../Analysis-10LST/
-    cp -r Pzen*MPA Pzen*MPFA ../../../Analysis-10Models/
+    cp -rf Pzen*HPA Pzen*SPA ../../../AnalysisLST/
+    cp -r Pzen*MPA Pzen*MPFA ../../../AnalysisModels/
 fi
 rm -r *Uc[HSM]*
 

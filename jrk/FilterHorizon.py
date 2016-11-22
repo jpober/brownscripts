@@ -16,7 +16,7 @@ opts,args = o.parse_args(sys.argv[1:])
 chans = 203
 uv = a.miriad.UV(args[0])
 aa = a.cal.get_aa('psa6240_FHD', uv['sdf'], uv['sfreq'], uv['nchan'])
-filters = C.dspec.wedge_width_by_bl(aa, uv['sdf'], chans, offset=0.0)
+filters = C.dspec.wedge_width_by_bl(aa, uv['sdf'], chans, offset=30.0)
 del(uv)
 print args
 print filters[(41,49)]
@@ -49,17 +49,17 @@ for files in args:
     shp = D1_.shape
     print shp
     # Find proper delays to filter
-    #freqs = n.linspace(mir.freq_array[0][0],(D1.shape[1]*(mir.freq_array[0][1]-mir.freq_array[0][0])+mir.freq_array[0][0]),D1.shape[1])
-    #delays = n.fft.fftfreq(freqs.size,freqs[1]-freqs[0])
-    #delays = n.fft.fftshift(delays)
-    #delay_max = 30.0/(2.99*10**8)
+    freqs = n.linspace(mir.freq_array[0][0],(D1.shape[1]*(mir.freq_array[0][1]-mir.freq_array[0][0])+mir.freq_array[0][0]),D1.shape[1])
+    delays = n.fft.fftfreq(freqs.size,freqs[1]-freqs[0])
+    delays = n.fft.fftshift(delays)
+    delay_max = 30.0/(2.99*10**8)
     ### Moves in 15ns, which puts the sidelobes down to 10^0 for the +15ns so any structure added is *somewhat* negligible
     #delay_bin = (n.abs(delays)<delay_max+50.0*10**(-9)).sum()/2
     #print delay_bin
     # Design delay filter
     print fb
-    w1 = n.zeros(n.array(D1_.shape),dtype=complex)#*10**(-14)
-    w1[:,fb[1]:fb[0]] = n.ones((shp[0],fb[0]-fb[1]))
+    w1 = n.ones(n.array(D1_.shape),dtype=complex)#*10**(-14)
+    w1[:,fb[1]-chans/203:fb[0]-chans/203] = n.zeros((shp[0],fb[0]-fb[1]))
 
     #W1 = n.fft.fftshift(w1)
     #W1_ = n.fft.fft(W1)
