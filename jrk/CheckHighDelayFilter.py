@@ -15,6 +15,8 @@ d = n.zeros((2,203),dtype=complex)
 
 model = n.zeros((1,203),dtype=complex)#[]
 modelF = n.zeros((1,203),dtype=complex) #[]
+#model = []
+#modelF = []
 #blk = AP.dsp.gen_window(203,window='blackman-harris')
 blk = n.ones(203)
 dirtlist = glob(opts.dirty)
@@ -29,8 +31,9 @@ for i in dirtlist:
         pass
     bsl = mir.antnums_to_baseline(41,49)==mir.baseline_array
     intmodel = n.fft.fftshift(n.fft.fft(mir.data_array[bsl,0,:,0]*blk))
-    intmodel = n.mean(intmodel,0)
-    model = n.mean((model,intmodel),0)
+    #intmodel = n.mean(intmodel,0)
+    #model = n.mean((model,intmodel),0)
+    model = n.vstack((model,intmodel))
     del(bsl)
     del(mir)
 
@@ -43,19 +46,23 @@ for j in reslist:
         pass
     bsl = mir.antnums_to_baseline(41,49)==mir.baseline_array
     intmodelF = n.fft.fftshift(n.fft.fft(mir.data_array[bsl,0,:,0]*blk))
-    intmodelF = n.mean(intmodelF,0)
-    modelF = n.mean((modelF,intmodelF),0)
+    #intmodelF = n.mean(intmodelF,0)
+    #modelF = n.mean((modelF,intmodelF),0)
+    modelF = n.vstack((modelF,intmodelF))
     del(bsl)
     del(mir)
-    
+
 
 freqs = n.linspace(100*10**6,200*10**6,203)
 delays = n.fft.fftfreq(freqs.size,freqs[1]-freqs[0])
 delays = n.fft.fftshift(delays)
 delaymax = 30.0/(2.99*10**8)
 print model.shape
-mu_model = n.abs(model[0,:])
-mu_modelF = n.abs(modelF[0,:])
+
+mu_model = n.abs(n.mean(model,0))
+mu_modelF = n.abs(n.mean(modelF,0))
+#mu_model = #n.abs(model[0,:])
+#mu_modelF = #n.abs(modelF[0,:])
 pl.semilogy(delays,mu_model,'b')
 pl.semilogy(delays,mu_modelF,'r')
 pl.vlines(delaymax,10**-7,10**6)
