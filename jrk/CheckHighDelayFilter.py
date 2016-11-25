@@ -33,7 +33,7 @@ for i in dirtlist:
     intmodel = n.fft.fftshift(n.fft.fft(mir.data_array[bsl,0,:,0]*blk))
     #intmodel = n.mean(intmodel,0)
     #model = n.mean((model,intmodel),0)
-    model = n.vstack((model,intmodel))
+    model = n.vstack((model,n.abs(intmodel)))
     del(bsl)
     del(mir)
 
@@ -48,7 +48,7 @@ for j in reslist:
     intmodelF = n.fft.fftshift(n.fft.fft(mir.data_array[bsl,0,:,0]*blk))
     #intmodelF = n.mean(intmodelF,0)
     #modelF = n.mean((modelF,intmodelF),0)
-    modelF = n.vstack((modelF,intmodelF))
+    modelF = n.vstack((modelF,n.abs(intmodelF)))
     del(bsl)
     del(mir)
 

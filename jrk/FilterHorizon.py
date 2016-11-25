@@ -54,13 +54,13 @@ for files in args:
     delays = n.fft.fftshift(delays)
     delay_max = 30.0/(2.99*10**8)
     ### Moves in 15ns, which puts the sidelobes down to 10^0 for the +15ns so any structure added is *somewhat* negligible
-    #delay_bin = (n.abs(delays)<delay_max+50.0*10**(-9)).sum()/2
+    delay_bin = (n.abs(delays)<delay_max+48.0*10**(-9)).sum()/2
     #print delay_bin
     # Design delay filter
     print fb
     w1 = n.ones(n.array(D1_.shape),dtype=complex)#*10**(-14)
-    w1[:,fb[1]-chans/203:fb[0]-chans/203] = n.zeros((shp[0],fb[0]-fb[1]))
-
+    #w1[:,fb[1]:fb[0]] = n.zeros((shp[0],fb[0]-fb[1]))
+    w1[:,shp[1]/2 -delay_bin:shp[1]/2+delay_bin] = 0#n.zeros((shp[0],2*delay_bin+1),dtype=complex)
     #W1 = n.fft.fftshift(w1)
     #W1_ = n.fft.fft(W1)
     #Filter delay data

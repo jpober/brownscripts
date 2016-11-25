@@ -5,21 +5,21 @@
 #SBATCH -J WidebandFilter                                                                                                                                     
 #SBATCH -p jpober-test                                                                                                                                    
 #SBATCH --output=/users/jkerriga/brownscripts/jrk/SlurmOut/WideBand_%A_%a.out 
-#SBATCH --array=0-999:1
-outdir=/users/jkerriga/data/jkerriga/AnalysisLST
+#SBATCH --array=0-36:1
+outdir=/users/jkerriga/data/jkerriga/ProvingGrounds
 
 cd ${outdir}
 source activate PAPER
 declare -a dirt_list
 declare -a res_list
-dirt_list=(Pzen*HPA)
-res_list=(Pzen*SPA)
+#dirt_list=(Pzen*HPA)
+#res_list=(Pzen*SPA)
 
-#dirt_list=(lst*uvHB)
-#res_list=(lst*uvSB)
+dirt_list=(lst*uvHB)
+res_list=(lst*uvSB)
 
 
-num=$(($SLURM_ARRAY_TASK_ID + 3999))
+num=$(($SLURM_ARRAY_TASK_ID + 0))
 #version=0
 #vsname=''
 
@@ -32,11 +32,11 @@ num=$(($SLURM_ARRAY_TASK_ID + 3999))
 #echo ${obs_id%.uvfits}[SH]P
 #cd ${outdir}
 
-python ~/capo/pspec_pipeline/pspec_prep.py -C psa6240_FHD -a cross --nogain --nophs --clean=1e-9 --horizon=15 --window='blackman-harris' "${dirt_list[$num]}" "${res_list[$num]}"
+#python ~/capo/pspec_pipeline/pspec_prep.py -C psa6240_FHD -a cross --nogain --nophs --clean=1e-9 --horizon=15 --window='blackman-harris' "${dirt_list[$num]}" "${res_list[$num]}"
 
-python ~/capo/dcj/scripts/xrfi_simple.py -n 3 "${dirt_list[$num]}""B" "${res_list[$num]}""B"
+#python ~/capo/dcj/scripts/xrfi_simple.py -n 3 "${dirt_list[$num]}""B" "${res_list[$num]}""B"
 
-#python ~/brownscripts/jrk/FilterHorizon.py "${dirt_list[$num]}" "${res_list[$num]}"
+python ~/brownscripts/jrk/FilterHorizon.py "${dirt_list[$num]}" "${res_list[$num]}"
 
 #Pzen.2456*${SLURM_ARRAY_TASK_ID}.*.uvcRREcACOTUc[HS]P #${obs_id%.uvfits}[SH]P
 

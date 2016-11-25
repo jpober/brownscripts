@@ -7,23 +7,27 @@ import pylab as pl
 from numpy.random import randn
 
 o = optparse.OptionParser()
+o.add_option("--dirty", action='store', dest='dirty')
+o.add_option("--model", action='store', dest='model')
 o.add_option("-s","--suffix",dest="suffix",default="SP")
 opts,args = o.parse_args(sys.argv[1:])
 print args
 print opts.suffix
-t=0
-for files in args:
-    try:
-        if t == 0:
-            mir = uvdata.miriad.Miriad()
-            mir.read_miriad(files)
-        else:
-            model = uvdata.miriad.Miriad()
-            model.read_miriad(files)
-    except:
-        print 'Something bad happened.'
-        pass
-    t+=1
+print opts.dirty
+print opts.model
+#t=0
+#for files in args:
+
+#try:
+mir = uvdata.miriad.Miriad()
+mir.read_miriad(opts.dirty)
+
+model = uvdata.miriad.Miriad()
+model.read_miriad(opts.model)
+#    except:
+#        print 'Something bad happened.'
+#        pass
+#    t+=1
 
 for i in range(0,64):
     for j in range(0,64):
@@ -35,5 +39,5 @@ for i in range(0,64):
             print 'Bad things keeps happening.'
             continue
 mir.antenna_positions = n.zeros((63,3))
-mir.write_miriad(args[0].split('HP')[0]+opts.suffix) #replace HP tp uv
+mir.write_miriad(opts.dirty.split('HP')[0]+opts.suffix) #replace HP tp uv
     

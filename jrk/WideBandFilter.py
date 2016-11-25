@@ -13,14 +13,14 @@ o = optparse.OptionParser()
 opts,args = o.parse_args(sys.argv[1:])
 #window='blackman-harris'
 #dir='/users/jkerriga/data/jkerriga/8DayLST/even/Pzen.2456242.30605.uvcRREcACOTUcHPA'
-chans = 203
-uv = a.miriad.UV(args[0])
-aa = a.cal.get_aa('psa6240_FHD', uv['sdf'], uv['sfreq'], uv['nchan'])
-filters = C.dspec.wedge_width_by_bl(aa, uv['sdf'], chans, offset=0.0)
-del(uv)
+#chans = 203
+#uv = a.miriad.UV(args[0])
+#aa = a.cal.get_aa('psa6240_FHD', uv['sdf'], uv['sfreq'], uv['nchan'])
+#filters = C.dspec.wedge_width_by_bl(aa, uv['sdf'], chans, offset=0.0)
+#del(uv)
 print args
-print filters[(41,49)]
-fb = n.add(filters[(41,49)],chans/2)
+#print filters[(41,49)]
+#fb = n.add(filters[(41,49)],chans/2)
 #mir = uvdata.miriad.Miriad()
 for files in args:
     mir = uvdata.miriad.Miriad()
@@ -34,9 +34,9 @@ for files in args:
     #bh = scipy.signal.tukey(203,0.1,sym=True)
     #bh = a.dsp.gen_window(151,window='blackman-harris').astype(complex)
     bh = n.ones(151,dtype=complex)
-    bh1 = n.zeros(chans,dtype=complex)
+    bh1 = n.zeros(d1.shape[1],dtype=complex)
     bh1[15:166] = bh
-    d2 = n.zeros((d1.shape[0],chans),dtype=complex)
+    d2 = n.zeros((d1.shape[0],d1.shape[1]),dtype=complex)
     d2[:,0:203] = d1[:,:]
     #d1[:,14:167] = d1[:,14:167]*bh
     d2 = d2*bh1
@@ -47,19 +47,19 @@ for files in args:
     D1 = n.fft.fft(d2,axis=1)
     D1_ = n.fft.fftshift(D1,axes=1)
     shp = D1_.shape
-    print shp
+    #print shp
     # Find proper delays to filter
-    #freqs = n.linspace(mir.freq_array[0][0],(D1.shape[1]*(mir.freq_array[0][1]-mir.freq_array[0][0])+mir.freq_array[0][0]),D1.shape[1])
-    #delays = n.fft.fftfreq(freqs.size,freqs[1]-freqs[0])
-    #delays = n.fft.fftshift(delays)
-    #delay_max = 30.0/(2.99*10**8)
+    freqs = n.linspace(mir.freq_array[0][0],(D1.shape[1]*(mir.freq_array[0][1]-mir.freq_array[0][0])+mir.freq_array[0][0]),D1.shape[1])
+    delays = n.fft.fftfreq(freqs.size,freqs[1]-freqs[0])
+    delays = n.fft.fftshift(delays)
+    delay_max = 30.0/(2.99*10**8)
     ### Moves in 15ns, which puts the sidelobes down to 10^0 for the +15ns so any structure added is *somewhat* negligible
-    #delay_bin = (n.abs(delays)<delay_max+50.0*10**(-9)).sum()/2
+    delay_bin = (n.abs(delays)<delay_max-10.0*10**(-9)).sum()/2
     #print delay_bin
     # Design delay filter
-    print fb
     w1 = n.zeros(n.array(D1_.shape),dtype=complex)#*10**(-14)
-    w1[:,fb[1]:fb[0]] = n.ones((shp[0],fb[0]-fb[1]))
+    w1[:,shp[1]/2-delay_bin:shp[1]/2+delay_bin+1] = 1.
+    #w1[:,fb[1]:fb[0]] = n.ones((shp[0],fb[0]-fb[1]))
 
     #W1 = n.fft.fftshift(w1)
     #W1_ = n.fft.fft(W1)

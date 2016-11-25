@@ -58,8 +58,11 @@ for chan in $chans; do
         if [ ! -e ${poldir}/pspec_${PREFIX}_${chan}_${pol}.png ]; then
             for sep in $seps; do
                 sepdir=${poldir}/${sep}
-                EVEN_FILES=${EVEN_DATAPATH}${sep}/lst.*.*.*.uvDA
-                ODD_FILES=${ODD_DATAPATH}${sep}/lst.*.*.*.uvDA
+		oddLSTS=(${ODD_DATAPATH}${sep}/lst.*.*.*.${SUFFIX})
+		echo $oddLSTS
+		evenLSTS=(${EVEN_DATAPATH}${sep}/lst.*.*.*.${SUFFIX})
+                EVEN_FILES="${evenLSTS[@]:1:28}" #${EVEN_DATAPATH}${sep}/ #lst.*.[345]*.*.${SUFFIX} #uvHBFAL
+                ODD_FILES="${oddLSTS[@]:1:28}" #${ODD_DATAPATH}${sep}/ #lst.*.[345]*.*.${SUFFIX} #uvHBFAL
                 test -e ${sepdir} || mkdir ${sepdir}
                 LOGFILE=`pwd`/${PREFIX}/${chan}_${pol}_${sep}.log
                 echo this is mk_psa64_pspec.sh with  |tee  ${LOGFILE}
@@ -84,7 +87,7 @@ for chan in $chans; do
 
                 
                 echo beginning bootstrap: `date` | tee -a ${LOGFILE} 
-                ${SCRIPTSDIR}/pspec_cov_boot.py ${sepdir}/pspec_boot*npz | tee -a ${LOGFILE} 
+                ${SCRIPTSDIR}/pspec_cov_boot_v002.py --identity ${sepdir}/pspec_boot*npz | tee -a ${LOGFILE} 
                 echo complete! `date`| tee -a ${LOGFILE} 
                 mv pspec.npz ${sepdir}/
                 PIDS="${PIDS} "$!
