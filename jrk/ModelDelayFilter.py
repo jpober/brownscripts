@@ -16,7 +16,7 @@ opts,args = o.parse_args(sys.argv[1:])
 chans = 203.
 uv = a.miriad.UV(args[0])
 aa = a.cal.get_aa('psa6240_FHD', uv['sdf'], uv['sfreq'], chans)
-filters = C.dspec.wedge_width_by_bl(aa, uv['sdf'], chans, offset=-50.0)
+filters = C.dspec.wedge_width_by_bl(aa, uv['sdf'], chans, offset=0.0)
 del(uv)
 print args
 print filters[(41,49)]

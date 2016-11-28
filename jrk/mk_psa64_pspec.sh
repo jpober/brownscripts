@@ -61,8 +61,8 @@ for chan in $chans; do
 		oddLSTS=(${ODD_DATAPATH}${sep}/lst.*.*.*.${SUFFIX})
 		echo $oddLSTS
 		evenLSTS=(${EVEN_DATAPATH}${sep}/lst.*.*.*.${SUFFIX})
-                EVEN_FILES="${evenLSTS[@]:1:28}" #${EVEN_DATAPATH}${sep}/ #lst.*.[345]*.*.${SUFFIX} #uvHBFAL
-                ODD_FILES="${oddLSTS[@]:1:28}" #${ODD_DATAPATH}${sep}/ #lst.*.[345]*.*.${SUFFIX} #uvHBFAL
+                EVEN_FILES="${evenLSTS[@]:3:25}" #${EVEN_DATAPATH}${sep}/ #lst.*.[345]*.*.${SUFFIX} #uvHBFAL
+                ODD_FILES="${oddLSTS[@]:3:25}" #${ODD_DATAPATH}${sep}/ #lst.*.[345]*.*.${SUFFIX} #uvHBFAL
                 test -e ${sepdir} || mkdir ${sepdir}
                 LOGFILE=`pwd`/${PREFIX}/${chan}_${pol}_${sep}.log
                 echo this is mk_psa64_pspec.sh with  |tee  ${LOGFILE}
@@ -79,7 +79,7 @@ for chan in $chans; do
                       --window=${WINDOW}  ${NOPROJ} --output=${sepdir} \
                        ${EVEN_FILES} ${ODD_FILES} 
                 
-                python ${SCRIPTSDIR}/pspec_cov_v002.py -C ${cal} -b ${NBOOT} \
+                python ${SCRIPTSDIR}/pspec_cov_v003.py -C ${cal} -b ${NBOOT} \
                     -a ${ANTS} -c ${chan} -p ${pol} --window=${WINDOW} \
                       ${NOPROJ} --output=${sepdir} \
                       ${EVEN_FILES} ${ODD_FILES} \

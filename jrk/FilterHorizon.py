@@ -15,12 +15,12 @@ opts,args = o.parse_args(sys.argv[1:])
 #dir='/users/jkerriga/data/jkerriga/8DayLST/even/Pzen.2456242.30605.uvcRREcACOTUcHPA'
 chans = 203
 uv = a.miriad.UV(args[0])
-aa = a.cal.get_aa('psa6240_FHD', uv['sdf'], uv['sfreq'], uv['nchan'])
-filters = C.dspec.wedge_width_by_bl(aa, uv['sdf'], chans, offset=30.0)
+aa = a.cal.get_aa('psa6240_FHD', uv['sdf'], uv['sfreq'], chans)
+filters = C.dspec.wedge_width_by_bl(aa, uv['sdf'], chans, offset=15.0)
 del(uv)
 print args
 print filters[(41,49)]
-fb = n.add(filters[(41,49)],chans/2)
+uthresh,lthresh = filters[(41,49)]
 #mir = uvdata.miriad.Miriad()
 for files in args:
     mir = uvdata.miriad.Miriad()
@@ -54,13 +54,17 @@ for files in args:
     delays = n.fft.fftshift(delays)
     delay_max = 30.0/(2.99*10**8)
     ### Moves in 15ns, which puts the sidelobes down to 10^0 for the +15ns so any structure added is *somewhat* negligible
-    delay_bin = (n.abs(delays)<delay_max+48.0*10**(-9)).sum()/2
+    #delay_bin = (n.abs(delays)<delay_max+45.0*10**(-9)).sum()/2
     #print delay_bin
     # Design delay filter
-    print fb
-    w1 = n.ones(n.array(D1_.shape),dtype=complex)#*10**(-14)
+    w1 = n.zeros(n.array(D1_.shape),dtype=complex)#*10**(-14)
+    w1[:,uthresh:lthresh] = 1.
+    w1 = n.fft.fftshift(w1,axes=1)
+    #pl.plot(w1[0,:])
+    #pl.show()
+    print w1.shape
     #w1[:,fb[1]:fb[0]] = n.zeros((shp[0],fb[0]-fb[1]))
-    w1[:,shp[1]/2 -delay_bin:shp[1]/2+delay_bin] = 0#n.zeros((shp[0],2*delay_bin+1),dtype=complex)
+    #w1[:,shp[1]/2 -delay_bin:shp[1]/2+delay_bin] = 0#n.zeros((shp[0],2*delay_bin+1),dtype=complex)
     #W1 = n.fft.fftshift(w1)
     #W1_ = n.fft.fft(W1)
     #Filter delay data
