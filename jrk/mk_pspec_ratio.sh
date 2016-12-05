@@ -60,12 +60,12 @@ for chan in $chans; do
                 sepdir=${poldir}/${sep}
 		oddLSTS=(${ODD_DATAPATH}${sep}/lst.*.*.*.${SUFFIX})
 		evenLSTS=(${EVEN_DATAPATH}${sep}/lst.*.*.*.${SUFFIX})
-		#oddLSTS2=(${ODD_DATAPATH}${sep}/lst.*.*.*.${SUFFIX2})
-		#evenLSTS2=(${EVEN_DATAPATH}${sep}/lst.*.*.*.${SUFFIX2})
-                EVEN_FILES="${evenLSTS[@]:14:23}" #${EVEN_DATAPATH}${sep}/ #lst.*.[345]*.*.${SUFFIX} #uvHBFAL was 3:15
-                ODD_FILES="${oddLSTS[@]:14:23}" #${ODD_DATAPATH}${sep}/ #lst.*.[345]*.*.${SUFFIX} #uvHBFAL
-		#EVEN_FILES2="${evenLSTS2[@]:14:23}"
-		#ODD_FILES2="${oddLSTS2[@]:14:23}"
+		oddLSTS2=(${ODD_DATAPATH}${sep}/lst.*.*.*.${SUFFIX2})
+		evenLSTS2=(${EVEN_DATAPATH}${sep}/lst.*.*.*.${SUFFIX2})
+                EVEN_FILES="${evenLSTS[@]:8:28}" #${EVEN_DATAPATH}${sep}/ #lst.*.[345]*.*.${SUFFIX} #uvHBFAL was 3:15
+                ODD_FILES="${oddLSTS[@]:8:28}" #${ODD_DATAPATH}${sep}/ #lst.*.[345]*.*.${SUFFIX} #uvHBFAL
+		EVEN_FILES2="${evenLSTS2[@]:8:28}"
+		ODD_FILES2="${oddLSTS2[@]:8:28}"
 		echo $EVEN_FILES
                 test -e ${sepdir} || mkdir ${sepdir}
                 LOGFILE=`pwd`/${PREFIX}/${chan}_${pol}_${sep}.log
@@ -83,13 +83,15 @@ for chan in $chans; do
                       --window=${WINDOW}  ${NOPROJ} --output=${sepdir} \
                        ${EVEN_FILES} ${ODD_FILES} 
                 
-                python ${SCRIPTSDIR}/pspec_cov_v003.py -C ${cal} \
-                     -b ${NBOOT} -a ${ANTS} -c ${chan} -p ${pol}\
-                      --window=${WINDOW}  ${NOPROJ} --output=${sepdir} \
-                       ${EVEN_FILES} ${ODD_FILES} 
+                python ${SCRIPTSDIR}/jrk_pspec_cov_v003.py -C ${cal} -b ${NBOOT} \
+                    -a ${ANTS} -c ${chan} -p ${pol} --window=${WINDOW} \
+                      ${NOPROJ} --output=${sepdir} \
+                      --de "${EVEN_FILES}" --do "${ODD_FILES}" --re "${EVEN_FILES2}" --ro "${ODD_FILES2}" \
+                     | tee -a ${LOGFILE}
+
                 
                 echo beginning bootstrap: `date` | tee -a ${LOGFILE} 
-                ${SCRIPTSDIR}/pspec_cov_boot_v002.py --identity ${sepdir}/pspec_boot*npz | tee -a ${LOGFILE} 
+                ${SCRIPTSDIR}/jrk_pspec_cov_boot_v002.py --identity ${sepdir}/pspec_boot*npz | tee -a ${LOGFILE} 
                 echo complete! `date`| tee -a ${LOGFILE} 
                 mv pspec.npz ${sepdir}/
                 PIDS="${PIDS} "$!
