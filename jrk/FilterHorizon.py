@@ -13,7 +13,7 @@ o = optparse.OptionParser()
 opts,args = o.parse_args(sys.argv[1:])
 #window='blackman-harris'
 #dir='/users/jkerriga/data/jkerriga/8DayLST/even/Pzen.2456242.30605.uvcRREcACOTUcHPA'
-chans = 203
+chans = 2048
 uv = a.miriad.UV(args[0])
 aa = a.cal.get_aa('psa6240_FHD', uv['sdf'], uv['sfreq'], chans)
 filters = C.dspec.wedge_width_by_bl(aa, uv['sdf'], chans, offset=15.0)
@@ -32,10 +32,10 @@ for files in args:
     d1 = mir.data_array[:,0,:,0]*n.logical_not(mir.flag_array[:,0,:,0]).astype(float)
     #bh = scipy.signal.chebwin(203,400,sym=True)
     #bh = scipy.signal.tukey(203,0.1,sym=True)
-    #bh = a.dsp.gen_window(151,window='blackman-harris').astype(complex)
-    bh = n.ones(151,dtype=complex)
+    bh = a.dsp.gen_window(203,window='blackman-harris').astype(complex)
+    #bh = n.ones(203,dtype=complex)
     bh1 = n.zeros(chans,dtype=complex)
-    bh1[15:166] = bh
+    bh1[0:203] = bh
     d2 = n.zeros((d1.shape[0],chans),dtype=complex)
     d2[:,0:203] = d1[:,:]
     #d1[:,14:167] = d1[:,14:167]*bh
@@ -75,10 +75,10 @@ for files in args:
     #amp = n.convolve(bh1,W1_[0,:],mode='same')
     DD1 = n.fft.ifftshift(convD1,axes=1)
     dd1 = n.fft.ifft(DD1,axis=1)
-    #dd1[:,14:167] = dd1[:,14:167]/bh
+    #dd1[:,15:166] = dd1[:,15:166]/bh
     #dd1 = n.where(flg>0,dd1/bh1,0)
     
-    mir.data_array[:,0,:,0] = dd1[:,0:203]
+    mir.data_array[:,0,:,0] = dd1[:,0:203]/bh1[0:203]
     #mir.data_array[:,0,:,0] = mir.data_array[:,0,:,0] - dd1[:,0:203]
     
     mir.flag_array[n.isnan(mir.data_array)] = True
