@@ -19,8 +19,14 @@ o.add_option('--omnipath',dest='omnipath',default='',type='string',
             help='Path to save .npz files. Include final / in path.')
 o.add_option('--ba',dest='ba',default=None,
             help='Antennas to exclude, separated by commas.')
+o.add_option('--flength',dest='flength',default=None,
+             help='a threshold for baseline lengths to use, in meters')
 o.add_option('--ftype', dest='ftype', default='', type='string',
             help='Type of the input file, .uvfits, or miriad, or fhd, to read fhd, simply type in the path/obsid')
+o.add_option('--tave', dest='tave', default=False, action='store_true',
+             help='choose to average data over time before calibration or not')
+o.add_option('--gave', dest='gave', default=False, action='store_true',
+             help='choose to average solution over time after calibration or not')
 o.add_option('--iftxt', dest='iftxt', default=False, action='store_true',
             help='A switch to write the npz info to a ucla format txt file or not')
 o.add_option('--iffits', dest='iffits', default=False, action='store_true',
@@ -34,7 +40,6 @@ files = {}
 g0 = {} #firstcal gains
 if opts.calpar != None: #create g0 if txt file is provided
     fname = opts.calpar
-    print '   Reading: ', fname
     if fname.endswith('.txt'):
         f = open(fname,'r')
         Ntimes = []
@@ -66,40 +71,20 @@ if opts.calpar != None: #create g0 if txt file is provided
                 g0[pp][ant] = g0[pp][ant].reshape(len(Ntimes),len(Nfreqs))
     elif fname.endswith('.npz'):
         for pp,p in enumerate(pols):
-            g0[p[0]] = {}
-            if p in fname:
-                print '   Reading: ', fname
-                cp = numpy.load(fname)
-                for i in cp.keys():
-                    if i.isdigit():
-                        g0[p[0]][int(i)] = cp[i] / numpy.abs(cp[i])
-            else:
-                new_cp = fname.split('.npz')[0][:-2]+p+'.npz'
-                print '   Reading: ', new_cp
-                cp = numpy.load(new_cp)
-                for i in cp.keys():
-                    if i.isdigit():
-                        g0[p[0]][int(i)] = cp[i] / numpy.abs(cp[i])
+            g0[p[0]] = {}   #obs(or jds).pol.fc.npz
+            fpname = fname.split('.')
+            fpname[-3] = p
+            fpname = '.'.join(fpname)
+            print '   Reading: ', fpname
+            cp = numpy.load(fpname)
+            for i in cp.keys():
+                if i[0].isdigit():
+                    g0[p[0]][int(i[:-1])] = cp[i] / numpy.abs(cp[i])
     elif fname.endswith('.fits'):
         g0 = capo.omni.fc_gains_from_fits(opts.calpar)
         for key1 in g0:
             for key2 in g0[key1]:
                 g0[key1][key2] /= numpy.abs(g0[key1][key2])
-#        poldict = {'EE': 'xx', 'NN': 'yy', 'EN': 'xy', 'NE': 'yx'}
-#        hdu = fits.open(fname)
-#        Ntimes = hdu[0].header['NTIMES']
-#        Nfreqs = hdu[0].header['NFREQS']
-#        Npols = hdu[0].header['NPOLS']
-#        Nants = hdu[0].header['NANTS']
-#        ant_index = hdu[1].data['ANT INDEX'][0:Nants]
-#        pol_list = hdu[1].data['POL'][0:Nfreqs*Nants*Npols].reshape(Npols,Nants*Nfreqs)[:,0]
-#        data_list = hdu[1].data['GAIN'].reshape((Ntimes,Npols,Nfreqs,Nants)).swapaxes(0,1).swapaxes(2,3).swapaxes(1,2) #Npols,Nants,Ntimes,Nfreqs
-#        for ii in range(0,Npols):
-#            polarization = poldict[pol_list[ii]]
-#            if not polarization in pols: continue
-#            g0[polarization[0]] = {}
-#            for jj in range(0,Nants):
-#                g0[polarization[0]][ant_index[jj]]=numpy.conj(data_list[ii][jj]/numpy.abs(data_list[ii][jj]))
     else:
         raise IOError('invalid calpar file')
 
@@ -148,7 +133,9 @@ def calibration(infodict):#dict=[filename, g0, timeinfo, d, f, ginfo, freqs, pol
     ex_ants = infodict['ex_ants']
     print 'Getting reds from calfile'
     print 'generating info:'
-    info = capo.omni.pos_to_info(pos, pols=list(set(''.join([polar]))), ex_ants=ex_ants, crosspols=[polar])
+    filter_length = None
+    if not opts.flength == None: filter_length = float(opts.flength)
+    info = capo.omni.pos_to_info(pos, pols=list(set(''.join([polar]))), filter_length=filter_length, ex_ants=ex_ants, crosspols=[polar])
 
 ### Omnical-ing! Loop Through Compressed Files ###
 
@@ -159,15 +146,8 @@ def calibration(infodict):#dict=[filename, g0, timeinfo, d, f, ginfo, freqs, pol
         for p in [polar]:
             if not g0.has_key(p[0]): g0[p[0]] = {}
             for iant in range(0, ginfo[0]):
-                g0[p[0]][iant] = numpy.ones((ginfo[1],ginfo[2]))
-    elif calpar.endswith('.npz') or calpar.endswith('.fits'):
-        SH = (ginfo[1],ginfo[2])
-        for p in g0.keys():
-            for i in g0[p]: g0[p][i] = numpy.resize(g0[p][i],SH)
-#    else:
-#        SH = (ginfo[1],ginfo[2])
-#        for iant in range(0, ginfo[0]):
-#            if not g0[polar[0]].has_key(iant): g0[polar[0]][iant] = numpy.ones(SH)
+                if opts.tave: g0[p[0]][iant] = numpy.ones((1,ginfo[2]))
+                else: g0[p[0]][iant] = numpy.ones((ginfo[1],ginfo[2]))
 
     t_jd = timeinfo['times']
     t_lst = timeinfo['lsts']
@@ -184,6 +164,18 @@ def calibration(infodict):#dict=[filename, g0, timeinfo, d, f, ginfo, freqs, pol
     m1,g1,v1 = capo.omni.redcal(data,info,gains=g0, removedegen=True) #SAK CHANGE REMOVEDEGEN
     print '   Lincal-ing'
     m2,g2,v2 = capo.omni.redcal(data, info, gains=g1, vis=v1, uselogcal=False, removedegen=True)
+    if opts.tave:
+        for p in g2.keys():
+            for a in g2[p].keys():
+                g2[p][a] = numpy.resize(g2[p][a],(ginfo[1],ginfo[2]))
+        for pp in v2.keys():
+            for bl in v2[pp].keys():
+                v2[pp][bl] = numpy.resize(v2[pp][bl],(ginfo[1],ginfo[2]))
+    if opts.gave:
+        for p in g2.keys():
+            for a in g2[p].keys():
+                gmean = numpy.mean(g2[p][a],axis=0)
+                g2[p][a] = numpy.resize(gmean,(ginfo[1],ginfo[2]))
     xtalk = capo.omni.compute_xtalk(m2['res'], wgts) #xtalk is time-average of residual
     m2['history'] = 'OMNI_RUN: '+''.join(sys.argv) + '\n'
     m2['jds'] = t_jd
@@ -210,12 +202,12 @@ for f,filename in enumerate(args):
     print "  Reading data: " + filename
     if opts.ftype == 'miriad':
         for p in pols:
-            dict0 = capo.wyl.uv_read_v2([filegroup[p]], filetype = 'miriad', antstr='cross',p_list=[p])
+            dict0 = capo.wyl.uv_read_v2([filegroup[p]], filetype = 'miriad', antstr='cross', p_list=[p], tave=opts.tave)
             infodict[p] = dict0[p]
             infodict[p]['filename'] = filegroup[p]
             infodict['name_dict'] = dict0['name_dict']
     else:
-        infodict = capo.wyl.uv_read_v2([filegroup[key] for key in filegroup.keys()], filetype=opts.ftype, antstr='cross', p_list=pols)
+        infodict = capo.wyl.uv_read_v2([filegroup[key] for key in filegroup.keys()], filetype=opts.ftype, antstr='cross', p_list=pols, tave=opts.tave)
         for p in pols:
             infodict[p]['filename'] = filename
     print "  Finish reading."

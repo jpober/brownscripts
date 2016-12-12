@@ -1,7 +1,7 @@
 import numpy as np
 import subprocess, datetime, os
 from astropy.io import fits
-import sys
+import sys, pylab, copy
 
 def writefits(npzfiles, repopath=None, ex_ants=[], name_dict={}):
     ### This function writes the solution from output npz files from omni_run to a fits file.   ### 
@@ -221,5 +221,49 @@ def fc_gains_from_fits(filename):
         for jj in range(0,Nants):
             g0[p][ant_index[jj]] = data_list[ii][jj]
     return g0
+
+def read_ucla_txt(fn,pols={'xx','yy'}):
+    g0 = {}
+    f = open(fn,'r')
+    Ntimes = []
+    Nfreqs = []
+    for line in f:
+        temp = line.split(' ')[:7]
+        if temp[0].startswith('#'): continue
+        temp2 = []
+        for ii, s in enumerate(temp):
+            if ii == 0: continue
+            elif s.strip() == 'EE': s = 'xx'
+            elif s.strip() == 'NN': s = 'yy'
+            elif s.strip() == 'EN': s = 'xy'
+            elif s.strip() == 'NE': s = 'yx'
+            temp2.append(s)
+        if not temp2[2].strip() in pols: continue
+        temp3 = [temp2[2], int(temp2[0]), float(temp2[3]), float(temp2[1]), float(temp2[4]), float(temp2[5])]  #temp3=[pol,ant,jds,freq,real,imag]
+        if not temp3[2] in Ntimes: Ntimes.append(temp3[2])
+        if not temp3[3] in Nfreqs: Nfreqs.append(temp3[3])
+        if not g0.has_key(temp3[0][0]):
+            g0[temp3[0][0]] = {}
+        if not g0[temp3[0][0]].has_key(temp3[1]):
+            g0[temp3[0][0]][temp3[1]] = []
+        gg = complex(temp3[4],temp3[5])
+        g0[temp3[0][0]][temp3[1]].append(gg)
+    for pp in g0.keys():
+        for ant in g0[pp].keys():
+            g0[pp][ant] = np.array(g0[pp][ant])
+            g0[pp][ant] = g0[pp][ant].reshape(len(Ntimes),len(Nfreqs))
+    return g0
+
+def plot_cal(cal1,cal2):
+    c1 = copy.copy(cal1[0])
+    c2 = copy.copy(cal2[0])
+    for ii in range(0,c1.size):
+        if c1[ii] == 0: c1[ii] = np.nan
+    for ii in range(0,c2.size):
+        if c2[ii] == 0: c2[ii] = np.nan
+    pylab.plot(np.abs(c1),color='red')
+    pylab.plot(np.abs(c2),color='blue')
+    pylab.show()
+
 
 

@@ -78,27 +78,6 @@ def compute_reds(nant, pols, *args, **kwargs):
         for pj in pols:
             reds += [[(Antpol(i,pi,nant),Antpol(j,pj,nant)) for i,j in gp] for gp in _reds]
     return reds
- 
-#def aa_to_info(aa, pols=['x'], **kwargs):
-#    '''Use aa.ant_layout to generate redundances based on ideal placement.
-#    The remaining arguments are passed to omnical.arrayinfo.filter_reds()'''
-#    layout = aa.ant_layout
-#    nant = len(aa)
-#    antpos = -np.ones((nant*len(pols),3)) # -1 to flag unused antennas
-#    xs,ys = np.indices(layout.shape)
-#    for ant,x,y in zip(layout.flatten(), xs.flatten(), ys.flatten()):
-#        for z,pol in enumerate(pols):
-#            z = 2**z # exponential ensures diff xpols aren't redundant w/ each other
-#            i = Antpol(ant,pol,len(aa)) # creates index in POLNUM/NUMPOL for pol
-#            antpos[i,0],antpos[i,1],antpos[i,2] = x,y,z
-#    reds = compute_reds(nant, pols, antpos[:nant],tol=.1) # only first nant b/c compute_reds treats pol redundancy separately
-#    # XXX haven't enforced xy = yx yet.  need to conjoin red groups for that
-#    ex_ants = [Antpol(i,nant).ant() for i in range(antpos.shape[0]) if antpos[i,0] < 0]
-#    kwargs['ex_ants'] = kwargs.get('ex_ants',[]) + ex_ants
-#    reds = filter_reds(reds, **kwargs)
-#    info = RedundantInfo(nant)
-#    info.init_from_reds(reds,antpos)
-#    return info
 
 def aa_to_info(aa, pols=['x'], fcal=False, **kwargs):
     '''Use aa.ant_layout to generate redundances based on ideal placement.
@@ -129,47 +108,14 @@ def aa_to_info(aa, pols=['x'], fcal=False, **kwargs):
     info.init_from_reds(reds,antpos)
     return info
 
-#generate info from real positions
-####################################################################################################
-def aa_pos_to_info(aa, pols=['x'], fcal=False, **kwargs):
-    '''Use aa.ant_layout to generate redundances based on real placement.
-        The remaining arguments are passed to omnical.arrayinfo.filter_reds()'''
-    nant = len(aa)
-    antpos = -np.ones((nant*len(pols),3)) # -1 to flag unused antennas
-    xmin = 0
-    ymin = 0
-    for ant in xrange(nant):  #trying to shift the crd to make sure they are positive
-        bl = aa.get_baseline(0,ant,src='z')
-        x,y = bl[0], bl[1]
-        if x < xmin: xmin = x
-        if y < ymin: ymin = y
-    for ant in xrange(nant):
-        bl = aa.get_baseline(0,ant,src='z')
-        x,y = bl[0] - xmin , bl[1] - ymin   #w is currently not included
-        for z,pol in enumerate(pols):
-            z = 2**z # exponential ensures diff xpols aren't redundant w/ each other
-            i = Antpol(ant,pol,len(aa)) # creates index in POLNUM/NUMPOL for pol
-            antpos[i,0],antpos[i,1],antpos[i,2] = x,y,z
-    reds = compute_reds(nant, pols, antpos[:nant],tol=0.01) # only first nant b/c compute_reds treats pol redundancy separately
-    # XXX haven't enforced xy = yx yet.  need to conjoin red groups for that
-    ex_ants = [Antpol(i,nant).ant() for i in range(antpos.shape[0]) if antpos[i,0] < 0]
-    kwargs['ex_ants'] = kwargs.get('ex_ants',[]) + ex_ants
-    reds = filter_reds(reds, **kwargs)
-    if fcal:
-        info = FirstCalRedundantInfo(nant)
-    else:
-        info = RedundantInfo(nant)
-#info = RedundantInfo(nant)
-    info.init_from_reds(reds,antpos)
-    return info
-####################################################################################################
-
-def pos_to_info(position, pols=['x'], fcal=False, **kwargs):
-### the position is a dictionary, containing only antennas involved in redundant groups.  ###
-### position dict should have keys of ant inds, with values of ideal positions, and a key ###
-### named 'nant', indicate the number of total antennas across the array                  ###
+#generate info from perfect positions
+def pos_to_info(position, pols=['x'], fcal=False, filter_length=None, **kwargs):
+### the position is a dictionary, containing only antennas involved in redundant groups.    ###
+### position dict should have keys of ant inds, with values of ideal positions, and cable   ###
+### lengths, and a key named 'nant', indicate the number of total antennas across the array ###
     nant = position['nant']
     antpos = -np.ones((nant*len(pols),3))
+    redinfo = np.zeros((nant*len(pols),3))
     xmin = 0
     ymin = 0
     for key in position.keys():
@@ -180,12 +126,23 @@ def pos_to_info(position, pols=['x'], fcal=False, **kwargs):
         try:
             x = position[ant]['top_x'] - xmin + 0.1
             y = position[ant]['top_y'] - ymin + 0.1
+            cable = position[ant]['cable']
         except(KeyError): continue
         for z, pol in enumerate(pols):
             z = 2**z
             i = Antpol(ant,pol,nant)
             antpos[i,0],antpos[i,1],antpos[i,2] = x,y,z
-    reds = compute_reds(nant, pols, antpos[:nant],tol=0.01)
+            redinfo[i,0],redinfo[i,1],redinfo[i,2] = x,y,cable*z
+    reds = compute_reds(nant, pols, redinfo[:nant],tol=0.01)
+    ubls = None
+    if not filter_length == None:
+        ubls = []
+        for r in reds:
+            bli = int(r[0][0])
+            blj = int(r[0][1])
+            length = np.linalg.norm(antpos[blj]-antpos[bli])
+            if length < filter_length: ubls.append((bli,blj))
+        kwargs['ubls'] = kwargs.get('ubls',[]) + ubls
     ex_ants = [Antpol(i,nant).ant() for i in range(antpos.shape[0]) if antpos[i,0] < 0]
     kwargs['ex_ants'] = kwargs.get('ex_ants',[]) + ex_ants
     reds = filter_reds(reds, **kwargs)
@@ -271,10 +228,19 @@ def to_npz(filename, meta, gains, vismdl, xtalk):
             d['(%d,%d) %s' % (bl[0],bl[1],pol)] = xtalk[pol][bl]
     np.savez(filename,**d)
 
-def from_npz(filename, verbose=False):
+def from_npz(filename, pols=None, bls=None, ants=None, verbose=False):
     '''Reconstitute results from to_npz, returns meta, gains, vismdl, xtalk, each
-    keyed first by polarization, and then by bl/ant/keyword.'''
+    keyed first by polarization, and then by bl/ant/keyword.
+    Optional variables:
+    pols: list of polarizations. default: None, return all
+    bls: list of baselines. default: None, return all
+    ants: list of antennas for gain. default: None, return all
+    '''
     if type(filename) is str: filename = [filename]
+    if type(pols) is str: pols = [pols]
+    if type(bls) is tuple and type(bls[0]) is int: bls = [bls]
+    if type(ants) is int: ants = [ants]
+    #filename = np.array(filename)
     meta, gains, vismdl, xtalk = {}, {}, {}, {}
     def parse_key(k):
         bl,pol = k.split()
@@ -283,22 +249,47 @@ def from_npz(filename, verbose=False):
     for f in filename:
         if verbose: print 'Reading', f
         npz = np.load(f)
-        for k in [f for f in npz.files if f.startswith('<')]:
-            pol,bl = parse_key(k)
-            if not vismdl.has_key(pol): vismdl[pol] = {}
-            vismdl[pol][bl] = vismdl[pol].get(bl,[]) + [np.copy(npz[k])]
-        for k in [f for f in npz.files if f.startswith('(')]:
-            pol,bl = parse_key(k)
-            if not xtalk.has_key(pol): xtalk[pol] = {}
-            dat = np.resize(np.copy(npz[k]),vismdl[pol][vismdl[pol].keys()[0]][0].shape) #resize xtalk to be like vismdl (with a time dimension too)
-            if xtalk[pol].get(bl) is None: #no bl key yet
-                xtalk[pol][bl] = dat
-            else: #append to array
-                xtalk[pol][bl] = np.vstack((xtalk[pol].get(bl),dat))
-        for k in [f for f in npz.files if f[0].isdigit()]:
-            pol,ant = k[-1:],int(k[:-1])
-            if not gains.has_key(pol): gains[pol] = {}
-            gains[pol][ant] = gains[pol].get(ant,[]) + [np.copy(npz[k])]
+        for k in npz.files:
+            if k[0].isdigit():
+                pol,ant = k[-1:],int(k[:-1])
+                if (pols==None or pol in pols) and (ants==None or ant in ants): 
+                    if not gains.has_key(pol): gains[pol] = {}
+                    gains[pol][ant] = gains[pol].get(ant,[]) + [np.copy(npz[k])]
+            try: pol,bl = parse_key(k)
+            except(ValueError): continue
+            if (pols is not None) and (pol not in pols): continue
+            if (bls is not None) and (bl not in bls): continue
+            if k.startswith('<'):
+                if not vismdl.has_key(pol): vismdl[pol] = {}
+                vismdl[pol][bl] = vismdl[pol].get(bl,[]) + [np.copy(npz[k])]
+            elif k.startswith('('):
+                if not xtalk.has_key(pol): xtalk[pol] = {}
+                try:
+                    dat = np.resize(np.copy(npz[k]),vismdl[pol][vismdl[pol].keys()[0]][0].shape) #resize xtalk to be like vismdl (with a time dimension too)
+                except(KeyError):
+                    for tempkey in npz.files: 
+                        if tempkey.startswith('<'): break
+                    dat = np.resize(np.copy(npz[k]),npz[tempkey].shape) #resize xtalk to be like vismdl (with a time dimension too)
+                if xtalk[pol].get(bl) is None: #no bl key yet
+                    xtalk[pol][bl] = dat
+                else: #append to array
+                    xtalk[pol][bl] = np.vstack((xtalk[pol].get(bl),dat))
+        # for k in [f for f in npz.files if f.startswith('<')]:
+        #     pol,bl = parse_key(k)
+        #     if not vismdl.has_key(pol): vismdl[pol] = {}
+        #     vismdl[pol][bl] = vismdl[pol].get(bl,[]) + [np.copy(npz[k])]
+        # for k in [f for f in npz.files if f.startswith('(')]:
+        #     pol,bl = parse_key(k)
+        #     if not xtalk.has_key(pol): xtalk[pol] = {}
+        #     dat = np.resize(np.copy(npz[k]),vismdl[pol][vismdl[pol].keys()[0]][0].shape) #resize xtalk to be like vismdl (with a time dimension too)
+        #     if xtalk[pol].get(bl) is None: #no bl key yet
+        #         xtalk[pol][bl] = dat
+        #     else: #append to array
+        #         xtalk[pol][bl] = np.vstack((xtalk[pol].get(bl),dat))
+        # for k in [f for f in npz.files if f[0].isdigit()]:
+        #     pol,ant = k[-1:],int(k[:-1])
+        #     if not gains.has_key(pol): gains[pol] = {}
+        #     gains[pol][ant] = gains[pol].get(ant,[]) + [np.copy(npz[k])]
         kws = ['chi','hist','j','l','f']
         for kw in kws:
             for k in [f for f in npz.files if f.startswith(kw)]:
@@ -322,7 +313,7 @@ class FirstCal(object):
         self.wgts = wgts
         #if wgts != None: self.wgts = wgts
         #else: self.wgts = np.ones_like(self.data)
-    def data_to_delays(self, verbose=False, **kwargs):
+    def data_to_delays(self, **kwargs):
         '''data = dictionary of visibilities. 
            info = FirstCalRedundantInfo class
            can give it kwargs:
@@ -334,11 +325,7 @@ class FirstCal(object):
                 1. baseline pair : delays
                 2. baseline pari : offset 
         '''
-        window=kwargs.get('window','none')
-        tune=kwargs.get('tune',True)
-        plot=kwargs.get('plot',False)
-        clean=kwargs.get('clean',1e-4)
-#        use_offset = kwargs.get('use_offset',False)
+        verbose = kwargs.get('verbose', False)
         blpair2delay = {}
         blpair2offset = {}
         dd = self.info.order_data(self.data)
@@ -350,51 +337,42 @@ class FirstCal(object):
             w1 = ww[:,:,self.info.bl_index(bl1)]
             d2 = dd[:,:,self.info.bl_index(bl2)]
             w2 = ww[:,:,self.info.bl_index(bl2)]
-            if True:
-                delay,offset = red.redundant_bl_cal_simple(d1,w1,d2,w2,self.fqs,window=window,tune=tune,plot=plot,verbose=verbose,clean=clean)
-            if False:
-                _,(delay,offset),_ = red.redundant_bl_cal(d1,w1,d2,w2,self.fqs,window=window,verbose=verbose,use_offset=use_offset)
+            delay,offset = red.redundant_bl_cal_simple(d1,w1,d2,w2,self.fqs,**kwargs)
             blpair2delay[(bl1,bl2)] = delay
             blpair2offset[(bl1,bl2)] = offset
         return blpair2delay, blpair2offset
     def get_N(self,nblpairs):
         return sps.eye(nblpairs) 
-    def get_M(self, verbose=False, **kwargs):
-        M = np.zeros((len(self.info.bl_pairs),1))
-        O = np.zeros((len(self.info.bl_pairs),1))
-        blpair2delay,blpair2offset = self.data_to_delays(verbose=verbose, **kwargs)
+    def get_M(self, **kwargs):
+        blpair2delay,blpair2offset = self.data_to_delays(**kwargs)
+        sz = len(blpair2delay[blpair2delay.keys()[0]])
+        M = np.zeros((len(self.info.bl_pairs),sz))
+        O = np.zeros((len(self.info.bl_pairs),sz))
         for pair in blpair2delay:
-            M[self.info.blpair_index(pair)] = blpair2delay[pair]
-            O[self.info.blpair_index(pair)] = blpair2offset[pair]
+            M[self.info.blpair_index(pair),:] = blpair2delay[pair]
+            O[self.info.blpair_index(pair),:] = blpair2offset[pair]
             
         return M,O
-    def run(self, verbose=False, offset=False, **kwargs):
+    def run(self, **kwargs):
+        verbose = kwargs.get('verbose', False)
+        offset = kwargs.get('offset', False)
         #make measurement matrix 
         print "Geting M,O matrix"
-        self.M,self.O = self.get_M(verbose=verbose, **kwargs)
-        #self.M = np.append(self.M, [0.0,0.0,0.0])
-        #self.O = np.append(self.O, [0.0,0.0,0.0])
-        #make noise matrix
-        #N = self.get_N(len(self.info.bl_pairs)+3) 
+        self.M,self.O = self.get_M(**kwargs)
         print "Geting N matrix"
-        #import IPython; IPython.embed()
         N = self.get_N(len(self.info.bl_pairs)) 
         #self._N = np.linalg.inv(N)
         self._N = N #since just using identity now
+
         #get coefficients matrix,A
         self.A = sps.csr_matrix(self.info.A)
         print 'Shape of coefficient matrix: ', self.A.shape
-#        ones = np.ones((1,self.A.shape[1]))
-        #index:antenna => 9:80, 11:104, 13:53
-#        deg1 = np.zeros((1,self.A.shape[1])); deg1[:,9] = 1.0; deg1[:,11] = 1.0
-#        deg2 = np.zeros((1,self.A.shape[1])); deg2[:,9] = 1.0; deg2[:,13] = 1.0
-#        self.A = np.concatenate([self.A,ones,deg1,deg2])
-        #solve for delays
+
+#        solve for delays
         print "Inverting A.T*N^{-1}*A matrix"
         invert = self.A.T.dot(self._N.dot(self.A)).todense() #make it dense for pinv
-#        invert = np.dot(self.A.T,np.dot(self._N,self.A))
         dontinvert = self.A.T.dot(self._N.dot(self.M)) #converts it all to a dense matrix
-        #definitely want to use pinv here and not solve since invert is probably singular. 
+#        definitely want to use pinv here and not solve since invert is probably singular. 
         self.xhat = np.dot(np.linalg.pinv(invert),dontinvert)
         #solve for offset
         if offset:
@@ -403,7 +381,6 @@ class FirstCal(object):
             dontinvert =self.A.T.dot(self._N.dot(self.O))
             self.ohat = np.dot(np.linalg.pinv(invert),dontinvert)
             #turn solutions into dictionary
-#            import IPython; IPython.embed()
             return dict(zip(self.info.subsetant,zip(self.xhat,self.ohat)))
         else:
             #turn solutions into dictionary
@@ -425,32 +402,35 @@ def get_phase(fqs,tau, offset=False):
     else:
         return np.exp(-2j*np.pi*fqs*tau)
 
-def save_gains_fc(s,f,pol,filename,ubls=None,ex_ants=None,verbose=False):
+def save_gains_fc(s,fqs,pol,filename,ubls=None,ex_ants=None,verbose=False):
     """
     s: solutions
-    f: frequencies
+    fqs: frequencies
     pol: polarization of single antenna i.e. 'x', or 'y'.
     filename: if a specific file was used (instead of many), change output name
     ubls: unique baselines used to solve for s'
     ex_ants: antennae excluded to solve for s'
     """
 #    if isinstance(filename, list): filename=filename[0] #XXX this is evil. why?
+    NBINS = len(fqs)
     s2 = {}
     for k,i in s.iteritems():
+        #len > 1 means that one is using the "tune" parameter in omni.firstcal
         if len(i)>1:
-            #len > 1 means that one is using the "tune" parameter in omni.firstcal
-            s2[str(k)+pol] = get_phase(f,i,offset=True).reshape(1,-1) #reshape plays well with omni apply
+            s2[str(k)+pol] = get_phase(fqs,i,offset=True).T
             s2['d'+str(k)] = i[0]
+            s2['o'+str(k)] = i[1]
             if verbose: print 'dly=%f , off=%f'%i
         else:
-            s2[str(k)+pol] = omni.get_phase(f,i).reshape(1,-1) #reshape plays well with omni apply
+            s2[str(k)+pol] = get_phase(fqs,i).T #reshape plays well with omni apply
             s2['d'+str(k)] = i
             if verbose: print 'dly=%f'%i
     if not ubls is None: s2['ubls']=ubls
     if not ex_ants is None: s2['ex_ants']=ex_ants
+    s2['freqs']=fqs#in GHz
     outname='%s.fc.npz'%filename
     import sys
     s2['cmd'] = ' '.join(sys.argv)
-    s2['freqs'] = f*1e9 # in Hz
+    s2['freqs'] = fqs*1e9 # in Hz
     print 'Saving fcgains to %s'%outname
     np.savez(outname,**s2)
