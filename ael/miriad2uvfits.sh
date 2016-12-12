@@ -5,34 +5,36 @@ unset obs_list
 
 basepath=`pwd`
 
-if [ -d "MIRIAD" ]; then
-	cd MIRIAD
+if [ -d "UVFITS" ]; then
+	cd UVFITS
 	done=($(ls -d *))
 	cd ..
 fi
 
-if [ ! -d "MIRIAD" ]; then
-	mkdir MIRIAD
+if [ ! -d "UVFITS" ]; then
+	mkdir UVFITS
 fi
 
-files=($(ls vis_data/*flags.sav))
+
+if [ $# -eq 0 ];then
+	files=($(ls -d *))
+else
+	files=( "$@" )
+fi
 
 for file in ${files[@]}; do
-    #obsid=`echo $file | awk -F'[/.]' '{print $2}'`
-    #endpoint=$(( ${#file} - 4 ))
-    #echo $endpoint
-    obsid=${file:9:${#file}}
-    obsid=${obsid%"_flags.sav"}
+    obsid=`echo $file `
     if [[ " ${done[@]} " =~ " $obsid " ]]; then
     	continue
     else
+	echo $obsid
     	obs_list+=($obsid)
     fi
 done
 
 nobs=${#obs_list[@]}
 
-sbatch --mem=30G -t 01:10:00 -n 5 --array=0-$(($nobs - 1)) --export=path=$basepath /gpfs_home/alanman/extra_scripts/convert_miriad_job.sh ${obs_list[@]}
+sbatch --mem=30G -t 01:10:00 -n 5 --array=0-$(($nobs - 1)) --export=path=$basepath /gpfs_home/alanman/extra_scripts/miriad2uvfits_job.py ${obs_list[@]}
 
 #/gpfs_home/alanman/extra_scripts/miriad_convert.py . ${obs_list[@]}
 

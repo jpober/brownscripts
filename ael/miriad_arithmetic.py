@@ -3,7 +3,6 @@
 ### Add together UV data_arrays with matching shapes.
 
 import sys, os
-from uvdata.uvdata import UVData
 import numpy as np
 from copy import deepcopy
 import optparse
