@@ -149,10 +149,16 @@ uv = fits.open(args[0])
 D = uv[0]
 hdr = D.header.copy()
 
-ant_1_array = n.int32(D.data.field('ANTENNA1')) - 1
-ant_2_array = n.int32(D.data.field('ANTENNA2')) - 1
-
-baselines=n.dstack((ant_1_array,ant_2_array))[0]
+cols = n.asarray(D.data.dtype.names)
+if 'ANTENNA1' in cols:
+    ant_1_array = n.int32(D.data.field('ANTENNA1')) - 1
+    ant_2_array = n.int32(D.data.field('ANTENNA2')) - 1
+    baselines=n.dstack((ant_1_array,ant_2_array))[0]
+elif 'BASELINE' in cols:
+    baselines=n.int32(D.data.field('BASELINE'))
+else:
+    print "Error: Missing antenna info"
+    sys.exit(1)
 bls = []
 for bl in baselines: bls.append("_".join(map(str,bl)))
 baselines = n.array(bls)    #Roundabout way of ensuring the baseline array consists of pairs of antennas in string format

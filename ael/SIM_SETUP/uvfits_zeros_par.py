@@ -9,7 +9,7 @@ import ephem
 #from uvdata.uvbase import UVBase
 import uvdata.parameter as uvp
 import uvdata.utils as utils
-from uvdata.uvdata import UVData
+from uvdata import UVData
 
 ## NB -- pyuvdata and uvfits use Hz and Seconds for everything. AIPY assumes GHz and ns.
 
@@ -65,6 +65,7 @@ for key, val in _instr_params.iteritems():
 
 # Generate an antenna array from a cal file.
 aa = a.cal.get_aa(args[0].split('.')[0], uvd.channel_width/1e9, uvd.sfreq/1e9, uvd.Nfreqs)  #Saved in Hz, AIPY expects GHz
+
 Nants = len(aa)
 
 #Set telescope parameters
@@ -160,7 +161,7 @@ uvd.Nblts = len(uvd.time_array)    #nbls * Ntimes
 
 halftime = t0 + (uvd.Ntimes/2.)*dt
 
-t = halftime   # + dt
+t = t0 #halftime   # + dt
 
 aa.set_jultime(t)
 RA = str(aa.sidereal_time())
@@ -201,7 +202,7 @@ del uvw_array
 
 #TODO --- Check line below. uvd needs a flag array. True = flagged
 uvd.flag_array = np.zeros(shape=uvd.data_array.shape, dtype=np.bool)
-uvd.nsample_array = np.ones(shape=uvd.data_array.shape, dtype=np.intc)
+uvd.nsample_array = np.ones(shape=uvd.data_array.shape, dtype=float)
 
 
 extra_attrs=[atr for atr in dir(uvd) if not atr.startswith('__') if not atr in default_attrs]
@@ -220,9 +221,9 @@ epoch = uvd.juldate2ephem(t0)
 
 uvd.set_lsts_from_time_array()
 
-#uvd.phase_to_time(time=uvd.time_array[0])
-#uvd.phase_to_time(time=halftime)
-uvd.phase(ra=RA, dec=dec, epoch=epoch)
+uvd.phase_to_time(time=uvd.time_array[0])
+#uvd.phase_to_time(time=t0)
+#uvd.phase(ra=RA, dec=dec, epoch=epoch)
 
 #Fix to the phase center:
 #offset = ephem.degrees(0.0031524455709845967*180./np.pi)
@@ -232,6 +233,8 @@ uvd.phase(ra=RA, dec=dec, epoch=epoch)
 if nout > 1:
      ofiu = ofile.split(".")[0] +"_"  +  str(en) + ".uvfits"
      ofim = ofile.split(".")[0] +"_"  +  str(en)   # For MIRIAD
+elif nout == 1:
+     ofiu = ofile.spli(".")[0] + ".uvfits"
 
 print ofiu
 uvd.write_uvfits(ofiu, spoof_nonessential=True)
@@ -240,10 +243,10 @@ uvd.write_uvfits(ofiu, spoof_nonessential=True)
 #uvd.data_array[1::3,0,10:300,0] = np.array([np.linspace(0,100,56) for j in range(290)]).T
 #uvd.write_miriad(ofim, clobber=True)
 
-hdu = fits.open(ofiu,mode='update')
+#hdu = fits.open(ofiu,mode='update')
 
-hdu[0].header['RAPHASE'] = 0.0
-hdu[0].header['DECPHASE'] = -27.0
+#hdu[0].header['RAPHASE'] = 0.0
+#hdu[0].header['DECPHASE'] = -27.0
 
-hdu.flush()
-hdu.close()
+#hdu.flush()
+#hdu.close()
