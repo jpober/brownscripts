@@ -115,7 +115,7 @@ def pos_to_info(position, pols=['x'], fcal=False, filter_length=None, **kwargs):
 ### lengths, and a key named 'nant', indicate the number of total antennas across the array ###
     nant = position['nant']
     antpos = -np.ones((nant*len(pols),3))
-    redinfo = np.zeros((nant*len(pols),3))
+#    redinfo = np.zeros((nant*len(pols),3))
     xmin = 0
     ymin = 0
     for key in position.keys():
@@ -126,14 +126,14 @@ def pos_to_info(position, pols=['x'], fcal=False, filter_length=None, **kwargs):
         try:
             x = position[ant]['top_x'] - xmin + 0.1
             y = position[ant]['top_y'] - ymin + 0.1
-            cable = position[ant]['cable']
+#            cable = position[ant]['cable']
         except(KeyError): continue
         for z, pol in enumerate(pols):
             z = 2**z
             i = Antpol(ant,pol,nant)
             antpos[i,0],antpos[i,1],antpos[i,2] = x,y,z
-            redinfo[i,0],redinfo[i,1],redinfo[i,2] = x,y,cable*z
-    reds = compute_reds(nant, pols, redinfo[:nant],tol=0.01)
+#            redinfo[i,0],redinfo[i,1],redinfo[i,2] = x,y,cable*z
+    reds = compute_reds(nant, pols, antpos[:nant],tol=0.01)
     ubls = None
     if not filter_length == None:
         ubls = []
@@ -154,7 +154,30 @@ def pos_to_info(position, pols=['x'], fcal=False, filter_length=None, **kwargs):
     return info
 
 
-def redcal(data, info, xtalk=None, gains=None, vis=None,removedegen=False, uselogcal=True, maxiter=50, conv=1e-3, stepsize=.3, computeUBLFit=True, trust_period=1):
+def cal_reds_from_pos(position):
+    nant = position['nant']
+    antpos = -np.ones((nant,3))
+    xmin = 0
+    ymin = 0
+    for key in position.keys():
+        if key == 'nant': continue
+        if position[key]['top_x'] < xmin: xmin = position[key]['top_x']
+        if position[key]['top_y'] < ymin: ymin = position[key]['top_y']
+    for ant in range(0,nant):
+        try:
+            x = position[ant]['top_x'] - xmin + 0.1
+            y = position[ant]['top_y'] - ymin + 0.1
+        except(KeyError): continue
+        z = 0
+        i = ant
+        antpos[i,0],antpos[i,1],antpos[i,2] = x,y,z
+    reds = omnical.arrayinfo.compute_reds(antpos,tol=0.01)
+    ex_ants = [i for i in range(antpos.shape[0]) if antpos[i,0] < 0]
+    reds = omnical.arrayinfo.filter_reds(reds,ex_ants=ex_ants)
+    return reds
+
+
+def redcal(data, info, xtalk=None, gains=None, vis=None,removedegen=False, uselogcal=True, maxiter=150, conv=1e-3, stepsize=.3, computeUBLFit=True, trust_period=1):
     #add layer to support new gains format
     if gains:
         _gains = {}

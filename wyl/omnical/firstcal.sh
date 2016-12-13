@@ -1,9 +1,9 @@
 #!/bin/bash
 
-#SBATCH -J omniapply
+#SBATCH -J firstcal
 
 obsids=("$@")
 obs=${obsids[$SLURM_ARRAY_TASK_ID]}
 
-python /users/wl42/OmniCal/capo/wyl/scripts/omni_apply_multi.py -p 'xx,yy' --omnipath='./omni_sol/%s.npz' --intype='uvfits' $obs
+python /users/wl42/OmniCal/capo/wyl/scripts/firstcal_capecod.py -p 'xx,yy' -C $poscal --ftype='uvfits' $obs
 #python omni_run_multi.py -p $pol -C $poscal --ftype='uvfits' --iffits --omnipath='./' $obs

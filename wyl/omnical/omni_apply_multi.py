@@ -14,6 +14,8 @@ o.add_option('--xtalk',dest='xtalk',default=False,action='store_true',
             help='Toggle: apply xtalk solutions to data. Default=False')
 o.add_option('--omnipath',dest='omnipath',default='%s.npz',type='string',
             help='Format string (e.g. "path/%s.npz", where you actually type the "%s") which converts the input file name to the omnical npz path/file.')
+o.add_option('--npz',dest='npz',default=None,type='string',
+             help='specify npz file names, (format: path/name, without .pol.npz), otherwise find npz according to obsid and omnipath')
 o.add_option('--outtype', dest='outtype', default='uvfits', type='string',
              help='Type of the output file, .uvfits, or miriad, or fhd')
 o.add_option('--intype', dest='intype', default=None, type='string',
@@ -63,14 +65,17 @@ for f,filename in enumerate(args):
     Nblts = uvi.Nblts
     Nfreqs = uvi.Nfreqs
     Nbls = uvi.Nbls
-    pollist = list(uvi.polarization_array)
+    pollist = uvi.polarization_array
 
     #find npz for each pol, then apply
     for ip,p in enumerate(pols):
-        omnifile = opts.omnipath % (filename.split('/')[-1]+'.'+p)
+        if not opts.npz == None:
+            omnifile = opts.npz + '.' + p + '.npz'
+        else:
+            omnifile = opts.omnipath % (filename.split('/')[-1]+'.'+p)
         print '  Reading and applying:', omnifile
         _,gains,_,xtalk = capo.omni.from_npz(omnifile) #loads npz outputs from omni_run
-        pid = pollist.index(aipy.miriad.str2pol[p])
+        pid = numpy.where(pollist == aipy.miriad.str2pol[p])[0][0]
         for ii in range(0,Nblts):
             a1 = uvi.ant_1_array[ii]
             a2 = uvi.ant_2_array[ii]
