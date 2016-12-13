@@ -1,3 +1,5 @@
+#!/bin/env python
+
 from scipy.io import readsav
 import matplotlib.pyplot as plt
 import numpy as np

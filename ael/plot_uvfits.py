@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/bin/env python
 """
 Creates waterfall plots from Miriad UV files.  Can tile multiple plots
 on one window, or plot just a single baseline.  When taking the delay
@@ -13,7 +13,8 @@ Author: Aaron Parsons, Griffin Foster
 
 import aipy as a, numpy as n, pylab as p, sys, optparse
 from astropy.io import fits
-from uvdata import UVData   #baselines_to_antnums, antnums_to_baselines
+from uvdata import UVData  
+from uvdata.telescopes import get_telescope
 from astropy.time import Time
 
 
@@ -100,6 +101,29 @@ def data_mode(data, mode='abs'):
     else: raise ValueError('Unrecognized plot mode.')
     return data
 
+#def baseline_to_antnums(baseline):
+#        """
+#	(From pyuvdata)
+#        Get the antenna numbers corresponding to a given baseline number.
+#
+#        Args:
+#            baseline: integer baseline number
+#
+#        Returns:
+#            tuple with the two antenna numbers corresponding to the baseline.
+#        """
+#        if self.Nants_telescope  2048:
+#            raise StandardError('error Nants={Nants}>2048 not '
+#                                'supported'.format(Nants=self.Nants_telescope))
+#        if n.min(baseline) > 2**16:
+#            ant2 = (baseline - 2**16) % 2048 - 1
+#            ant1 = (baseline - 2**16 - (ant2 + 1)) / 2048 - 1
+#        else:
+#            ant2 = (baseline) % 256 - 1
+#            ant1 = (baseline - (ant2 + 1)) / 256 - 1
+#        return n.int32(ant1), n.int32(ant2)
+
+
 def uv_selector(nants, ants=-1, pol_str=-1):
     """Selection options based on string argument for
     antennas (can be 'all', 'auto', 'cross', '0,1,2', or '0_1,0_2') and
@@ -117,7 +141,7 @@ def uv_selector(nants, ants=-1, pol_str=-1):
             elif bl == 'cross': selections['bls'].append('cross')
             else:
                 i,j = bl2ij(bl)
-                if i < j: i,j = j,i
+                if i > j: i,j = j,i
                 selections['bls'].append((i,j))
 #                uv.select('antennae', i, j, include=include)
             if pol != -1:
@@ -156,13 +180,15 @@ if 'ANTENNA1' in cols:
     baselines=n.dstack((ant_1_array,ant_2_array))[0]
 elif 'BASELINE' in cols:
     baselines=n.int32(D.data.field('BASELINE'))
+    nants_tmp = 100 if len(baselines) < 32896 else 300      #Hacky-way of ensuring bl2ij uses the correct convention for arrays with more or less than 256 ants
+    ant_1_array,ant_2_array = bl2ij(baselines)
+    baselines = n.dstack((ant_1_array,ant_2_array))[0]
 else:
     print "Error: Missing antenna info"
     sys.exit(1)
 bls = []
 for bl in baselines: bls.append("_".join(map(str,bl)))
 baselines = n.array(bls)    #Roundabout way of ensuring the baseline array consists of pairs of antennas in string format
-
 
 Nants = int(len(n.unique(ant_1_array.tolist() + ant_2_array.tolist())))
 Nbls = int(Nants*(Nants-1)/2.)
@@ -185,6 +211,14 @@ freqs = freqs/1e9   #Convert from Hz to GHz
 
 latitude = hdr.pop('LAT', None)
 longitude = hdr.pop('LON', None)  #Both in degrees
+if latitude == None:
+	telescope = hdr.pop('TELESCOP',None)
+	if not telescope == None:
+		print 'Warning: Lat/lon not specified in uvfits header. Using known location for '+telescope
+		latitude,longitude,altitude = get_telescope(telescope).telescope_location_lat_lon_alt_degrees
+	else:
+		print "Error: Cannot determine telescope location."
+		sys.exit(1)
 
 chans = a.scripting.parse_chans(opts.chan, nchan)
 freqs = freqs.take(chans)
@@ -227,7 +261,11 @@ for uvfile in args:
 #   uv.select('decimate', opts.decimate, opts.decphs)
 
     data_arr = D.data['DATA'][:,0,0,0,:,:,:]    #Get rid of extra axes
-    time_arr = D.data['DATE']
+    # If the _DATE axis is present, add them together to get the time_arr
+    if '_DATE' in cols:
+	time_arr = D.data['_DATE'].astype(n.double) + D.data['DATE'].astype(n.double)
+    else:
+	time_arr = D.data['DATE'].astype(n.double)
 
     # Need --- List of baseline numbers, referring to where to slice the array.
     #  Currently works by looping over all visibilities in the file and skipping to what's needed.
@@ -246,7 +284,7 @@ for uvfile in args:
             bl = "_".join(map(str,b))
             inds = n.where(baselines==bl)
             d = data_arr[inds,:,pl_ind,:][0]
-            flags = d[:,:,2]
+            flags = d[:,:,2]<=0
             dc = d[:,:,0] + 1j*d[:,:,1]
             d = n.ma.array(dc,mask=flags)
          # Do delay transform if required
