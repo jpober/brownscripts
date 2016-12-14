@@ -20,8 +20,9 @@ name = { 0: '11', 1: '12', 2: '13', 3: '14', 4: '15', 5: '16', 6: '17', 7: '18',
 
 dx=np.load(obs+'.xx.npz')
 dy=np.load(obs+'.yy.npz')
-try: fm=np.load(obs+'_mask.npy')
-except: fm=np.zeros((56,384),dtype=bool)
+fm=np.zeros((56,384),dtype=bool)
+for nn in range(0,384):
+    if nn%16==0 or nn%16==8 or nn%16==15: fm[:,nn]=True
 freq=dx['freqs']
 SH=fm.shape
 sol={}
