@@ -141,7 +141,7 @@ def uv_selector(nants, ants=-1, pol_str=-1):
             elif bl == 'cross': selections['bls'].append('cross')
             else:
                 i,j = bl2ij(bl)
-                if i > j: i,j = j,i
+       #         if i > j: i,j = j,i
                 selections['bls'].append((i,j))
 #                uv.select('antennae', i, j, include=include)
             if pol != -1:
@@ -283,6 +283,9 @@ for uvfile in args:
             key = '%d,%d,%d' % (i,j,pol)   #Key for this plot.
             bl = "_".join(map(str,b))
             inds = n.where(baselines==bl)
+	    if len(inds) == 0:
+		print 'No data to plot.'
+		sys.exit()
             d = data_arr[inds,:,pl_ind,:][0]
             flags = d[:,:,2]<=0
             dc = d[:,:,0] + 1j*d[:,:,1]
@@ -298,7 +301,7 @@ for uvfile in args:
                     d, info = a.deconv.clean(d, ker, tol=opts.clean)
                     d += info['res'] / gain
                 d = n.ma.array(d)
-                d = n.fft.fftshift(d, axes=0)
+                d = n.fft.fftshift(d, axes=1)
 
         # Adding to the times
             for jd in time_arr[inds]:
