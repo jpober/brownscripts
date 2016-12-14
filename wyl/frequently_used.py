@@ -2,12 +2,13 @@ import matplotlib.pyplot as plt
 import matplotlib.colors as colors
 import numpy as np, copy
 
-def plot_vis(data,flag,freq=None,title=''):
+def plot_vis(data,flag=None,freq=None,title=''):
+    if flag is None: flag=np.zeros(data.shape,dtype=bool)
     dd=copy.copy(data)
     for ii in range(0,dd.shape[0]):
         for jj in range(0,dd.shape[1]):
             if flag[ii][jj]: dd[ii][jj] = np.nan
-    if bool(type(freq)):
+    if not freq is None:
         x=[0,freq.size/3,freq.size*2/3,freq.size]
         lx=['%.2f'%(freq[0]/1e6),'%.2f'%(freq[freq.size/3]/1e6),'%.2f'%(freq[freq.size*2/3]/1e6),'%.2f'%(freq[-1]/1e6)]
     fig=plt.figure()
@@ -15,7 +16,7 @@ def plot_vis(data,flag,freq=None,title=''):
     p1.set_title(title+"real")
     i1=p1.imshow(dd.real, interpolation='nearest',aspect='auto')
     fig.colorbar(i1)
-    if bool(type(freq)):
+    if not freq is None:
         p1.set_xticks(x)
         p1.set_xticklabels(lx)
         p1.set_xlabel('frequency(MHz)')
@@ -23,18 +24,19 @@ def plot_vis(data,flag,freq=None,title=''):
     p2.set_title(title+"imag")
     i2=p2.imshow(dd.imag, interpolation='nearest',aspect='auto')
     fig.colorbar(i2)
-    if bool(type(freq)):
+    if not freq is None:
         p2.set_xticks(x)
         p2.set_xticklabels(lx)
         p2.set_xlabel('frequency(MHz)')
     plt.show()
 
-def plot_vis2(data,flag,freq=None,title='',log_plot=False):
+def plot_vis2(data,flag=None,freq=None,title='',log_plot=False):
+    if flag is None: flag=np.zeros(data.shape,dtype=bool)
     dd=copy.copy(data)
     for ii in range(0,dd.shape[0]):
         for jj in range(0,dd.shape[1]):
             if flag[ii][jj]: dd[ii][jj] = np.nan
-    if bool(type(freq)):
+    if not freq is None:
         x=[0,freq.size/3,freq.size*2/3,freq.size]
         lx=['%.2f'%(freq[0]/1e6),'%.2f'%(freq[freq.size/3]/1e6),'%.2f'%(freq[freq.size*2/3]/1e6),'%.2f'%(freq[-1]/1e6)]
     fig=plt.figure()
@@ -45,7 +47,7 @@ def plot_vis2(data,flag,freq=None,title='',log_plot=False):
     else:
         i1=p1.imshow(np.abs(dd), interpolation='nearest',aspect='auto')
     fig.colorbar(i1)
-    if bool(type(freq)):
+    if not freq is None:
         p1.set_xticks(x)
         p1.set_xticklabels(lx)
         p1.set_xlabel('frequency(MHz)')
@@ -53,13 +55,14 @@ def plot_vis2(data,flag,freq=None,title='',log_plot=False):
     p2.set_title(title+"phase")
     i2=p2.imshow(np.angle(dd), interpolation='nearest',aspect='auto')
     fig.colorbar(i2)
-    if bool(type(freq)):
+    if not freq is None:
         p2.set_xticks(x)
         p2.set_xticklabels(lx)
         p2.set_xlabel('frequency(MHz)')
     plt.show()
 
-def plot_vis_xy(data,flag,freq=None,title='',log_plot=False):
+def plot_vis_xy(data,flag=None,freq=None,title='',log_plot=False):
+    if flag is None: flag=np.zeros(data[:,:,0].shape,dtype=bool)
     dd=copy.copy(data)
     for ii in range(0,dd.shape[0]):
         for jj in range(0,dd.shape[1]):
@@ -109,7 +112,8 @@ def plot_vis_xy(data,flag,freq=None,title='',log_plot=False):
     plt.show()
 
 
-def plot_tave_amp(data,flag):
+def plot_tave_amp(data,flag=None):
+    if flag is None: flag=np.zeros(data.shape,dtype=bool)
     dd=copy.copy(data)
     for ii in range(0,dd.shape[0]):
         for jj in range(0,dd.shape[1]):
@@ -117,7 +121,8 @@ def plot_tave_amp(data,flag):
     plt.scatter(np.abs(np.nanmean(dd,axis=0)),marker='+')
     plt.show()
 
-def plot_tave_phs(data,flag):
+def plot_tave_phs(data,flag=None):
+    if flag is None: flag=np.zeros(data.shape,dtype=bool)
     dd=copy.copy(data)
     for ii in range(0,dd.shape[0]):
         for jj in range(0,dd.shape[1]):
@@ -125,7 +130,8 @@ def plot_tave_phs(data,flag):
     plt.scatter(np.angle(np.nanmean(dd,axis=0)),marker='+')
     plt.show()
 
-def plot_vis3(data,flag):
+def plot_vis3(data,flag=None):
+    if flag is None: flag=np.zeros(data.shape,dtype=bool)
     dd=copy.copy(data)
     for ii in range(0,dd.shape[0]):
         for jj in range(0,dd.shape[1]):
@@ -164,3 +170,35 @@ def avoid_flag_filter(arr,mask,tau=1e-7,nres=1024,fqstart=1.6715501e+08,fqend=1.
                 if not m[ii-nn]: ar2[:,ii]=ar2[:,ii-nn]
                 elif not m[(ii+nn)%m.size]: ar2[:,ii]=ar2[:,(ii+nn)%m.size]
     return low_pass_filter(ar2,tau=tau,nres=nres,fqstart=fqstart,fqend=fqend)
+
+def plot_vis_3(d1,d2,d3):
+    fig = plt.figure()
+    p1=fig.add_subplot(3,2,1)
+    p1.set_title("data_amp")
+    i1=p1.imshow(np.abs(d1), interpolation='nearest',aspect='auto')
+    fig.colorbar(i1)
+    p1.xaxis.set_ticklabels([])
+    p2=fig.add_subplot(3,2,2)
+    p2.set_title("data_phs")
+    i2=p2.imshow(np.angle(d1),interpolation='nearest',aspect='auto')
+    fig.colorbar(i2)
+    p2.xaxis.set_ticklabels([])
+    p3=fig.add_subplot(3,2,3)
+    p3.set_title("model_amp")
+    i3=p3.imshow(np.abs(d2),interpolation='nearest',aspect='auto')
+    fig.colorbar(i3)
+    p3.xaxis.set_ticklabels([])
+    p4=fig.add_subplot(3,2,4)
+    p4.set_title("model_phs")
+    i4=p4.imshow(np.angle(d2),interpolation='nearest',aspect='auto')
+    fig.colorbar(i4)
+    p4.xaxis.set_ticklabels([])
+    p5=fig.add_subplot(3,2,5)
+    p5.set_title("sol*model_amp")
+    i5=p5.imshow(np.abs(d3),interpolation='nearest',aspect='auto')
+    fig.colorbar(i5)
+    p6=fig.add_subplot(3,2,6)
+    p6.set_title("sol*model_phs")
+    i6=p6.imshow(np.angle(d3),interpolation='nearest',aspect='auto')
+    fig.colorbar(i6)
+    plt.show()

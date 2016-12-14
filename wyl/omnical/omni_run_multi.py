@@ -123,7 +123,7 @@ def calibration(infodict):#dict=[filename, g0, timeinfo, d, f, ginfo, freqs, pol
     filename = infodict['filename']
     g0 = infodict['g0']
     pos = infodict['position']
-    polar = infodict['pol']
+    p = infodict['pol']
     d = infodict['data']
     f = infodict['flag']
     ginfo = infodict['ginfo']
@@ -135,19 +135,23 @@ def calibration(infodict):#dict=[filename, g0, timeinfo, d, f, ginfo, freqs, pol
     print 'generating info:'
     filter_length = None
     if not opts.flength == None: filter_length = float(opts.flength)
-    info = capo.omni.pos_to_info(pos, pols=list(set(''.join([polar]))), filter_length=filter_length, ex_ants=ex_ants, crosspols=[polar])
+    info = capo.omni.pos_to_info(pos, pols=list(set(''.join([p]))), filter_length=filter_length, ex_ants=ex_ants, crosspols=[p])
 
-### Omnical-ing! Loop Through Compressed Files ###
+    ### Omnical-ing! Loop Through Compressed Files ###
 
-    print '   Calibrating ' + polar + ': ' + filename
+    print '   Calibrating ' + p + ': ' + filename
     
     #if txt file or first cal is not provided, g0 is initiated here, with all of them to be 1.0
     if calpar == None:
-        for p in [polar]:
-            if not g0.has_key(p[0]): g0[p[0]] = {}
-            for iant in range(0, ginfo[0]):
-                if opts.tave: g0[p[0]][iant] = numpy.ones((1,ginfo[2]))
-                else: g0[p[0]][iant] = numpy.ones((ginfo[1],ginfo[2]))
+        if not g0.has_key(p[0]): g0[p[0]] = {}
+        for iant in range(0, ginfo[0]):
+            if opts.tave: g0[p[0]][iant] = numpy.ones((1,ginfo[2]))
+            else: g0[p[0]][iant] = numpy.ones((ginfo[1],ginfo[2]))
+    elif calpar.endswith('.npz'):
+        for key in g0[p[0]].keys():
+            g0_temp = g0[p[0]][key]
+            g0[p[0]][key] = numpy.resize(g0_temp,(ginfo[1],ginfo[2]))
+
 
     t_jd = timeinfo['times']
     t_lst = timeinfo['lsts']
@@ -155,27 +159,27 @@ def calibration(infodict):#dict=[filename, g0, timeinfo, d, f, ginfo, freqs, pol
     data,wgts,xtalk = {}, {}, {}
     m2,g2,v2 = {}, {}, {}
     data = d #indexed by bl and then pol (backwards from everything else)
-    for p in [polar]:
-        wgts[p] = {} #weights dictionary by pol
-        for bl in f: 
-            i,j = bl
-            wgts[p][(j,i)] = wgts[p][(i,j)] = numpy.logical_not(f[bl][p]).astype(numpy.int)
+
+    wgts[p] = {} #weights dictionary by pol
+    for bl in f:
+        i,j = bl
+        wgts[p][(j,i)] = wgts[p][(i,j)] = numpy.logical_not(f[bl][p]).astype(numpy.int)
     print '   Logcal-ing' 
-    m1,g1,v1 = capo.omni.redcal(data,info,gains=g0, removedegen=True) #SAK CHANGE REMOVEDEGEN
+    m1,g1,v1 = capo.omni.redcal(data,info,gains=g0, removedegen=False) #SAK CHANGE REMOVEDEGEN
     print '   Lincal-ing'
-    m2,g2,v2 = capo.omni.redcal(data, info, gains=g1, vis=v1, uselogcal=False, removedegen=True)
+    m2,g2,v2 = capo.omni.redcal(data, info, gains=g1, vis=v1, uselogcal=False, removedegen=False)
     if opts.tave:
-        for p in g2.keys():
-            for a in g2[p].keys():
-                g2[p][a] = numpy.resize(g2[p][a],(ginfo[1],ginfo[2]))
+        for p0 in g2.keys():
+            for a in g2[p0].keys():
+                g2[p0][a] = numpy.resize(g2[p0][a],(ginfo[1],ginfo[2]))
         for pp in v2.keys():
             for bl in v2[pp].keys():
                 v2[pp][bl] = numpy.resize(v2[pp][bl],(ginfo[1],ginfo[2]))
     if opts.gave:
-        for p in g2.keys():
-            for a in g2[p].keys():
-                gmean = numpy.mean(g2[p][a],axis=0)
-                g2[p][a] = numpy.resize(gmean,(ginfo[1],ginfo[2]))
+        for p0 in g2.keys():
+            for a in g2[p0].keys():
+                gmean = numpy.mean(g2[p0][a],axis=0)
+                g2[p0][a] = numpy.resize(gmean,(ginfo[1],ginfo[2]))
     xtalk = capo.omni.compute_xtalk(m2['res'], wgts) #xtalk is time-average of residual
     m2['history'] = 'OMNI_RUN: '+''.join(sys.argv) + '\n'
     m2['jds'] = t_jd
@@ -185,7 +189,7 @@ def calibration(infodict):#dict=[filename, g0, timeinfo, d, f, ginfo, freqs, pol
     if opts.ftype == 'miriad':
         npzname = opts.omnipath+'.'.join(filename.split('/')[-1].split('.')[0:4])+'.npz'
     else:
-        npzname = opts.omnipath+filename.split('/')[-1]+'.'+polar+'.npz'
+        npzname = opts.omnipath+filename.split('/')[-1]+'.'+ p +'.npz'
 
     print '   Saving %s'%npzname
     capo.omni.to_npz(npzname, m2, g2, v2, xtalk)
@@ -202,12 +206,12 @@ for f,filename in enumerate(args):
     print "  Reading data: " + filename
     if opts.ftype == 'miriad':
         for p in pols:
-            dict0 = capo.wyl.uv_read_v2([filegroup[p]], filetype = 'miriad', antstr='cross', p_list=[p], tave=opts.tave)
+            dict0 = capo.wyl.uv_read_omni([filegroup[p]], filetype = 'miriad', antstr='cross', p_list=[p], tave=opts.tave)
             infodict[p] = dict0[p]
             infodict[p]['filename'] = filegroup[p]
             infodict['name_dict'] = dict0['name_dict']
     else:
-        infodict = capo.wyl.uv_read_v2([filegroup[key] for key in filegroup.keys()], filetype=opts.ftype, antstr='cross', p_list=pols, tave=opts.tave)
+        infodict = capo.wyl.uv_read_omni([filegroup[key] for key in filegroup.keys()], filetype=opts.ftype, antstr='cross', p_list=pols, tave=opts.tave)
         for p in pols:
             infodict[p]['filename'] = filename
     print "  Finish reading."

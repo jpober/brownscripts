@@ -27,6 +27,7 @@ SH=fm.shape
 sol={}
 ampmax=1
 ampmin=1
+count=0
 for ii in range(0,128):
     sol[ii]={}
     try: 
@@ -45,7 +46,7 @@ for ii in range(0,128):
     ddy=my.data
     ff=mx.mask
     for jj in range(0,ff.size):
-        if ff[jj] or jj%16==8:
+        if ff[jj] or jj%16==8 or jj%16==1 or jj%16==14:
             ddx[jj]=np.nan
             ddy[jj]=np.nan
     if exist:
@@ -54,6 +55,10 @@ for ii in range(0,128):
         dxmin=np.nanmin((np.abs(ddx)))
         dymin=np.nanmin((np.abs(ddy)))
 #        print dxmax,dymax,dxmin,dymin
+	if count==0:
+		ampmax=dxmax
+		ampmin=dxmin
+		count+=1
         if dxmax>ampmax: ampmax=dxmax
         if dymax>ampmax: ampmax=dymax
         if dxmin<ampmin: ampmin=dxmin

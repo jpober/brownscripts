@@ -21,6 +21,7 @@ opts,args = o.parse_args(sys.argv[1:])
 print opts.plot
 print opts.verbose
 
+#*****************************************************************************
 def flatten_reds(reds):
     freds = []
     for r in reds:
@@ -35,9 +36,9 @@ def firstcal(datdict):
     fqs = fqs/1e9 #  in GHz
     dlys = np.fft.fftshift(np.fft.fftfreq(fqs.size, np.diff(fqs)[0]))
     #gets phase solutions per frequency.
-    info = omni.pos_to_info(datdict['antpos'], fcal=True, ubls=datdict['ubls'], ex_ants=datdict['ex_ants'])
+    info = omni.pos_to_info(datdict['antpos'], pols=[pp[0]], fcal=True, ubls=datdict['ubls'], ex_ants=datdict['ex_ants'])
     fc = omni.FirstCal(datapack,wgtpack,fqs,info)
-    sols = fc.run(tune=True,verbose=False,offset=True,plot=False)
+    sols = fc.run(finetune=True,verbose=opts.verbose,plot=False,noclean=False,offset=False,average=True,window='none')
     
     #Save solutions
     filename = datdict['filename']
@@ -50,10 +51,9 @@ def firstcal(datdict):
     #    embed()
     omni.save_gains_fc(sols,fqs, pp[0], outname, ubls=ubls, ex_ants=ex_ants)
     return (outname+'.fc.npz')
-
+#*****************************************************************************
 
 ### Main ###
-#hera info assuming a hex of 19 and 128 antennas
 exec('from %s import antpos as _antpos'% opts.cal)
 pols = opts.pol.split(',')
 ex_ants = []
@@ -68,13 +68,12 @@ for bl in opts.ubls.split(','):
     except: pass
 print 'Excluding Antennas:',ex_ants
 if len(ubls) != None: print 'Using Unique Baselines:',ubls
-info = omni.pos_to_info(_antpos, fcal=True, ubls=ubls, ex_ants=ex_ants)
-reds = flatten_reds(info.get_reds())
+reds = omni.cal_reds_from_pos(_antpos)
+reds = flatten_reds(reds)
 #redstest = infotest.get_reds()#for plotting
 
 print 'Number of redundant baselines:',len(reds)
 #Read in data here.
-ant_string =','.join(map(str,info.subsetant))
 bl_string = ','.join(['_'.join(map(str,k)) for k in reds])
 
 file_group = []
@@ -95,7 +94,11 @@ for fn in args:
     else:
         raise IOError('invalid filetype, it should be miriad, uvfits, or fhd')
 npzlist = []
-times, data, flags, ginfo, fqs = wyl.uv_read(file_group, filetype=opts.ftype, bl_str=bl_string, p_list=pols)
+times, data, flags, ginfo, fqs, exa = wyl.uv_read_fc(file_group, filetype=opts.ftype, bl_str=bl_string, p_list=pols)
+if len(exa) > 0:
+    for ii in exa:
+        if not ii in ex_ants: ex_ants.append(ii)
+print 'Excluding Antennas:',ex_ants
 arglist = []
 if opts.ftype == 'miriad': fn = '.'.join(args[0].split('.')[0:-2])
 else: fn = args[0]
@@ -120,9 +123,9 @@ print "  Start Parallelism:"
 par = Pool(2)
 npzlist = par.map(firstcal, arglist)
 par.close()
-#npzlist.append(outname+'.fc.npz')
 
-omni.fc_gains_to_fits(npzlist,fn)
+#npzlist.append(outname+'.fc.npz')
+#omni.fc_gains_to_fits(npzlist,fn)
 
 
 

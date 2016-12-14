@@ -173,11 +173,12 @@ def writetxt(npzfiles, repopath, ex_ants=[], name_dict={}):
                     outfile.write("%s, %d, %f, %s, %.8f, %.8f, %.8f, %d\n"%(antstr,aa,df,dp,dt,da.real,da.imag,dfl))
     outfile.close()
 
-def uv_read(filenames, filetype=None, bl_str=None,antstr='cross',p_list = ['xx','yy']):
+def uv_read_fc(filenames, filetype=None, bl_str=None,antstr='cross',p_list = ['xx','yy']):
     info = {'lsts':[], 'times':[]}
     dat, flg = {},{}
     ginfo = [0,0,0]
     freqarr = []
+    ex_ant = []
     if type(filenames) == str: filenames = [filenames]
     for filename in filenames:
         if filetype == 'miriad':
@@ -187,7 +188,7 @@ def uv_read(filenames, filetype=None, bl_str=None,antstr='cross',p_list = ['xx',
             uvdata = data_uvfits()
             uvdata.read_data_only(filename)
         elif filetype == 'fhd':
-            uvdata = data_fhd()       #in this case filename should be a list of files
+            uvdata = data_fhd()   #in this case filename should be a list of files
             uvdata.read_data_only(filename)
         else:
             raise IOError('invalid filetype, it should be miriad, uvfits, or fhd')
@@ -195,16 +196,16 @@ def uv_read(filenames, filetype=None, bl_str=None,antstr='cross',p_list = ['xx',
         blt = uvdata.Nblts
         nbl = uvdata.Nbls
         nfreq = uvdata.Nfreqs
-
-        try: info['times'] = np.append(info['times'],uvdata.time_array[::nbl],axis=0)
-        except: info['times'] = uvdata.time_array[::nbl]
+        
+        ex_ant = find_ex_ant(uvdata)
+        info['times'] = uvdata.time_array[0]
         info['lsts'] = np.array([])   #uvdata.lst_array[::nbl]
         pol = uvdata.polarization_array
         npol = len(pol)
         data = uvdata.data_array
         flag = uvdata.flag_array
-        ant1 = uvdata.ant_1_array
-        ant2 = uvdata.ant_2_array
+        ant1 = uvdata.ant_1_array[:nbl]
+        ant2 = uvdata.ant_2_array[:nbl]
         
 #        if not (0 in ant1 or 0 in ant2):          #if the index starts from 1
 #            ones = np.ones((len(ant1)))
@@ -241,23 +242,19 @@ def uv_read(filenames, filetype=None, bl_str=None,antstr='cross',p_list = ['xx',
             for jj in range(0,npol):
                 pp = aipy.miriad.pol2str[pol[jj]]
                 if not pp in p_list: continue
-                if not dat[bl].has_key(pp):
-                    dat[bl][pp],flg[bl][pp] = [],[]
-                dat[bl][pp] = np.complex64(data[:,0][:,:,jj].reshape(uvdata.Ntimes,uvdata.Nbls,uvdata.Nfreqs)[:,ii])
-                flg[bl][pp] = np.array(flag[:,0][:,:,jj].reshape(uvdata.Ntimes,uvdata.Nbls,uvdata.Nfreqs)[:,ii])
-#                datcopy = np.complex64(data[:,0][:,:,jj].reshape(uvdata.Ntimes,uvdata.Nbls,uvdata.Nfreqs)[:,ii])
-#                flgcopy = np.array(flag[:,0][:,:,jj].reshape(uvdata.Ntimes,uvdata.Nbls,uvdata.Nfreqs)[:,ii])
-#                try: dat[bl][pp] = np.append(dat[bl][pp],datcopy,axis=0)
-#                except: dat[bl][pp] = datcopy
-#                try: flg[bl][pp] = np.append(flg[bl][pp],flgcopy,axis=0)
-#                except: flg[bl][pp] = flgcopy
+                dat_temp = data[:,0][:,:,jj].reshape(uvdata.Ntimes,uvdata.Nbls,uvdata.Nfreqs)[:,ii]
+                flg_temp = flag[:,0][:,:,jj].reshape(uvdata.Ntimes,uvdata.Nbls,uvdata.Nfreqs)[:,ii]
+                dat_ma = np.ma.masked_array(dat_temp, mask=flg_temp)
+                dat_ma = np.mean(dat_ma,axis=0)
+                dat[bl][pp] = np.complex64([dat_ma.data])
+                flg[bl][pp] = np.array([dat_ma.mask])
 
         ginfo[0] = nant
-        ginfo[1] = Nt
+        ginfo[1] = 1
         ginfo[2] = nfreq
-    return info, dat, flg, ginfo, freqarr
+    return info, dat, flg, ginfo, freqarr, ex_ant
 
-def uv_read_v2(filenames, filetype=None, antstr='cross', p_list = ['xx','yy'], tave=False, output_mask = True):
+def uv_read_omni(filenames, filetype=None, antstr='cross', p_list = ['xx','yy'], tave=False, output_mask = True):
     ### Now only support reading in one data file once, don't load in multiple obs ids ###
     info = {'lsts':[], 'times':[]}
     ginfo = [0,0,0]
