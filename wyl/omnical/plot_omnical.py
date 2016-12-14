@@ -46,7 +46,7 @@ for ii in range(0,128):
     ddy=my.data
     ff=mx.mask
     for jj in range(0,ff.size):
-        if ff[jj] or jj%16==8 or jj%16==1 or jj%16==14:
+        if ff[jj] or jj%16==8:# or jj%16==1 or jj%16==14:
             ddx[jj]=np.nan
             ddy[jj]=np.nan
     if exist:
@@ -73,6 +73,7 @@ lx=[37,287]
 lax=[int(round(freq[37]/1e6)),int(round(freq[287]/1e6))]
 fx=np.arange(0,384)
 fig=plt.figure()
+plt.suptitle(obs.split('/')[-1],y=0.99,size=15.0)
 for ii in range(0,8):
     for jj in range(0,16):
         ind=ii*16+jj
@@ -88,7 +89,7 @@ for ii in range(0,8):
         if ii==7: p.xaxis.set_ticklabels(lax,size=6.5)
         else: p.xaxis.set_ticklabels([])
         p.set_title(name[ind],size=6.5,y=0.9)
-plt.subplots_adjust(top=0.96,bottom=0.03,left=0.04,right=0.98)
+plt.subplots_adjust(top=0.93,bottom=0.03,left=0.04,right=0.98)
 fig.savefig(obs+'_amp_omnical.png')
 
 #plot and save phase
@@ -96,6 +97,7 @@ pi=3.14159265358979323846
 ly=[-pi,0,pi]
 lay=['-3.14','0','3.14']
 fig=plt.figure()
+plt.suptitle(obs.split('/')[-1],y=0.99,size=15.0)
 for ii in range(0,8):
     for jj in range(0,16):
         ind=ii*16+jj
@@ -111,7 +113,7 @@ for ii in range(0,8):
         if ii==7: p.xaxis.set_ticklabels(lax,size=6.5)
         else: p.xaxis.set_ticklabels([])
         p.set_title(name[ind],size=6.5,y=0.9)
-plt.subplots_adjust(top=0.96,bottom=0.03,left=0.04,right=0.98)
+plt.subplots_adjust(top=0.93,bottom=0.03,left=0.04,right=0.98)
 fig.savefig(obs+'_phs_omnical.png')
  
         
