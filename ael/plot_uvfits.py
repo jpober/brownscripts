@@ -129,9 +129,10 @@ def uv_selector(nants, ants=-1, pol_str=-1):
     antennas (can be 'all', 'auto', 'cross', '0,1,2', or '0_1,0_2') and
     string for polarization ('xx','yy','xy','yx')."""
     selections={'bls':[],'pols':[] }
-    if pol_str==-1: pol_str = "xx,yy,xy,yx"
+    if pol_str==-1: pol_str = "xx,yy"
     if ants != -1:
         if type(ants) == str: ants = a.scripting.parse_ants(ants, nants)
+	print ants
         for cnt,(bl,include,pol) in enumerate(ants):
 #            if cnt > 0:
 #                if include: selections['bls'] = ['all']
@@ -141,7 +142,7 @@ def uv_selector(nants, ants=-1, pol_str=-1):
             elif bl == 'cross': selections['bls'].append('cross')
             else:
                 i,j = bl2ij(bl)
-       #         if i > j: i,j = j,i
+                if i < j: i,j = j,i
                 selections['bls'].append((i,j))
 #                uv.select('antennae', i, j, include=include)
             if pol != -1:
@@ -152,7 +153,9 @@ def uv_selector(nants, ants=-1, pol_str=-1):
         for p in pol.split(','):
             polopt = a.miriad.str2pol[p]
             selections['pols'].append(polopt)
-    if 'cross' in selections['bls']: selections['bls'] = [(i,j) for (i,j) in zip(range(nants), range(nants)) if i < j]
+    if 'cross' in selections['bls']:
+	print 'cross!'
+	selections['bls'] = [(i,j) for (i,j) in zip(range(nants), range(nants)) if i < j]
     if 'auto' in selections['bls']: selections['bls'] = [(i,i) for i in range(nants)]
     return selections
             
@@ -174,13 +177,14 @@ D = uv[0]
 hdr = D.header.copy()
 
 cols = n.asarray(D.data.dtype.names)
+hdr_prms = n.asarray(hdr.keys())
 if 'ANTENNA1' in cols:
     ant_1_array = n.int32(D.data.field('ANTENNA1')) - 1
     ant_2_array = n.int32(D.data.field('ANTENNA2')) - 1
     baselines=n.dstack((ant_1_array,ant_2_array))[0]
 elif 'BASELINE' in cols:
     baselines=n.int32(D.data.field('BASELINE'))
-    nants_tmp = 100 if len(baselines) < 32896 else 300      #Hacky-way of ensuring bl2ij uses the correct convention for arrays with more or less than 256 ants
+#    nants_tmp = 100 if len(baselines) < 32896 else 300      #Hacky-way of ensuring bl2ij uses the correct convention for arrays with more or less than 256 ants
     ant_1_array,ant_2_array = bl2ij(baselines)
     baselines = n.dstack((ant_1_array,ant_2_array))[0]
 else:
@@ -193,7 +197,31 @@ baselines = n.array(bls)    #Roundabout way of ensuring the baseline array consi
 Nants = int(len(n.unique(ant_1_array.tolist() + ant_2_array.tolist())))
 Nbls = int(Nants*(Nants-1)/2.)
 
-integration_time = float(D.data.field('INTTIM')[0])
+if 'INTTIM' in cols:
+	integration_time = float(D.data.field('INTTIM')[0])
+elif 'INTTIME' in cols:
+	integration_time = float(D.data.field('INTTIME')[0])
+elif 'INTTIM' in hdr_prms:
+	integration_time = hdr.pop('INTTIM')
+elif 'INTTIME' in hdr_prms:
+	integration_time = hdr.pop('INTTIM')
+else:
+	#All else fails -- Derive inttime from the date array
+    secperday = 24*60**2
+    if '_DATE' in cols:
+	times = D.data['_DATE'].astype(n.double) + D.data['DATE'].astype(n.double)
+	integration_time = n.diff(n.unique(times))[0]*secperday
+    else:
+	times = D.data['DATE'].astype(n.double)
+	integration_time = n.diff(n.unique(times))[0]*secperday
+
+
+#else:
+#	print "Error: Integration time not specified"
+#	print cols
+#	print hdr_prms
+#	sys.exit()
+	
 time_sel = gen_times(opts.time, integration_time, opts.time_axis, opts.decimate)
 inttime=integration_time*opts.decimate
 
@@ -242,8 +270,10 @@ times = []
 # Hold plotting handles
 plots = {}
 plt_data = {}
+print opts.ant
 
 selections = uv_selector(Nants,opts.ant, opts.pol)
+
 
 for uvfile in args:
     print 'Reading', uvfile
@@ -260,7 +290,11 @@ for uvfile in args:
 #    a.scripting.uv_selector(uv, opts.ant, opts.pol)
 #   uv.select('decimate', opts.decimate, opts.decphs)
 
-    data_arr = D.data['DATA'][:,0,0,0,:,:,:]    #Get rid of extra axes
+    #Check if an spw dimension is present
+    if hdr['NAXIS']==7:
+	    data_arr = D.data['DATA'][:,0,0,0,:,:,:]    #Get rid of extra axes
+    else:
+	    data_arr = D.data['DATA'][:,0,0,:,:,:]
     # If the _DATE axis is present, add them together to get the time_arr
     if '_DATE' in cols:
 	time_arr = D.data['_DATE'].astype(n.double) + D.data['DATE'].astype(n.double)
@@ -276,6 +310,7 @@ for uvfile in args:
        for pol in selections['pols']:
          #Obtain an index array, telling where to find the given baseline in the data_arr
             i,j = b
+	    print b
             if pol < -4: pl_ind = 4 - (pol + 9)                 #linear pols
             if pol < 0 and pol >= -4: pl_ind = 4- (pol + 5)    #circular pols
             if pol > 0: pl_ind = pol - 1                  # Stokes
