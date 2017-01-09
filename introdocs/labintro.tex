@@ -1,13 +1,27 @@
+%\documentclass[onecolumn]{aastex}
 \documentclass{report}
+
+\usepackage{/Users/jpober/Dropbox/bibfiles/aastex_macros}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{graphicx}
+\usepackage{natbib}
+\setcitestyle{aysep={}} 
+
 \title{Pober Lab Manual}
 \author{Jonathan Pober}
 
+
 \begin{document}
+
 \maketitle
 \tableofcontents
 
 \include{ch1/chapter1}
 \include{ch2/chapter2}
 \include{ch3/chapter3}
+
+\bibliographystyle{/Users/jpober/Dropbox/bibfiles/jponew}
+\bibliography{/Users/jpober/Dropbox/bibfiles/masterbib}
 
 \end{document}
