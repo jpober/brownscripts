@@ -22,7 +22,7 @@ dx=np.load(obs+'.xx.npz')
 dy=np.load(obs+'.yy.npz')
 fm=np.zeros((56,384),dtype=bool)
 for nn in range(0,384):
-    if nn%16==0 or nn%16==8 or nn%16==15: fm[:,nn]=True
+    if nn%16==0 or nn%16==15: fm[:,nn]=True
 freq=dx['freqs']
 SH=fm.shape
 sol={}
@@ -47,7 +47,7 @@ for ii in range(0,128):
     ddy=my.data
     ff=mx.mask
     for jj in range(0,ff.size):
-        if ff[jj] or jj%16==8:# or jj%16==1 or jj%16==14:
+        if ff[jj]:
             ddx[jj]=np.nan
             ddy[jj]=np.nan
     if exist:
@@ -56,10 +56,10 @@ for ii in range(0,128):
         dxmin=np.nanmin((np.abs(ddx)))
         dymin=np.nanmin((np.abs(ddy)))
 #        print dxmax,dymax,dxmin,dymin
-	if count==0:
-		ampmax=dxmax
-		ampmin=dxmin
-		count+=1
+        if count==0:
+            ampmax=dxmax
+            ampmin=dxmin
+            count+=1
         if dxmax>ampmax: ampmax=dxmax
         if dymax>ampmax: ampmax=dymax
         if dxmin<ampmin: ampmin=dxmin
