@@ -67,12 +67,14 @@ if not os.path.isdir(terms[-1]):
 #Verify matching files
 for i in range(n_in-1):
 	if not set(mirlist[i]) == set(mirlist[i+1]):
-		print "Error: MIRIAD files do not match!"
-		sys.exit()
+		print "Warning: MIRIAD file lists do not match! Selecting those that do."
+		break
+
+setlist = map(set, mirlist)
+mirlist[0] = list(set.intersection(*setlist))
 
 command_str=''.join(terms)
 
-print command_str
 
 opts='/gpfs_home/alanman/extra_scripts/opts.pkl'
 
@@ -84,7 +86,7 @@ Nf=len(mirlist[0])
 mem='15G'
 time='01:30:00'
 
-batstr = 'sbatch --array=0-'+str(Nf-1)+' -o \'slurm-%a.out\' --mem='+mem+' -t '+time+' /gpfs_home/alanman/extra_scripts/miriad_arithmetic_jobscript.py'
+batstr = 'sbatch --array=0-'+str(Nf-1)+' -o \'slurm-%a.out\' --mem='+mem+' -t '+time+' /gpfs_home/alanman/extra_scripts/miriad_arithmetic_job.py'
 
 subprocess.call(batstr,shell=True)
 

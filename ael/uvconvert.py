@@ -1,6 +1,6 @@
 #!/bin/env python
 import os,sys,glob,optparse,subprocess
-
+import numpy as np
 
 ### General script for using pyuvdata to convert among uv file formats. Submits array tasks to slurm, one for each file to convert.
 # Usage:   uvconvert.py [-i <in_format>] [-o <out_format(s)>] [<obs_IDs>]
@@ -18,6 +18,7 @@ o.add_option('-i', dest='in_format', help="Input file formats (miriad, fhd, uvfi
 o.add_option('-o', dest='out_format', help="Output file formats (miriad, uvfits)", default='miriad,uvfits')
 o.add_option('-c',  dest='clobber', action='store_true', help="Overwrite existing files", default=False)
 o.add_option('-s', '--seq', dest='batch', action='store_false', help='Run as a batch job (default) or set false to run in sequence', default=True)
+o.add_option('-m', '--model', dest='model', action='store_true', help='If converting from fhd files, check if _model_vis_** files exist and if so, convert them separately.', default=False)
 
 
 opts,args = o.parse_args(sys.argv[1:])
@@ -25,7 +26,10 @@ opts,args = o.parse_args(sys.argv[1:])
 
 def check_file(fname, fmt):
 	if fmt == 'uvfits':
-		return'.'.join(fname.split('.')[0:-1])   #remove uvfits extension
+		if fname.endswith('.uvfits'):
+		      return '.'.join(fname.split('.')[0:-1])   #remove uvfits extension
+		else:
+		      return fname
 	if fmt == 'miriad':
 		contents=os.listdir(fname)
 		if 'visdata' in contents and 'vartable' in contents: return fname
@@ -68,16 +72,21 @@ ofiles=[]
 for fmt in out_formats:
 ## Check for the proper output directories. If they don't exist, create them. If they do exist, check for existing files in them of the correct format.
 ## IF the option 'clobber' is not in place, remove found files from the obslist
+    mod = '/model' if opts.model else ''
     if fmt == 'miriad':
 	if not os.path.isdir('MIRIAD'):
 	    os.mkdir('MIRIAD')
-	fils = [d for d in os.listdir('MIRIAD') if os.path.isdir("MIRIAD/"+d)]
+	if opts.model and not os.path.isdir('MIRIAD/model'):
+	    os.mkdir('MIRIAD/model')
+	fils = [d for d in os.listdir('MIRIAD'+mod) if os.path.isdir("MIRIAD/"+d)]
 	fils = map(os.path.normpath, fils)
 	ofiles.append( map(os.path.basename, fils) )
     if fmt == 'uvfits':
 	if not os.path.isdir("UVFITS"):
 	   os.mkdir('UVFITS')
-	fils=map(os.path.basename,[d for d in glob.glob('./UVFITS/*.uvfits')]) 
+	if opts.model and not os.path.isdir('UVFITS/model'):
+	    os.mkdir('UVFITS/model')
+	fils=map(os.path.basename,[d for d in glob.glob('./UVFITS'+mod+'/*.uvfits')]) 
 	ofiles.append([check_file(l,'uvfits') for l in fils])
 
 if len(out_formats) == 2:
@@ -92,37 +101,69 @@ else:
 
 if not opts.clobber:  obslist = [ob for ob in obslist if ob not in ofiles]
 
+obslist = [ob for ob in obslist if not ob == ""]
 
 ### We now have a list of obs_ids to convert, and formats to convert it to. This information will be passed along to the respective array jobs.
 ### One array job per input file.
 
-mem='15G'
+mem='30G'
 time='01:30:00'
 
 Nf= len(obslist)
 if Nf == 0:
 	print "No files to convert"
 	sys.exit(1)
+else:
+	if 'miriad' in in_formats: testfile=obslist[0]
+	elif 'uvfits' in in_formats: testfile=obslist[0]+'.uvfits'
+	else: testfile='vis_data/'+obslist[0]+"_vis_XX.sav"
+	size = subprocess.check_output('du -hs '+testfile+' | cut -f 1',shell=True)
+	#size=p.communicate()
 
+	scale=size.strip()[-1]
+	value=np.log10(float(size.strip()[0:-1]))
+#	exp= np.ceil(value)
+	if scale=='K': value += 3
+	if scale=='M': value += 6
+	if scale=='G': value += 9
+
+	if 'fhd' in in_formats: value += 1     #(Account for the fact that data are split among fhd save files)
+	#mem is specified in megabytes
+	if value < 4: mem='5G'
+	else:
+		mem = 7*np.power(10,value-6)   # MB
+		if mem < 1e4: mem = 1.5e4    #Less than 10G... ask for more.
+		mem = str(int(np.floor(mem)))+"M"
 obslist=":".join(obslist)
+print mem
 
 if opts.batch:
-
-	batstr = 'sbatch --array=0-'+str(Nf-1) + ' -o \'slurm-%a.out\' --mem='+mem+' -t '+time+\
+	n=0
+	if opts.model: model_exists=['True', 'False']
+	else: model_exists = ['False']
+	for model in model_exists:
+	   mod = '_'+str(n) if opts.model else ''
+	   n += 1
+	   batstr = 'sbatch --array=0-'+str(Nf-1) + ' -o \'slurm'+mod+'-%a.out\' --mem='+mem+' -t '+time+\
 		' /gpfs_home/alanman/extra_scripts/uvconvert_job.py --formats='+",".join(in_formats)+":"+",".join(out_formats)+\
 		' --clobber='+str(opts.clobber)+\
+		' --model='+model+\
 		' '+obslist
 
-	subprocess.call(batstr,shell=True)
+	   subprocess.call(batstr,shell=True)
 else:
 	pids=[]
-	for i in range(Nf):
-	   batstr =' /gpfs_home/alanman/extra_scripts/uvconvert_job.py --formats='+",".join(in_formats)+":"+",".join(out_formats)+\
+	if opts.model: model_exists=['True', 'False']
+	else: model_exists = ['False']
+	for model in model_exists:
+	  for i in range(Nf):
+	    batstr =' /gpfs_home/alanman/extra_scripts/uvconvert_job.py --formats='+",".join(in_formats)+":"+",".join(out_formats)+\
 		' --clobber='+str(opts.clobber)+\
+		' --model='+model+\
 		' '+obslist
 
-	   p=subprocess.Popen(batstr, stderr=open('subprocess-'+str(i)+'.err','w+'), stdout=open('subprocess-'+str(i)+'.out','w+'), shell=True, env=dict(os.environ,**{'SLURM_ARRAY_TASK_ID':str(i)}))
-	   pids.append(p.pid)
+	    p=subprocess.Popen(batstr, stderr=open('subprocess-'+str(i)+'.err','w+'), stdout=open('subprocess-'+str(i)+'.out','w+'), shell=True, env=dict(os.environ,**{'SLURM_ARRAY_TASK_ID':str(i)}))
+	    pids.append(p.pid)
 	print pids
 
 

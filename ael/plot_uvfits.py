@@ -142,7 +142,7 @@ def uv_selector(nants, ants=-1, pol_str=-1):
             elif bl == 'cross': selections['bls'].append('cross')
             else:
                 i,j = bl2ij(bl)
-                if i < j: i,j = j,i
+                if i > j: i,j = j,i
                 selections['bls'].append((i,j))
 #                uv.select('antennae', i, j, include=include)
             if pol != -1:
@@ -204,7 +204,7 @@ elif 'INTTIME' in cols:
 elif 'INTTIM' in hdr_prms:
 	integration_time = hdr.pop('INTTIM')
 elif 'INTTIME' in hdr_prms:
-	integration_time = hdr.pop('INTTIM')
+	integration_time = hdr.pop('INTTIME')
 else:
 	#All else fails -- Derive inttime from the date array
     secperday = 24*60**2
@@ -318,11 +318,15 @@ for uvfile in args:
             key = '%d,%d,%d' % (i,j,pol)   #Key for this plot.
             bl = "_".join(map(str,b))
             inds = n.where(baselines==bl)
+	    print inds
 	    if len(inds) == 0:
 		print 'No data to plot.'
 		sys.exit()
             d = data_arr[inds,:,pl_ind,:][0]
-            flags = d[:,:,2]<=0
+            try:
+		flags = d[:,:,2]<=0
+	    except IndexError:
+		flags = n.ones_like(d[:,:,0])
             dc = d[:,:,0] + 1j*d[:,:,1]
             d = n.ma.array(dc,mask=flags)
          # Do delay transform if required
