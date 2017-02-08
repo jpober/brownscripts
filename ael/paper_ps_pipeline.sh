@@ -63,8 +63,13 @@ if [ ! -z ${non_redundant} ]; then
 	
 fi
 
+if [ -z ${length} ]; then
+	length=0
+fi
+
+
 if [ $auto_redundancy == 1 ]; then
-	s=$(python ~/capo/ael/build_redundant.py --count -C $cal --min=8)	#Return the number of redundant groups
+	s=$(python ~/capo/ael/build_redundant.py --count -C $cal --length=$length --min=8)	#Return the number of redundant groups
 	s=$(( s - 1 ))
 	seps=( $(seq 0 $s) )
 	echo "Seps: " ${seps[@]}
@@ -108,7 +113,7 @@ if [ $skiptoplot -eq 0 ]; then
 	if [ $auto_redundancy == 1 ]; then
 	# Build seps list from redundancies
 		echo "Auto Redundancies"
-		baselines=$(python ~/capo/ael/build_redundant.py --min=8 --flatten -C $cal --save=$cal"_reds")    #Return a flattened list of all redundant baselines
+		baselines=$(python ~/capo/ael/build_redundant.py --min=8 --length=$length --flatten -C $cal --save=$cal"_reds")    #Return a flattened list of all redundant baselines
 		#s=$(python ~/capo/ael/build_redundant.py --count -C $cal --restore=$cal_"reds.npz")	#Return the number of redundant groups
 		#declare -a seps=$(seq 0 $s)
 	else
@@ -209,7 +214,7 @@ if [ $skiptoplot -eq 0 ]; then
            #mkdir -p ./'sep'$sep
            mkdir -p ./$sep
 	   if [ $auto_redundancy == 1 ]; then
-		bls=$(python ~/capo/ael/build_redundant.py --min=8 --sep=${sep} -C $cal --restore=$cal'_reds.npz')	# Return redundant group
+		bls=$(python ~/capo/ael/build_redundant.py --length=$length --min=8 --sep=${sep} -C $cal --restore=$cal'_reds.npz')	# Return redundant group
 	   else
            	bls=$(python ~/capo/pspec_pipeline/getbls.py --sep=${sep} -C $cal ./*AP)
 	   fi
