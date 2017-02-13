@@ -8,7 +8,7 @@ fname=$path"/"$obs"_"$i
 
 
 if [ -n "$suffix" ]; then
-	/gpfs/data/jpober/alanman/NOISE/python paper_add_noise.py -o $outpath -s $suffix -N $N $fname
+	/gpfs/data/jpober/alanman/extra_scripts/python add_noise.py -o $outpath -s $suffix -N $N $fname
 else
-	/gpfs/data/jpober/alanman/NOISE/python paper_add_noise.py -o $outpath -N $N $fname
+	/gpfs/data/jpober/alanman/extra_scripts/python add_noise.py -o $outpath -N $N $fname
 fi
