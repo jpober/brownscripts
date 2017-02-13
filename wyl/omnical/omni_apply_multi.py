@@ -9,9 +9,11 @@ import uvdata.uvdata as uvd
 o = optparse.OptionParser()
 o.set_usage('omni_apply_fhd.py [options] obsid(do not include .uvfits) or zen.jds.pol.uv')
 o.set_description(__doc__)
-aipy.scripting.add_standard_options(o,pol=True)
+aipy.scripting.add_standard_options(o,pol=True,cal=True)
 o.add_option('--xtalk',dest='xtalk',default=False,action='store_true',
             help='Toggle: apply xtalk solutions to data. Default=False')
+o.add_option('--fit',dest='fit',default=False,action='store_true',
+             help='Toggle: do a global bp fit to sols. Default=False')
 o.add_option('--omnipath',dest='omnipath',default='%s.npz',type='string',
             help='Format string (e.g. "path/%s.npz", where you actually type the "%s") which converts the input file name to the omnical npz path/file.')
 o.add_option('--npz',dest='npz',default=None,type='string',
@@ -20,6 +22,10 @@ o.add_option('--outtype', dest='outtype', default='uvfits', type='string',
              help='Type of the output file, .uvfits, or miriad, or fhd')
 o.add_option('--intype', dest='intype', default=None, type='string',
              help='Type of the input file, .uvfits or fhd')
+o.add_option('--instru', dest='instru', default='mwa', type='string',
+             help='instrument type. Default=mwa')
+o.add_option('--plot',dest='plot',default=False,action='store_true',
+             help='Toggle: Plot fitted bandpass if fit is on. Default=False')
 opts,args = o.parse_args(sys.argv[1:])
 
 
@@ -50,7 +56,10 @@ for f,filename in enumerate(args):
     
     #create an out put filename
     if opts.outtype == 'uvfits':
-        newfile = filename + '_O.uvfits'
+        suffix = 'O'
+        if opts.fit:
+            suffix = 'fit' + suffix
+        newfile = filename + '_' + suffix + '.uvfits'
     if os.path.exists(newfile):
         print '    %s exists.  Skipping...' % newfile
         continue
@@ -66,6 +75,7 @@ for f,filename in enumerate(args):
     Nfreqs = uvi.Nfreqs
     Nbls = uvi.Nbls
     pollist = uvi.polarization_array
+    freqs = uvi.freq_array[0]
 
     #find npz for each pol, then apply
     for ip,p in enumerate(pols):
@@ -75,6 +85,12 @@ for f,filename in enumerate(args):
             omnifile = opts.omnipath % (filename.split('/')[-1]+'.'+p)
         print '  Reading and applying:', omnifile
         _,gains,_,xtalk = capo.omni.from_npz(omnifile) #loads npz outputs from omni_run
+#********************** if choose to make sols smooth ***************************
+        if opts.fit and opts.instru == 'mwa':
+            print '   bandpass fitting'
+            exec('from %s import antpos'% opts.cal)
+            gains = capo.wyl.mwa_bandpass_fit(gains,antpos)
+#*********************************************************************************************
         pid = numpy.where(pollist == aipy.miriad.str2pol[p])[0][0]
         for ii in range(0,Nblts):
             a1 = uvi.ant_1_array[ii]

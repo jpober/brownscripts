@@ -3,6 +3,7 @@ import uvdata.uvdata as uvd
 import subprocess, datetime, os
 from astropy.io import fits
 from uv_data_only import *
+import copy
 
 def output_mask_array(filename, filetype, flag_array):
     outfn = ''
@@ -254,7 +255,7 @@ def uv_read_fc(filenames, filetype=None, bl_str=None,antstr='cross',p_list = ['x
         ginfo[2] = nfreq
     return info, dat, flg, ginfo, freqarr, ex_ant
 
-def uv_read_omni(filenames, filetype=None, antstr='cross', p_list = ['xx','yy'], tave=False, output_mask = True):
+def uv_read_omni(filenames, filetype=None, antstr='cross', p_list = ['xx','yy'], tave=False, output_mask = False):
     ### Now only support reading in one data file once, don't load in multiple obs ids ###
     info = {'lsts':[], 'times':[]}
     ginfo = [0,0,0]
@@ -285,8 +286,8 @@ def uv_read_omni(filenames, filetype=None, antstr='cross', p_list = ['xx','yy'],
         npol = len(pol)
         data = uvdata.data_array
         flag = uvdata.flag_array
-        ant1 = uvdata.ant_1_array
-        ant2 = uvdata.ant_2_array
+        ant1 = uvdata.ant_1_array[:nbl]
+        ant2 = uvdata.ant_2_array[:nbl]
         
         #        if not (0 in ant1 or 0 in ant2):          #if the index starts from 1
         #            ones = np.ones((len(ant1)))
@@ -309,15 +310,17 @@ def uv_read_omni(filenames, filetype=None, antstr='cross', p_list = ['xx','yy'],
         nbl -= (auto + exconj)
         nant = int((1+math.sqrt(1+8*nbl))/2)
         ex_ant = find_ex_ant(uvdata)
-
         for jj in range(0,npol):
+            auto_corr = {}
             pp = aipy.miriad.pol2str[pol[jj]]
             if not pp in p_list: continue
             infodict[pp] = {}
             dat, flg = {},{}
             for ii in range(0,uvdata.Nbls):
                 if ant1[ii] < 0: continue
-                if ant1[ii] == ant2[ii] and antstr == 'cross': continue
+                if ant1[ii] == ant2[ii]:
+                    auto_corr[ant1[ii]] = np.sqrt(data[:,0][:,:,jj].reshape(uvdata.Ntimes,uvdata.Nbls,uvdata.Nfreqs)[:,ii].real)
+                    continue
                 bl = (ant1[ii],ant2[ii])
                 if not dat.has_key(bl): dat[bl],flg[bl] = {},{}
                 if not dat[bl].has_key(pp):
@@ -339,6 +342,7 @@ def uv_read_omni(filenames, filetype=None, antstr='cross', p_list = ['xx','yy'],
             infodict[pp]['freqs'] = freqarr
             infodict[pp]['pol'] = pp
             infodict[pp]['ex_ants'] = ex_ant
+            infodict[pp]['auto_corr'] = auto_corr
         infodict['name_dict'] = {}
         for ii in range(0,uvdata.Nants_telescope):
             if not infodict['name_dict'].has_key(uvdata.antenna_numbers[ii]):
@@ -348,3 +352,195 @@ def uv_read_omni(filenames, filetype=None, antstr='cross', p_list = ['xx','yy'],
     return infodict
 
 
+def polyfunc(x,z):
+    sum = np.zeros((x.size))
+    for ii in range(z.size):
+        sum *= x
+        sum += z[ii]
+    return sum
+
+
+def mwa_bandpass_fit(gains, antpos, amp_order=2, phs_order=1):
+    fqs = np.linspace(167.075,197.715,384)
+    for p in gains.keys():
+        bandpass = {}
+        for ant in gains[p].keys():
+            cable = antpos[ant]['cable']
+            if not bandpass.has_key(cable): bandpass[cable] = {}
+            bandpass[cable][ant] = np.mean(gains[p][ant][1:53],axis=0)
+            SH = gains[p][ant].shape
+        global_bp = {}
+        freq = np.arange(384)
+        fuse = []
+        for ii in range(384):
+            if not ii%16 in [0,15]: fuse.append(ii)
+        for length in bandpass.keys():
+            amp = []
+            for ant in bandpass[length].keys():
+                normbp = np.abs(bandpass[length][ant])/np.mean(np.abs(bandpass[length][ant]))
+                amp.append(normbp)
+            amp = np.array(amp)
+            global_bp[length] = np.mean(amp,axis=0)
+        residual = {}
+        for length in global_bp.keys():
+            residual[length] = {}
+            for ant in bandpass[length].keys():
+                residual[length][ant] = bandpass[length][ant]/global_bp[length]
+        fitamp,fitphs = {},{}
+        for length in residual.keys():
+            for ant in residual[length].keys():
+                x = np.array(fuse)
+                y1 = np.abs(residual[length][ant][fuse])
+                y2 = np.angle(residual[length][ant][fuse])
+                y2 = np.unwrap(y2)
+                z1 = np.polyfit(x,y1,amp_order)
+                z2 = np.polyfit(x,y2,phs_order)
+                fitamp[ant] = z1
+                fitphs[ant] = z2
+        for length in bandpass.keys():
+            if length == 150:
+                for ant in bandpass[length].keys():
+                    g = global_bp[length]*polyfunc(freq,fitamp[ant])*np.exp(1j*polyfunc(freq,fitphs[ant]))
+                    r = np.mean(gains[p][ant][1:53],axis=0)/g - 1
+                    for ii in range(0,384):
+                        if ii%16 == 0: r[ii] = r[ii+1]
+                        if ii%16 ==15: r[ii] = r[ii-1]
+                    tau = np.fft.fftfreq(384,(fqs[-1]-fqs[0])/384)
+                    delay = np.fft.fft(r,n=384)
+                    inds = np.where(abs(np.abs(tau)-1)<0.3)[0]
+                    ind = np.where(np.abs(delay)==np.max(np.abs(delay[inds])))[0]
+                    for ii in range(delay.size):
+                        if not ii in ind: delay[ii] = 0
+                    reflect = np.fft.ifft(delay,n=384) + 1
+                    gains[p][ant] = np.resize(g*reflect,SH)
+            else:
+                for ant in bandpass[length].keys():
+                    g = global_bp[length]*polyfunc(freq,fitamp[ant])*np.exp(1j*polyfunc(freq,fitphs[ant]))
+                    gains[p][ant] = np.resize(g,SH)
+        return gains
+
+def ampproj(omni,fhd):
+    amppar = {}
+    for p in omni.keys():
+        s1,s2 = 0,0
+        for a in omni[p].keys():
+            s1 += np.abs(omni[p][a]*omni[p][a].conj())*np.abs(fhd[p][a]*fhd[p][a].conj())
+            s2 += np.abs(omni[p][a]*omni[p][a].conj())*np.abs(omni[p][a]*omni[p][a].conj())
+        A = s1/s2
+        amppar[p] = np.sqrt(A)
+    return amppar
+
+def phsproj(omni,fhd,realpos,EastHex,SouthHex,ref_antenna):
+    phspar = {}
+    ax1,ax2 = [],[]
+    for ii in range(EastHex.shape[0]):
+        ind_east = np.where(EastHex[ii]>0)[0]
+        ind_south = np.where(SouthHex[ii]>0)[0]
+        ax1.append(EastHex[ii][ind_east])
+        ax1.append(SouthHex[ii][ind_south])
+    for jj in range(EastHex.shape[1]):
+        ind_east = np.where(EastHex[:,jj]>0)[0]
+        ind_south = np.where(SouthHex[:,jj]>0)[0]
+        ax2.append(EastHex[:,jj][ind_east])
+        ax2.append(SouthHex[:,jj][ind_south])
+    for p in omni.keys():
+        phspar[p] = {}
+        slp1 = []
+        slp2 = []
+        for ff in range(0,384):
+            if ff%16 in [0,15]:
+                slp1.append(0)
+                slp2.append(0)
+                continue
+            #***** East-West direction fit *****#
+            slope = []
+            for inds in ax1:
+                x,tau = [],[]
+                for ii in inds:
+                    if not ii in omni[p].keys(): continue
+                    x.append(realpos[ii]['top_x'])
+                    tau.append(np.angle(fhd[p][ii][ff]/omni[p][ii][ff]))
+                tau = np.unwrap(tau)
+                if tau.size < 3: continue
+                z = np.polyfit(x,tau,1)
+                slope.append(z[0])
+            slope = np.array(slope)
+            slp1.append(np.median(slope)) # slope could be steep, choosing median would be more likely to avoid phase wrapping
+            #***** 60 deg East-South direction fit *****#
+            slope = []
+            for inds in ax2:
+                x,tau = [],[]
+                for ii in inds:
+                    if not ii in omni[p].keys(): continue
+                    x.append(realpos[ii]['top_x'])
+                    tau.append(np.angle(fhd[p][ii][ff]/omni[p][ii][ff]))
+                tau = np.unwrap(tau)
+                if tau.size < 3: continue
+                z = np.polyfit(x,tau,1)
+                slope.append(z[0])
+            slope = np.array(slope)
+            slp2.append(np.median(slope))
+        #****** calculate offset term ************#
+        offset1, offset2 = [],[]
+        phix = np.array(slp1)
+        phiy = (np.array(slp2) - phix)/np.sqrt(3)
+        for a in omni[p].keys():
+            dx = realpos[a]['top_x'] - realpos[ref_antenna]['top_x']
+            dy = realpos[a]['top_y'] - realpos[ref_antenna]['top_y']
+            proj = np.exp(1j*(dx*phix+dy*phiy))
+            offset = np.exp(1j*np.angle(fhd[p][a]/omni[p][a]/proj))
+            if a < 92: offset1.append(offset)
+            else: offset2.append(offset)
+        offset1 = np.array(offset1)
+        offset2 = np.array(offset2)
+        offset1 = np.mean(offset1,axis=0)
+        offset2 = np.mean(offset2,axis=0)
+        phspar[p]['phix'] = phix
+        phspar[p]['phiy'] = phiy
+        phspar[p]['offset_east'] = offset1
+        phspar[p]['offset_south'] = offset2
+    return phspar
+
+def linproj(omni,fhd,realpos,maxiter=50,conv=1e-6):
+    fuse = []
+    for ii in range(0,384):
+        if not ii%16 in [0,15]: fuse.append(ii)
+    proj = {}
+    for p in omni.keys():
+        proj[p] = {}
+        M = np.zeros((3,3))
+        n = len(omni[p].keys())
+        r = {}
+        proj[p]['eta'] = 0
+        proj[p]['phix'] = 0
+        proj[p]['phiy'] = 0
+        proj[p]['offset'] = 0
+        for a in omni[p].keys():
+            r[a] = fhd[p][a]/omni[p][a]
+            x = realpos[a]['top_x']/100
+            y = realpos[a]['top_y']/100
+            M += np.array([[x*x,x*y,x],
+                           [x*y,y*y,y],
+                           [x,  y,  1]])
+        invM = np.linalg.inv(M)
+        for ii in range(0,maxiter):
+            b = np.zeros((3,384))
+            eta = 0
+            for a in omni[p].keys():
+                b += np.array([x*r[a].imag,y*r[a].imag,r[a].imag])
+                eta += (r[a].real-1)
+            eta /= n
+            phs = invM.dot(b)
+            if np.max((eta*eta)[fuse])+np.max((phs*phs)[:,fuse]) < conv:
+                print 'maxiter: ',ii
+                break
+            proj[p]['eta'] += eta
+            proj[p]['phix'] += phs[0]
+            proj[p]['phiy'] += phs[1]
+            proj[p]['offset'] += phs[2]
+            for a in omni[p].keys():
+                x = realpos[a]['top_x']/100
+                y = realpos[a]['top_y']/100
+                factor = np.exp(eta+1j*(x*phs[0]+y*phs[1]+phs[2]))
+                r[a] /= factor
+    return proj

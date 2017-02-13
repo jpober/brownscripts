@@ -96,7 +96,7 @@ def aa_to_info(aa, pols=['x'], fcal=False, **kwargs):
         for z, pol in enumerate(pols):
             z = 2**z
             i = Antpol(ant, pol, len(aa))
-            antpos[i,0], antpos[i,1], antpos[i,2] = x,y,z
+            antpos[i.val,0], antpos[i.val,1], antpos[i.val,2] = x,y,z
     reds = compute_reds(nant, pols, antpos[:nant], tol=.1)
     ex_ants = [Antpol(i,nant).ant() for i in range(antpos.shape[0]) if antpos[i,0] == -1]
     kwargs['ex_ants'] = kwargs.get('ex_ants',[]) + ex_ants
@@ -131,7 +131,7 @@ def pos_to_info(position, pols=['x'], fcal=False, filter_length=None, **kwargs):
         for z, pol in enumerate(pols):
             z = 2**z
             i = Antpol(ant,pol,nant)
-            antpos[i,0],antpos[i,1],antpos[i,2] = x,y,z
+            antpos[i.val,0],antpos[i.val,1],antpos[i.val,2] = x,y,z
 #            redinfo[i,0],redinfo[i,1],redinfo[i,2] = x,y,cable*z
     reds = compute_reds(nant, pols, antpos[:nant],tol=0.01)
     ubls = None
