@@ -21,23 +21,28 @@ name = { 0: '11', 1: '12', 2: '13', 3: '14', 4: '15', 5: '16', 6: '17', 7: '18',
 dx=np.load(obs+'.xx.npz')
 dy=np.load(obs+'.yy.npz')
 fm=np.zeros((56,384),dtype=bool)
+badf = [0,1,2,13,14,15]
 for nn in range(0,384):
-    if nn%16==0 or nn%16==15: fm[:,nn]=True
+    if nn%16 in badf: fm[:,nn]=True
 freq=dx['freqs']
 SH=fm.shape
 sol={}
 ampmax=1
 ampmin=1
 count=0
+refphsx = dx['56x']/np.abs(dx['56x'])
+refphsy = dy['56y']/np.abs(dy['56y'])
 for ii in range(0,128):
     sol[ii]={}
     try: 
-        x=dx[str(ii)+'x']
-        y=dy[str(ii)+'y']
+        x=dx[str(ii)+'x']/refphsx
+        y=dy[str(ii)+'y']/refphsy
         exist=True
     except(KeyError):
         x=np.ones(SH)
         y=np.ones(SH)
+        x*=np.nan
+        y*=np.nan
         exist=False
     mx=np.ma.masked_array(x,mask=fm)
     mx=np.mean(mx,axis=0)
