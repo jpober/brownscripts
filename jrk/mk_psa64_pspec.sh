@@ -62,8 +62,8 @@ for chan in $chans; do
 		evenLSTS=(${EVEN_DATAPATH}${sep}/lst.*.*.*.${SUFFIX})
 		#oddLSTS2=(${ODD_DATAPATH}${sep}/lst.*.*.*.${SUFFIX2})
 		#evenLSTS2=(${EVEN_DATAPATH}${sep}/lst.*.*.*.${SUFFIX2})
-                EVEN_FILES="${evenLSTS[@]:14:23}" #${EVEN_DATAPATH}${sep}/ #lst.*.[345]*.*.${SUFFIX} #uvHBFAL was 3:15
-                ODD_FILES="${oddLSTS[@]:14:23}" #${ODD_DATAPATH}${sep}/ #lst.*.[345]*.*.${SUFFIX} #uvHBFAL
+                EVEN_FILES="${evenLSTS[@]:8:13}" #${EVEN_DATAPATH}${sep}/ #lst.*.[345]*.*.${SUFFIX} #uvHBFAL was 3:15
+                ODD_FILES="${oddLSTS[@]:8:13}" #${ODD_DATAPATH}${sep}/ #lst.*.[345]*.*.${SUFFIX} #uvHBFAL
 		#EVEN_FILES2="${evenLSTS2[@]:14:23}"
 		#ODD_FILES2="${oddLSTS2[@]:14:23}"
 		echo $EVEN_FILES

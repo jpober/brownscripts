@@ -8,7 +8,7 @@ from glob import glob
 
 
 folded=True
-dir = 'PGBH_RatioWideFRF'
+dir = 'PGBH_RatioRFI'
 npz = glob('./'+dir+'/*/I/*.npz')
 print npz
 chanlist = []
