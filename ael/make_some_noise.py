@@ -50,7 +50,7 @@ time='01:30:00'
 
 Nf = len(args)
 
-batstr = 'sbatch --array=0-'+str(Nf-1) + ' -o \'slurm-%a.out\' --mem='+mem+' -t '+time+' /gpfs_home/alanman/brownscripts/ael/add_noise.py '+filelist
+batstr = 'sbatch --array=0-'+str(Nf-1) + ' -o \'slurm-%a.out\' --mem='+mem+' -t '+time+' /gpfs_home/alanman/extra_scripts/add_noise.py '+filelist
 
 #print batstr
 

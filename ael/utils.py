@@ -18,3 +18,7 @@ def get_filelist(obsid):
                 obsid+"_settings.txt"
         ]
 	return filelist
+
+def quick_image_animate(arr, cmap='jet', axis=0):
+	##Animate a 2D heatmap along a third axis, 
+	return 0

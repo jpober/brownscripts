@@ -60,12 +60,12 @@ for chan in $chans; do
                 sepdir=${poldir}/${sep}
 		oddLSTS=(${ODD_DATAPATH}${sep}/lst.*.*.*.${SUFFIX})
 		evenLSTS=(${EVEN_DATAPATH}${sep}/lst.*.*.*.${SUFFIX})
-		oddLSTS2=(${ODD_DATAPATH}${sep}/lst.*.*.*.${SUFFIX2})
-		evenLSTS2=(${EVEN_DATAPATH}${sep}/lst.*.*.*.${SUFFIX2})
-                EVEN_FILES="${evenLSTS[@]:8:28}" #${EVEN_DATAPATH}${sep}/ #lst.*.[345]*.*.${SUFFIX} #uvHBFAL was 3:15
-                ODD_FILES="${oddLSTS[@]:8:28}" #${ODD_DATAPATH}${sep}/ #lst.*.[345]*.*.${SUFFIX} #uvHBFAL
-		EVEN_FILES2="${evenLSTS2[@]:8:28}"
-		ODD_FILES2="${oddLSTS2[@]:8:28}"
+		oddLSTS2=(${ODD_DATAPATH2}${sep}/lst.*.*.*.${SUFFIX2})
+		evenLSTS2=(${EVEN_DATAPATH2}${sep}/lst.*.*.*.${SUFFIX2})
+                EVEN_FILES="${evenLSTS[@]}" #${EVEN_DATAPATH}${sep}/ #lst.*.[345]*.*.${SUFFIX} #uvHBFAL was 9:12
+                ODD_FILES="${oddLSTS[@]}" #${ODD_DATAPATH}${sep}/ #lst.*.[345]*.*.${SUFFIX} #uvHBFAL
+		EVEN_FILES2="${evenLSTS2[@]}"
+		ODD_FILES2="${oddLSTS2[@]}"
 		echo $EVEN_FILES
                 test -e ${sepdir} || mkdir ${sepdir}
                 LOGFILE=`pwd`/${PREFIX}/${chan}_${pol}_${sep}.log

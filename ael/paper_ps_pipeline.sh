@@ -63,15 +63,19 @@ if [ ! -z ${non_redundant} ]; then
 	
 fi
 
-if [ $auto_redundancy == 1 ]; then
-	s=$(python ~/capo/ael/build_redundant.py --count -C $cal)	#Return the number of redundant groups
-	s=$(( s - 1 ))
-	seps=( $(seq 0 $s) )
-#	seps=( "${seps[@]/#/sep}" )
+if [ -z ${length} ]; then
+	length=0
 fi
 
-declare -a seps=${seps[@]}
 
+if [ $auto_redundancy == 1 ]; then
+	s=$(python ~/capo/ael/build_redundant.py --count -C $cal --length=$length --min=8)	#Return the number of redundant groups
+	s=$(( s - 1 ))
+	seps=( $(seq 0 $s) )
+	echo "Seps: " ${seps[@]}
+#	seps=( "${seps[@]/#/sep}" )
+	declare -a seps=${seps[@]}
+fi
 
 if [ $skiptoplot -eq 0 ]; then
    #calfile='psa6622_v003_paper128'
@@ -109,16 +113,14 @@ if [ $skiptoplot -eq 0 ]; then
 	if [ $auto_redundancy == 1 ]; then
 	# Build seps list from redundancies
 		echo "Auto Redundancies"
-		baselines=$(python ~/capo/ael/build_redundant.py --flatten -C $cal --save=$cal"_reds")    #Return a flattened list of all redundant baselines
-		echo $baselines
-		exit
+		baselines=$(python ~/capo/ael/build_redundant.py --min=8 --length=$length --flatten -C $cal --save=$cal"_reds")    #Return a flattened list of all redundant baselines
 		#s=$(python ~/capo/ael/build_redundant.py --count -C $cal --restore=$cal_"reds.npz")	#Return the number of redundant groups
 		#declare -a seps=$(seq 0 $s)
 	else
 		baselines=()
 		#cd /users/jkerriga/data/jkerriga/PSA64FHDLST
 		for sep in "${seps[@]}"; do
-		    bls=$(python ~/capo/pspec_pipeline/getbls.py --sep=${sep} -C $cal ${reducfiles[1]})
+		    bls=$(python ~/capo/pspec_pipeline/getbls.py --sep="${sep}" -C $cal ${reducfiles[1]})
 		    baselines=($bls','$baselines)
 	done
 	fi
@@ -212,7 +214,7 @@ if [ $skiptoplot -eq 0 ]; then
            #mkdir -p ./'sep'$sep
            mkdir -p ./$sep
 	   if [ $auto_redundancy == 1 ]; then
-		bls=$(python ~/capo/ael/build_redundant.py --sep=${sep} -C $cal --restore=$cal'_reds.npz')
+		bls=$(python ~/capo/ael/build_redundant.py --length=$length --min=8 --sep=${sep} -C $cal --restore=$cal'_reds.npz')	# Return redundant group
 	   else
            	bls=$(python ~/capo/pspec_pipeline/getbls.py --sep=${sep} -C $cal ./*AP)
 	   fi

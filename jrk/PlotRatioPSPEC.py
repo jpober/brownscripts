@@ -1,12 +1,14 @@
 import numpy as n
+import matplotlib
+matplotlib.use('Agg')
 import pylab as pl
 import capo as C
 import aipy as a
 from glob import glob
 
 
-folded=False
-dir = 'PGProcessed_RatioWideFRF'
+folded=True
+dir = 'PGBH_RatioRFI'
 npz = glob('./'+dir+'/*/I/*.npz')
 print npz
 chanlist = []
@@ -50,15 +52,15 @@ ax.set_yscale("linear")
 for c in chanlist:
     print c
     if folded==True:
-        ax.errorbar(pspecs[c+'_kpl'][10:21],pspecs[c+'_pkfold'],yerr=pspecs[c+'_errfold'],fmt='o',label='z = '+str(round(1.42/pspecs[c+'_freq'] - 1,2)))
+        ax.errorbar(pspecs[c+'_kpl'][10:21],pspecs[c+'_pkfold'],yerr=pspecs[c+'_errfold'],fmt='o',label='z = '+str(round(1.42/pspecs[c+'_freq'] - 1,1)))
         ax.set_xlim(-0.05,n.max(pspecs[chanlist[0]+'_kpl'])+0.05)
     else:
-        ax.errorbar(pspecs[c+'_kpl'],pspecs[c+'_pk'],yerr=pspecs[c+'_err'],fmt='o',label='z = '+str(round(1.42/pspecs[c+'_freq'] - 1,2)))
+        ax.errorbar(pspecs[c+'_kpl'],pspecs[c+'_pk'],yerr=pspecs[c+'_err'],fmt='o',label='z = '+str(round(1.42/pspecs[c+'_freq'] - 1,1)))
         ax.set_xlim(-1*(n.max(pspecs[chanlist[0]+'_kpl'])+0.05),n.max(pspecs[chanlist[0]+'_kpl'])+0.05)
 
 #ax.set_xlim(-0.05,n.max(pspecs[chanlist[0]+'_kpl'])+0.05)
-ax.legend(loc=4)
-pl.hlines(1,-0.5,0.5,linestyles='--')
+ax.legend(bbox_to_anchor=(1.1,0.4))#loc=4)
+pl.hlines(1,-0.6,0.6,linestyles='--')
 #ax.errorbar(k_rW,n.abs(pk_rW),yerr=err_rW,fmt='r.')
 #ax.errorbar(k_r,n.abs(pk_r),yerr=err_r,fmt='b.')
 #ax.set_ylim(n.min(n.append(pk_d,pk_r))+err_r.min(),n.max(n.append(pk_r,pk_d))+err_d.max())
@@ -98,5 +100,6 @@ pl.ylabel(r'$P_{R}(k)/P_{D}(k)$',fontsize='large')
 
 
 #pl.semilogy(k_d,pk_d,'.')
+pl.savefig('RatioPSPEC.png')
 pl.show()
 

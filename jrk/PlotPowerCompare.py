@@ -5,9 +5,9 @@ import aipy as a
 
 
 folded=True
-dirty = n.load('pspec_PGInHorizon_DirtyWideFRF_50_70_I.npz')
-res = n.load('pspec_PGInHorizon_ResidualWideFRF_50_70_I.npz')
-resW = n.load('pspec_Vanilla_ResidualWideFRF_95_115_I.npz')   #old_dirtywidefrf.npz')
+dirty = n.load('pspec_PGBH_PSPEC_Vanilla_95_115_I.npz')
+res = n.load('pspec_PGBH_PSPEC_FA_95_115_I.npz')
+resW = n.load('pspec_PGBH_PSPEC_FSFA_95_115_I.npz')
 #resW = n.load('pspec_PGInHorizon_ResidualWideFRF_95_115_I.npz')
 chans=203.
 uv = a.miriad.UV('ZeroDayNoiseInjection.uvB')
@@ -51,9 +51,9 @@ pl.vlines(k_h, -1e7, 1e13, linestyles='--', linewidth=1.5)
 pl.axvspan(-k_h,k_h,color='red',alpha=0.5)
 
 ax.set_yscale("log",nonposx='noclip')
-ax.errorbar(k_d,n.abs(pk_d),yerr=err_d,fmt='ko')
-ax.errorbar(k_rW,n.abs(pk_rW),yerr=err_rW,fmt='r.')
-ax.errorbar(k_r,n.abs(pk_r),yerr=err_r,fmt='b.')
+ax.errorbar(k_d,n.abs(pk_d)/pk_d,yerr=err_d/pk_d,fmt='ko')
+ax.errorbar(k_rW,n.abs(pk_rW)/pk_d,yerr=err_rW/pk_d,fmt='r.')
+ax.errorbar(k_r,n.abs(pk_r)/pk_d,yerr=err_r/pk_d,fmt='b.')
 ax.set_ylim(n.min(n.append(pk_d,pk_r))+err_r.min(),n.max(n.append(pk_r,pk_d))+err_d.max())
 ax.set_xticklabels([])
 
@@ -68,8 +68,8 @@ pl.vlines(k_h, -1e7, 1e13, linestyles='--', linewidth=1.5)
 pl.vlines(-k_h, -1e7, 1e13, linestyles='--', linewidth=1.5)
 
 ax2 = fig.add_subplot(212)
-err = (pk_r/pk_d)*n.sqrt((err_r/pk_r)**2 +(err_d/pk_d)**2 - 2*(err_d*err_r)/(pk_d*pk_r))#/n.sqrt(100)
-ax2.errorbar(k_r,pk_r/pk_d,yerr=err,fmt='+')
+err = (pk_r/pk_d)*n.sqrt((err_r/pk_r)**2 +(err_d/pk_d)**2)#/n.sqrt(100)
+ax2.errorbar(k_r,pk_rW/pk_d,yerr=err,fmt='+')
 pl.hlines(1,-0.5,0.5,linestyles='--')
 ax2.set_xticklabels(k_d)
 ax2.set_ylim(0,1.1)
