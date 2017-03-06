@@ -1,20 +1,77 @@
 \chapter{Computing and Data Analysis}
 \label{ch3}
 
-This will cover the tools, i.e, the code.
+Our work is computationally heavy, with a focus on data analysis.  Because we're really trying to push
+the limits of what's been done before, there isn't a lot of existing (or at least polished) software to
+do the work.  So we need to make do with what we have and write new code for what we don't.
 
 \section{General Computing}
 
+There are few good general computing tools to be familiar with if you aren't already.  Resources for
+these more general tools are plentiful and can be found with a Google search.
+
 \subsection{Linux}
+
+Linux is the operating system used by nearly all of our computers.  Linux is free, open-source
+operating system that gives far more access to the inner workings of the system than Windows
+or Mac OS.  Like Linux, Mac OS X is also a Unix-based operating system, and so many of us
+use it on our personal computers.  However, all of our compute clusters for high performance
+computing run a variant of Linux.  Linux is principally operated through the command line
+text interface (as opposed to graphical interfaces like Windows).  Learning the commands for
+doing work on the command line is an important first step towards being able to operate our codes.
 
 \subsection{Git}
 
+Git is a free version control software system.  That means git tracks an entire history of all changes made
+to a file (e.g. a piece of computer code).  Git supports collaborative work quite well, meaning
+that multiple people can edit a piece of code and have their contributions tracked (and any conflicts
+managed).  Git is a command line tool in Linux, but closely related is GitHub, a web-based git
+tool that hosts git repositories for widespread public access.  Many of our codes are hosted by GitHub
+and so learning how to download these codes from the website is important. 
+
 \subsection{Python}
+
+Python is a programming language.  Most (but not all) of our data analysis codes are written in python.
+Python is well known for its readability and relative simplicity for new (and experienced) programmers.
+Learning python is an incredibly valuable skill, both for our research, and for jobs in the
+wider STEM workforce.
 
 \section{Research and Analysis Codes}
 
+Our own research code is typically less polished than these widely used tools (although we
+are continually trying to improve).  There are certainly fewer resources for learning how to use
+these programs, and sitting down with another member of the group is almost certainly the best way
+to do so.
+
 \subsection{pyuvdata}
+
+Pyuvdata is a python package for interacting with interferometric data.  It was developed by several
+members of our broader research collaboration and generally strives to be a more rigorous and
+more accessible piece of software than some of our more ad hoc tools.  Interferometers, unfortunately,
+often write their data in a number of different file formats.  Pyuvdata's main goal is to provide
+a single interface for all these various data formats.  Therefore, pyuvdata tools can 
+often be the best place to start writing code for data analysis, since they don't require you to learn
+a lot of the details of how data is stored.  Pyuvdata can be found at 
+\hyperlink{https://github.com/HERA-Team/pyuvdata/}{https://github.com/HERA-Team/pyuvdata/}.  It is actively maintained and has an issue log
+for reporting any bugs or errors you encounter.
 
 \subsection{AIPY}
 
+AIPY, which stands for ``Astronomical Interferometry in Python" is a python package which provides
+a number of tools for analyzing interferometric data.  One of the most useful aspects for beginners
+is that AIPY provides a script, \texttt{plot\_uv.py}, which can quickly make waterfall plots
+for interferometric data stored in the MIRIAD format (which is the data format natively used
+by the PAPER and HERA correlators).  AIPY provides many more tools, especially for writing
+new analyis code, as many things you might want to do are available as functions or modules for import.
+AIPY can be found at \hyperlink{https://github.com/HERA-Team/aipy}{https://github.com/HERA-Team/aipy}.
+It was created by Aaron Parsons although is now maintained by the HERA collaboration as a whole.
+
 \subsection{FHD}
+
+FHD, which stands for ``Fast Holographic Deconvolution," is a powerful piece of software originally
+written for analyzing data from the MWA, but now used for a variety of tasks.  It is (unfortunately)
+written in the IDL language, which requires a license to run, although the code itself is freely
+available at \hyperlink{https://github.com/EoRImaging/FHD}{https://github.com/EoRImaging/FHD}.  FHD has
+a very steep learning curve and is almost certainly something you need someone else to teach you how to
+use.  FHD was written by Ian Sullivan; \cite{sullivan_et_al_2012} describes the core
+algorithm, although many features have been added to the code since then.  
