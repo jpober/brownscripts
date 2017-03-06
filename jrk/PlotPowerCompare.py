@@ -5,9 +5,9 @@ import aipy as a
 
 
 folded=True
-dirty = n.load('pspec_PGBH_PSPEC_Vanilla_95_115_I.npz')
-res = n.load('pspec_PGBH_PSPEC_FA_95_115_I.npz')
-resW = n.load('pspec_PGBH_PSPEC_FSFA_95_115_I.npz')
+dirty = n.load('pspec_PGBH_Vanilla-WideFRF_50_70_I.npz')
+res = n.load('pspec_PGBH_WaveletRFI-WideFRF_50_70_I.npz')
+resW = n.load('pspec_PGBH_WaveletRFI-WideFRF_50_70_I.npz')
 #resW = n.load('pspec_PGInHorizon_ResidualWideFRF_95_115_I.npz')
 chans=203.
 uv = a.miriad.UV('ZeroDayNoiseInjection.uvB')

@@ -8,7 +8,7 @@ from glob import glob
 
 
 folded=True
-dir = 'PGBH_RatioRFI'
+dir = 'PG_Ratio'
 npz = glob('./'+dir+'/*/I/*.npz')
 print npz
 chanlist = []
@@ -25,7 +25,7 @@ for i in npz:
 #print pspecs['50_70_pk']
 
 chans=203.
-uv = a.miriad.UV('ZeroDayNoiseInjection.uvB')
+uv = a.miriad.UV('../../Pzen.2456242.30605.uvcRREcACOTUcHPA')
 aa = a.cal.get_aa('psa6240_FHD', uv['sdf'], uv['sfreq'], uv['nchan'])
 filters = C.dspec.wedge_width_by_bl(aa, uv['sdf'], uv['nchan'], offset=15.0)
 bins = filters[(41,49)]
