@@ -1,5 +1,5 @@
-import numpy as np, omnical, aipy, math
-import uvdata.uvdata as uvd
+import numpy as np, omnical, aipy
+import pyuvdata.uvdata as uvd
 import subprocess, datetime, os
 from astropy.io import fits
 from uv_data_only import *
@@ -230,7 +230,7 @@ def uv_read_fc(filenames, filetype=None, bl_str=None,antstr='cross',p_list = ['x
 
         nbl -= (auto + exconj)
         
-        nant = int((1+math.sqrt(1+8*nbl))/2)
+        nant = int((1+np.sqrt(1+8*nbl))/2)
         bl_list = bl_str.split(',')
         for ii in range(0,uvdata.Nbls):
             if ant1[ii] < 0: continue
@@ -255,7 +255,7 @@ def uv_read_fc(filenames, filetype=None, bl_str=None,antstr='cross',p_list = ['x
         ginfo[2] = nfreq
     return info, dat, flg, ginfo, freqarr, ex_ant
 
-def uv_read_omni(filenames, filetype=None, antstr='cross', p_list = ['xx','yy'], tave=False, output_mask = False):
+def uv_read_omni(filenames, filetype=None, antstr='cross', p_list = ['xx','yy'], tave=False, output_mask = False, use_model=False):
     ### Now only support reading in one data file once, don't load in multiple obs ids ###
     info = {'lsts':[], 'times':[]}
     ginfo = [0,0,0]
@@ -272,7 +272,7 @@ def uv_read_omni(filenames, filetype=None, antstr='cross', p_list = ['xx','yy'],
             uvdata.read_data_only(filename)
         elif filetype == 'fhd':
             uvdata = data_fhd()  #in this case filename should be a list of files
-            uvdata.read_data_only(filename)
+            uvdata.read_data_only(filename,use_model=use_model)
         else:
             raise IOError('invalid filetype, it should be miriad, uvfits, or fhd')
         Nt = uvdata.Ntimes
@@ -308,7 +308,7 @@ def uv_read_omni(filenames, filetype=None, antstr='cross', p_list = ['xx','yy'],
                     ant2[ii]=-1
                     exconj += 1
         nbl -= (auto + exconj)
-        nant = int((1+math.sqrt(1+8*nbl))/2)
+        nant = int((1+np.sqrt(1+8*nbl))/2)
         ex_ant = find_ex_ant(uvdata)
         for jj in range(0,npol):
             auto_corr = {}
@@ -320,6 +320,9 @@ def uv_read_omni(filenames, filetype=None, antstr='cross', p_list = ['xx','yy'],
                 if ant1[ii] < 0: continue
                 if ant1[ii] == ant2[ii]:
                     auto_corr[ant1[ii]] = np.sqrt(data[:,0][:,:,jj].reshape(uvdata.Ntimes,uvdata.Nbls,uvdata.Nfreqs)[:,ii].real)
+                    if tave:
+                        auto_corr[ant1[ii]] = np.mean(auto_corr[ant1[ii]],axis=0)
+                        auto_corr[ant1[ii]] = auto_corr[ant1[ii]].reshape(1,-1)
                     continue
                 bl = (ant1[ii],ant2[ii])
                 if not dat.has_key(bl): dat[bl],flg[bl] = {},{}
@@ -332,6 +335,12 @@ def uv_read_omni(filenames, filetype=None, antstr='cross', p_list = ['xx','yy'],
                     m = np.mean(m,axis=0)
                     dat[bl][pp] = np.complex64(m.data.reshape(1,-1))
                     flg[bl][pp] = m.mask.reshape(1,-1)
+            scale = 0
+            for a in auto_corr.keys():
+                scale += np.nanmean(auto_corr[a])
+            scale /= len(auto_corr.keys())
+            for a in auto_corr.keys():
+                auto_corr[a] /= scale
             ginfo[0] = nant
             ginfo[1] = Nt
             ginfo[2] = nfreq
@@ -360,8 +369,11 @@ def polyfunc(x,z):
     return sum
 
 
-def mwa_bandpass_fit(gains, antpos, amp_order=2, phs_order=1):
-    fqs = np.linspace(167.075,197.715,384)
+def mwa_bandpass_fit(gains, antpos, amp_order=2, phs_order=1, band = 'high'):
+    if band.lower() == 'high':
+        fqs = np.linspace(167.075,197.715,384)
+    elif band.lower() == 'low':
+        fqs = np.linspace(138.995,169.635,384)
     for p in gains.keys():
         bandpass = {}
         for ant in gains[p].keys():
@@ -377,7 +389,7 @@ def mwa_bandpass_fit(gains, antpos, amp_order=2, phs_order=1):
         for length in bandpass.keys():
             amp = []
             for ant in bandpass[length].keys():
-                normbp = np.abs(bandpass[length][ant])/np.mean(np.abs(bandpass[length][ant]))
+                normbp = np.abs(bandpass[length][ant])/np.mean(np.abs(bandpass[length][ant][fuse]))
                 amp.append(normbp)
             amp = np.array(amp)
             global_bp[length] = np.mean(amp,axis=0)
@@ -418,6 +430,24 @@ def mwa_bandpass_fit(gains, antpos, amp_order=2, phs_order=1):
                     g = global_bp[length]*polyfunc(freq,fitamp[ant])*np.exp(1j*polyfunc(freq,fitphs[ant]))
                     gains[p][ant] = np.resize(g,SH)
         return gains
+
+def poly_bandpass_fit(gains,amp_order=9, phs_order=1,instru='mwa'):
+    for p in gains.keys():
+        for a in gains[p].keys():
+            SH = gains[p][a].shape
+            g = np.mean(gains[p][a],axis=0)
+            fqs = np.arange(g.size)
+            fuse = []
+            for ff in range(g.size):
+                if instru=='mwa' and ff%16 in [0,15]: continue
+                fuse.append(ff)
+            fuse = np.array(fuse)
+            z1 = np.polyfit(fuse,np.abs(g)[fuse],amp_order)
+            z2 = np.polyfit(fuse,np.unwrap(np.angle(g)[fuse]),phs_order)
+            gains[p][a] = polyfunc(fqs,z1)*np.exp(1j*polyfunc(fqs,z2))
+            gains[p][a] = np.resize(gains[p][a],SH)
+    return gains
+
 
 def ampproj(omni,fhd):
     amppar = {}
@@ -544,3 +574,45 @@ def linproj(omni,fhd,realpos,maxiter=50,conv=1e-6):
                 factor = np.exp(eta+1j*(x*phs[0]+y*phs[1]+phs[2]))
                 r[a] /= factor
     return proj
+
+def non_hex_cal(data,g2,model_dict,realpos,ex_ants=[]):
+    fqflag = []
+    for ii in range(384):
+        if ii%16 in [0,15]: fqflag.append(ii)
+    g3 = {}
+    for p in g2.keys():
+        g3[p] = {}
+        a = g2[p].keys()[0]
+        SH = g2[p][a].shape
+        pp = p+p
+        mvis = model_dict['data']
+        mwgt = model_dict['flag']
+        for a1 in range(0,56):
+            nur,nui,den = 0,0,0
+            if a1 in ex_ants: continue
+            for a2 in g2[p].keys():
+                sep = np.array([realpos[a2]['top_x']-realpos[a1]['top_x'],
+                                realpos[a2]['top_y']-realpos[a1]['top_y'],
+                                realpos[a2]['top_z']-realpos[a1]['top_z']])
+                if np.linalg.norm(sep) < 50*3e8/np.max(model_dict['freqs']): continue
+                bl = (a1,a2)
+                try: dv = data[bl][pp]
+                except(KeyError): dv = data[bl[::-1]][pp].conj()
+                try:
+                    dm = mvis[bl][pp]*(g2[p][a2].conj())
+                    dw = np.logical_not(mwgt[bl][pp])
+                except(KeyError):
+                    dm = mvis[bl[::-1]][pp].conj()*g2[p][a2]
+                    dw = np.logical_not(mwgt[bl[::-1]][pp])
+                nur += np.nansum((dv.real*dm.real+dv.imag*dm.imag)*dw,axis=0)
+                nui += np.nansum((dv.imag*dm.real-dv.real*dm.imag)*dw,axis=0)
+                den += np.nansum((dm.real*dm.real+dm.imag*dm.imag)*dw,axis=0)
+            if np.nansum(den) == 0: continue
+            den[fqflag] = 1
+            g = nur/den + 1.j*nui/den
+            g3[p][a1] = np.resize(g,SH)
+    return g3
+
+
+
+

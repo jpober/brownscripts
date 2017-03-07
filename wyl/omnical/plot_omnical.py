@@ -30,13 +30,11 @@ sol={}
 ampmax=1
 ampmin=1
 count=0
-refphsx = dx['56x']/np.abs(dx['56x'])
-refphsy = dy['56y']/np.abs(dy['56y'])
 for ii in range(0,128):
     sol[ii]={}
     try: 
-        x=dx[str(ii)+'x']/refphsx
-        y=dy[str(ii)+'y']/refphsy
+        x=dx[str(ii)+'x']
+        y=dy[str(ii)+'y']
         exist=True
     except(KeyError):
         x=np.ones(SH)
