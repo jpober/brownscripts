@@ -147,15 +147,16 @@ if [ $skiptoplot -eq 0 ]; then
    #files=()
    if [ ! ${#stokefiles[@]} -eq 0 ]; then
    	echo 'Make stokes'
-   	message=$(sbatch -J 'make_stokes' --mem=5G -t 00:30:00  ~/capo/ael/mk_stokes.py ${stokefiles[@]} --stokes='I')
-   	message=($message)
-   	id=`echo ${message[3]}`
-   	echo $id
+   	#message=$(sbatch -J 'make_stokes' --mem=5G -t 00:30:00  ~/capo/ael/mk_stokes.py ${stokefiles[@]} --stokes='I')
+   	~/capo/ael/mk_stokes.py ${stokefiles[@]} --stokes='I'
+   	#message=($message)
+   	#id=`echo ${message[3]}`
+   	#echo $id
    	#Wait for the job to finish
-   	while [ `myq | grep $id | wc -l` -ge 1 ]; do
+   	#while [ `myq | grep $id | wc -l` -ge 1 ]; do
    	    sleep 10
    #	    files=( ${files[@]} $(find . -name "*P" -type 'd' -mmin -0.166)  )   #Find MIRIAD files made less than 10 seconds ago ending in P, append
-   	done
+   	#done
    	echo 'mk_stokes completed.'
    fi
    
@@ -305,7 +306,7 @@ fi
 
 
 pwd 
-rm $cal.py*
+#rm $cal.py*
 rm even/$cal.py*
 rm odd/$cal.py*
 

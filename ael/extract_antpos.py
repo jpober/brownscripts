@@ -16,7 +16,7 @@ from astropy import units as u
 
 uvd = UVData()
 
-generic_cal_filepath = '/users/alanman/GrowMIRIAD/generic_cal.py'
+generic_cal_filepath = '/users/alanman/brownscripts/ael/generic_cal.py'
 
 if os.path.isfile(sys.argv[1]):
 	uvd.read_uvfits(sys.argv[1])

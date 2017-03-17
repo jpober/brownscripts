@@ -81,10 +81,7 @@ da = np.array(data_accumulator[pol_list[0]])
 uvw_all = da[:,0]
 uvws = np.zeros((nants,3))
 for j in range(1,nants):
-       try:
-            uvws[j,:] = (-1)*uvw_all[np.where((da[:,2] == 0) & (da[:,3] == j))][0] * const.c.to('m/ns').value
-#       except IndexError:
-#            pass   #Skip failures
+        uvws[j,:] = (-1)*uvw_all[np.where((da[:,2] == 0) & (da[:,3] == j))][0] * const.c.to('m/ns').value
 	## -1 ---> Flip from the sky to the ground
 
 
