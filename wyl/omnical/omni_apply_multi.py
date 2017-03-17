@@ -1,9 +1,10 @@
 #! /usr/bin/env python
 # Do not support miriad
 
-import omnical, aipy, numpy, capo
+import numpy as np
+import omnical, aipy, capo
 import pickle, optparse, os, sys, glob
-import uvdata.uvdata as uvd
+import pyuvdata.uvdata as uvd
 
 ### Options ###
 o = optparse.OptionParser()
@@ -12,8 +13,10 @@ o.set_description(__doc__)
 aipy.scripting.add_standard_options(o,pol=True,cal=True)
 o.add_option('--xtalk',dest='xtalk',default=False,action='store_true',
             help='Toggle: apply xtalk solutions to data. Default=False')
-o.add_option('--fit',dest='fit',default=False,action='store_true',
+o.add_option('--bpfit',dest='bpfit',default=False,action='store_true',
              help='Toggle: do a global bp fit to sols. Default=False')
+o.add_option('--polyfit',dest='polyfit',default=False,action='store_true',
+             help='Toggle: do a polyfit to sols over the band. Default=False')
 o.add_option('--omnipath',dest='omnipath',default='%s.npz',type='string',
             help='Format string (e.g. "path/%s.npz", where you actually type the "%s") which converts the input file name to the omnical npz path/file.')
 o.add_option('--npz',dest='npz',default=None,type='string',
@@ -57,8 +60,10 @@ for f,filename in enumerate(args):
     #create an out put filename
     if opts.outtype == 'uvfits':
         suffix = 'O'
-        if opts.fit:
-            suffix = 'fit' + suffix
+        if opts.bpfit:
+            suffix = 'bpfit' + suffix
+        if opts.polyfit:
+            suffix = 'polyfit' + suffix
         newfile = filename + '_' + suffix + '.uvfits'
     if os.path.exists(newfile):
         print '    %s exists.  Skipping...' % newfile
@@ -86,12 +91,22 @@ for f,filename in enumerate(args):
         print '  Reading and applying:', omnifile
         _,gains,_,xtalk = capo.omni.from_npz(omnifile) #loads npz outputs from omni_run
 #********************** if choose to make sols smooth ***************************
-        if opts.fit and opts.instru == 'mwa':
+        if opts.bpfit and opts.instru == 'mwa':
             print '   bandpass fitting'
             exec('from %s import antpos'% opts.cal)
             gains = capo.wyl.mwa_bandpass_fit(gains,antpos)
+        if opts.polyfit:
+            print '   polyfitting'
+            gains = capo.wyl.poly_bandpass_fit(gains,instru=opts.instru)
 #*********************************************************************************************
-        pid = numpy.where(pollist == aipy.miriad.str2pol[p])[0][0]
+        fqs = np.ones((freqs.size))
+        fuse = np.arange(freqs.size)
+        if opts.instru == 'mwa':
+            fuse = []
+            for ii in range(384):
+                if ii%16 in [0,15]: fqs[ii] = 0
+                else: fuse.append(ii)
+        pid = np.where(pollist == aipy.miriad.str2pol[p])[0][0]
         for ii in range(0,Nblts):
             a1 = uvi.ant_1_array[ii]
             a2 = uvi.ant_2_array[ii]
@@ -103,9 +118,13 @@ for f,filename in enumerate(args):
                 except(KeyError):
                     try: uvi.data_array[:,0][:,:,pid][ii] -= xtalk[p][(a2,a1)].conj()
                     except(KeyError): pass
-            try: uvi.data_array[:,0][:,:,pid][ii] /= gains[p1][a1][ti]
+            try:
+                uvi.data_array[:,0][:,:,pid][ii][fuse] /= gains[p1][a1][ti][fuse]
+                uvi.data_array[:,0][:,:,pid][ii] *= fqs
             except(KeyError): pass
-            try: uvi.data_array[:,0][:,:,pid][ii] /= gains[p2][a2][ti].conj()
+            try:
+                uvi.data_array[:,0][:,:,pid][ii][fuse] /= gains[p2][a2][ti][fuse].conj()
+                uvi.data_array[:,0][:,:,pid][ii] *= fqs
             except(KeyError): pass
 
     #write file

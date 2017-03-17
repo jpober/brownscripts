@@ -9,7 +9,7 @@ from scipy.io.idl import readsav
 #from IPython import embed
 
 o = optparse.OptionParser()
-o.set_usage('omni_run_multi.py [options] *uvcRRE/obsid')
+o.set_usage('omni_run_multi.py [options] *uvcRRE/obsid') #only takes 1 obsid
 o.set_description(__doc__)
 aipy.scripting.add_standard_options(o,cal=True,pol=True)
 o.add_option('--calpar',dest='calpar',type='string',default=None,
@@ -38,10 +38,18 @@ o.add_option('--initauto',dest='initauto',default=False,action='store_true',
              help='Toggle: use auto_corr as initial guess for gains')
 o.add_option('--instru', dest='instru', default='mwa', type='string',
              help='instrument type. Default=mwa')
-o.add_option('--projdegen', dest='projdegen', default='/users/wl42/data/wl42/FHD_out/fhd_PhaseII_EoR0_2/calibration/', type='string',
-             help='path to fhd solutions for projecting degen parameters. Default=/path/to/calibration/')
+o.add_option('--projdegen', dest='projdegen', default=False, action='store_true',
+             help='Toggle: project degeneracy to raw fhd solutions')
 o.add_option('--fitdegen', dest='fitdegen', default=False, action='store_true',
              help='Toggle: project degeneracy to fitted fhd solutions')
+o.add_option('--divauto', dest='divauto', default=False, action='store_true',
+             help='Toggle: use auto corr to weight visibilities before cal')
+o.add_option('--fhdpath', dest='fhdpath', default='/users/wl42/data/wl42/FHD_out/fhd_PhaseII_EoR0/', type='string',
+             help='path to fhd solutions for projecting degen parameters. Default=/path/to/calibration/')
+o.add_option('--metafits', dest='metafits', default='/users/wl42/data/wl42/EoR0_PhaseII/', type='string',
+             help='path to metafits files')
+o.add_option('--ex_dipole', dest='ex_dipole', default=False, action='store_true',
+             help='Toggle: exclude tiles which have dead dipoles')
 opts,args = o.parse_args(sys.argv[1:])
 
 #Dictionary of calpar gains and files
@@ -119,8 +127,8 @@ if opts.calpar != None: #create g0 if txt file is provided
     else:
         raise IOError('invalid calpar file')
 
-if opts.instru == 'mwa' and not opts.projdegen is None:
-    fhd_cal = readsav(opts.projdegen+args[0]+'_cal.sav',python_dict=True)
+if opts.projdegen or opts.fitdegen:
+    fhd_cal = readsav(opts.fhdpath+'calibration/'+args[0]+'_cal.sav',python_dict=True)
     gfhd = {'x':{},'y':{}}
     if opts.fitdegen:
         for a in range(fhd_cal['cal']['N_TILE'][0]):
@@ -161,6 +169,10 @@ for filename in args:
 
 exec('from %s import *'% opts.cal) # Including antpos, realpos, EastHex, SouthHex
 
+if opts.instru == 'mwa':
+    print "   Loading model"
+    model_files = glob.glob(opts.fhdpath+'vis_data/'+args[0]+'*') + glob.glob(opts.fhdpath+'metadata/'+args[0]+'*')
+    model_dict = capo.wyl.uv_read_omni([model_files],filetype='fhd', antstr='cross', p_list=pols, use_model=True)
 #################################################################################################
 def calibration(infodict):#dict=[filename, g0, timeinfo, d, f, ginfo, freqs, pol, auto_corr]
     filename = infodict['filename']
@@ -193,11 +205,13 @@ def calibration(infodict):#dict=[filename, g0, timeinfo, d, f, ginfo, freqs, pol
     elif opts.calpar.endswith('.sav'):
         for key in g0[p[0]].keys():
             g0_temp = g0[p[0]][key]
-            g0[p[0]][key] = np.resize(g0_temp,(ginfo[1],ginfo[2]))
+            if opts.tave: g0[p[0]][key] = np.resize(g0_temp,(1,ginfo[2]))
+            else: g0[p[0]][key] = np.resize(g0_temp,(ginfo[1],ginfo[2]))
     elif opts.calpar.endswith('.npz'):
         for key in g0[p[0]].keys():
             g0_temp = g0[p[0]][key]
-            g0[p[0]][key] = np.resize(g0_temp,(ginfo[1],ginfo[2]))
+            if opts.tave: g0[p[0]][key] = np.resize(g0_temp,(1,ginfo[2]))
+            else: g0[p[0]][key] = np.resize(g0_temp,(ginfo[1],ginfo[2]))
             if opts.initauto: g0[p[0]][key] *= auto[key]
 
     t_jd = timeinfo['times']
@@ -205,7 +219,12 @@ def calibration(infodict):#dict=[filename, g0, timeinfo, d, f, ginfo, freqs, pol
 
     data,wgts,xtalk = {}, {}, {}
     m2,g2,v2 = {}, {}, {}
-    data = d #indexed by bl and then pol (backwards from everything else)
+    if opts.divauto:
+        for bl in d.keys():
+            i,j = bl
+            data[bl] = {}
+            data[bl][p] = d[bl][p]/(auto[i]*auto[j])
+    else: data = d #indexed by bl and then pol (backwards from everything else)
 
     wgts[p] = {} #weights dictionary by pol
     for bl in f:
@@ -215,6 +234,9 @@ def calibration(infodict):#dict=[filename, g0, timeinfo, d, f, ginfo, freqs, pol
     m1,g1,v1 = capo.omni.redcal(data,info,gains=g0, removedegen=opts.removedegen) #SAK CHANGE REMOVEDEGEN
     print '   Lincal-ing'
     m2,g2,v2 = capo.omni.redcal(data, info, gains=g1, vis=v1, uselogcal=False, removedegen=opts.removedegen)
+    if opts.divauto:
+        for a in g2[p[0]].keys():
+            g2[p[0]][a] *= auto[a]
     if opts.tave:
         for a in g2[p[0]].keys():
             g2[p[0]][a] = np.resize(g2[p[0]][a],(ginfo[1],ginfo[2]))
@@ -225,14 +247,16 @@ def calibration(infodict):#dict=[filename, g0, timeinfo, d, f, ginfo, freqs, pol
             gmean = np.mean(g2[p[0]][a],axis=0)
             g2[p[0]][a] = np.resize(gmean,(ginfo[1],ginfo[2]))
     xtalk = capo.omni.compute_xtalk(m2['res'], wgts) #xtalk is time-average of residual
-    ############# correct the center of each coarse band if instrument is mwa ######################
-    if opts.instru == 'mwa':
-        for a in g2[p[0]].keys():
-            for ff in range(0,384):
-                if ff%16==8:
-                    g2[p[0]][a][:,ff] = (g2[p[0]][a][:,ff-1]+g2[p[0]][a][:,ff+1])/2
+    ############# correct the center of each coarse band and coarse band edge if instrument is mwa ######################
+#    if opts.instru == 'mwa':
+#        for a in g2[p[0]].keys():
+#            for ff in range(0,384):
+#                if ff%16==8:
+#                    g2[p[0]][a][:,ff] = (g2[p[0]][a][:,ff-1]+g2[p[0]][a][:,ff+1])/2
+#                if ff%16 in [0,15]:
+#                    g2[p[0]][a][:,ff] = 0
     ############# To project out degeneracy parameters ####################
-    if opts.instru == 'mwa' and not opts.projdegen is None:
+    if opts.projdegen or opts.fitdegen:
         print '   Projecting degeneracy'
         for a in g2[p[0]].keys():
             if g2[p[0]][a].ndim == 2 : g2[p[0]][a] = np.mean(g2[p[0]][a][1:53],axis=0)
@@ -258,12 +282,19 @@ def calibration(infodict):#dict=[filename, g0, timeinfo, d, f, ginfo, freqs, pol
             proj = np.exp(lp[p[0]]['eta']+1j*(dx*lp[p[0]]['phix']+dy*lp[p[0]]['phiy']+lp[p[0]]['offset']))
             g2[p[0]][a] *= proj
             g2[p[0]][a] = np.resize(g2[p[0]][a],(ginfo[1],ginfo[2]))
+            for ff in range(384):
+                if ff%16 in [0,15]:
+                    g2[p[0]][a][:,ff] = 0    #clean nans
     ###########################################################################################
     m2['history'] = 'OMNI_RUN: '+''.join(sys.argv) + '\n'
     m2['jds'] = t_jd
     m2['lsts'] = t_lst
     m2['freqs'] = freqs
-
+    if opts.instru == 'mwa':
+        print '   start non-hex tiles calibration using fhd model'
+        g3 = capo.wyl.non_hex_cal(d,g2,model_dict[p],realpos,ex_ants=ex_ants)
+        for a in g3[p[0]].keys():
+            if not g2[p[0]].has_key(a): g2[p[0]][a] = g3[p[0]][a]
     if opts.ftype == 'miriad':
         npzname = opts.omnipath+'.'.join(filename.split('/')[-1].split('.')[0:4])+'.npz'
     else:
@@ -302,6 +333,17 @@ for f,filename in enumerate(args):
             for a in opts.ba.split(','):
                 if not int(a) in infodict[p]['ex_ants']:
                     infodict[p]['ex_ants'].append(int(a))
+        if opts.ex_dipole:
+            metafits_path = opts.metafits + args[0] + '.metafits'
+            if os.path.exists(metafits_path):
+                print '    Finding dead dipoles in metafits'
+                hdu = fits.open(metafits_path)
+                inds = np.where(hdu[1].data['Delays']==32)[0]
+                dead_dipole = np.unique(hdu[1].data['Antenna'][inds])
+                for dip in dead_dipole:
+                    if not dip in infodict[p]['ex_ants']:
+                        infodict[p]['ex_ants'].append(dip)
+            else: print '    Warning: Metafits not found. Cannot get the information of dead dipoles'
         ex_ants = sorted(infodict[p]['ex_ants'])
         print '   Excluding antennas:', ex_ants
 
