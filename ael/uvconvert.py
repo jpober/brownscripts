@@ -107,7 +107,7 @@ obslist = [ob for ob in obslist if not ob == ""]
 ### One array job per input file.
 
 mem='30G'
-time='01:30:00'
+time='06:30:00'
 
 Nf= len(obslist)
 if Nf == 0:

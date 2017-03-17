@@ -7,9 +7,9 @@ import sys, optparse, csv
 import numpy as np
 import ephem
 #from uvdata.uvbase import UVBase
-import uvdata.parameter as uvp
-import uvdata.utils as utils
-from uvdata import UVData
+import pyuvdata.parameter as uvp
+import pyuvdata.utils as utils
+from pyuvdata import UVData
 
 ## NB -- pyuvdata and uvfits use Hz and Seconds for everything. AIPY assumes GHz and ns.
 

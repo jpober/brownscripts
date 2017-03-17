@@ -1,4 +1,4 @@
-#!/bin/env python
+#!/gpfs/runtime/opt/python/2.7.3/bin/python
 """
 Creates waterfall plots from Miriad UV files.  Can tile multiple plots
 on one window, or plot just a single baseline.  When taking the delay
@@ -12,15 +12,10 @@ Author: Aaron Parsons, Griffin Foster
 """
 
 import aipy as a, numpy as n, pylab as p, sys, optparse
-from astropy.io import fits
-from pyuvdata import UVData  
-from pyuvdata.telescopes import get_telescope
-from astropy.time import Time
-
-
-uvd = UVData()
-bl2ij = uvd.baseline_to_antnums
-ij2bl = uvd.antnums_to_baseline
+try:
+    import capo as C
+except ImportError:
+    C = False
 
 o = optparse.OptionParser()
 o.set_usage('plot_uv.py [options] *.uv')
@@ -60,13 +55,17 @@ o.add_option('--plot_each', dest='plot_each',
     help='Instead of a waterfall plot, plot each of the specified axis (chan,time)')
 o.add_option('--window', dest='window', default='blackman-harris',
     help='Windowing function to use in delay transform.  Default is blackman-harris.  Options are: ' + ', '.join(a.dsp.WINDOW_FUNC.keys()))
+o.add_option('--save', dest='save', action='store_true',
+    help='Save the plot as an npz file with name "file_baseline.npz"')
+o.add_option('--horizon', dest='horizon', action='store_true',
+    help='Plot the horizon lines for the given baseline length')
 
 def convert_arg_range(arg):
     """Split apart command-line lists/ranges into a list of numbers."""
     arg = arg.split(',')
     return [map(float, option.split('_')) for option in arg]
 
-def gen_times(timeopt, inttime, coords, decimate):
+def gen_times(timeopt, uv, coords, decimate):
     if timeopt == 'all':
         def time_selector(t, cnt): return True
     else:
@@ -79,7 +78,7 @@ def gen_times(timeopt, inttime, coords, decimate):
                 return False
         else:
             timeopt = [opt[0] for opt in timeopt]
-            inttime = inttime / a.const.s_per_day * decimate
+            inttime = uv['inttime'] / a.const.s_per_day * decimate
             def time_selector(t, cnt):
                 if coords == 'index': return cnt in timeopt
                 for opt in timeopt:
@@ -101,261 +100,113 @@ def data_mode(data, mode='abs'):
     else: raise ValueError('Unrecognized plot mode.')
     return data
 
-#def baseline_to_antnums(baseline):
-#        """
-#	(From pyuvdata)
-#        Get the antenna numbers corresponding to a given baseline number.
-#
-#        Args:
-#            baseline: integer baseline number
-#
-#        Returns:
-#            tuple with the two antenna numbers corresponding to the baseline.
-#        """
-#        if self.Nants_telescope  2048:
-#            raise StandardError('error Nants={Nants}>2048 not '
-#                                'supported'.format(Nants=self.Nants_telescope))
-#        if n.min(baseline) > 2**16:
-#            ant2 = (baseline - 2**16) % 2048 - 1
-#            ant1 = (baseline - 2**16 - (ant2 + 1)) / 2048 - 1
-#        else:
-#            ant2 = (baseline) % 256 - 1
-#            ant1 = (baseline - (ant2 + 1)) / 256 - 1
-#        return n.int32(ant1), n.int32(ant2)
-
-
-def uv_selector(nants, ants=-1, pol_str=-1):
-    """Selection options based on string argument for
-    antennas (can be 'all', 'auto', 'cross', '0,1,2', or '0_1,0_2') and
-    string for polarization ('xx','yy','xy','yx')."""
-    selections={'bls':[],'pols':[] }
-    if pol_str==-1: pol_str = "xx,yy"
-    if ants != -1:
-        if type(ants) == str: ants = a.scripting.parse_ants(ants, nants)
-	print ants
-        for cnt,(bl,include,pol) in enumerate(ants):
-#            if cnt > 0:
-#                if include: selections['bls'] = ['all']
-#                else: uv.select('and',-1,-1)
-            if pol == -1: pol = pol_str # default to explicit pol parameter
-            if bl == 'auto': selections['bls'].append('auto') 
-            elif bl == 'cross': selections['bls'].append('cross')
-            else:
-                i,j = bl2ij(bl)
-                if i > j: i,j = j,i
-                selections['bls'].append((i,j))
-#                uv.select('antennae', i, j, include=include)
-            if pol != -1:
-                for p in pol.split(','):
-                    polopt = a.miriad.str2pol[p]
-                    selections['pols'].append(polopt)
-    elif pol_str != -1:
-        for p in pol.split(','):
-            polopt = a.miriad.str2pol[p]
-            selections['pols'].append(polopt)
-    if 'cross' in selections['bls']:
-	print 'cross!'
-	selections['bls'] = [(i,j) for (i,j) in zip(range(nants), range(nants)) if i < j]
-    if 'auto' in selections['bls']: selections['bls'] = [(i,i) for i in range(nants)]
-    return selections
-            
-
 opts, args = o.parse_args(sys.argv[1:])
+
+if opts.horizon and not C:
+        ### Capo is required to plot horizon lines
+       print 'Warning: capo is required for plotting horizon lines.'
+       opts.horizon=False
 
 # Parse command-line options
 cmap = p.get_cmap(opts.cmap)
 if not opts.xlim == None: opts.xlim = map(float, opts.xlim.split('_'))
 if not opts.ylim == None: opts.ylim = map(float, opts.ylim.split('_'))
-
-
-
-#uv = a.miriad.UV(args[0])
-#a.scripting.uv_selector(uv, opts.ant, opts.pol)
-
-uv = fits.open(args[0])
-D = uv[0]
-hdr = D.header.copy()
-
-cols = n.asarray(D.data.dtype.names)
-hdr_prms = n.asarray(hdr.keys())
-if 'ANTENNA1' in cols:
-    ant_1_array = n.int32(D.data.field('ANTENNA1')) - 1
-    ant_2_array = n.int32(D.data.field('ANTENNA2')) - 1
-    baselines=n.dstack((ant_1_array,ant_2_array))[0]
-elif 'BASELINE' in cols:
-    baselines=n.int32(D.data.field('BASELINE'))
-#    nants_tmp = 100 if len(baselines) < 32896 else 300      #Hacky-way of ensuring bl2ij uses the correct convention for arrays with more or less than 256 ants
-    ant_1_array,ant_2_array = bl2ij(baselines)
-    baselines = n.dstack((ant_1_array,ant_2_array))[0]
-else:
-    print "Error: Missing antenna info"
-    sys.exit(1)
-bls = []
-for bl in baselines: bls.append("_".join(map(str,bl)))
-baselines = n.array(bls)    #Roundabout way of ensuring the baseline array consists of pairs of antennas in string format
-
-Nants = int(len(n.unique(ant_1_array.tolist() + ant_2_array.tolist())))
-Nbls = int(Nants*(Nants-1)/2.)
-
-if 'INTTIM' in cols:
-	integration_time = float(D.data.field('INTTIM')[0])
-elif 'INTTIME' in cols:
-	integration_time = float(D.data.field('INTTIME')[0])
-elif 'INTTIM' in hdr_prms:
-	integration_time = hdr.pop('INTTIM')
-elif 'INTTIME' in hdr_prms:
-	integration_time = hdr.pop('INTTIME')
-else:
-	#All else fails -- Derive inttime from the date array
-    secperday = 24*60**2
-    if '_DATE' in cols:
-	times = D.data['_DATE'].astype(n.double) + D.data['DATE'].astype(n.double)
-	integration_time = n.diff(n.unique(times))[0]*secperday
-    else:
-	times = D.data['DATE'].astype(n.double)
-	integration_time = n.diff(n.unique(times))[0]*secperday
-
-
-#else:
-#	print "Error: Integration time not specified"
-#	print cols
-#	print hdr_prms
-#	sys.exit()
-	
-time_sel = gen_times(opts.time, integration_time, opts.time_axis, opts.decimate)
-inttime=integration_time*opts.decimate
-
+uv = a.miriad.UV(args[0])
+a.scripting.uv_selector(uv, opts.ant, opts.pol)
+chans = a.scripting.parse_chans(opts.chan, uv['nchan'])
 is_chan_range, is_time_range = True, True
 if opts.plot_each == 'chan': is_chan_range = False
 elif opts.plot_each == 'time': is_time_range = False
-
-
-sdf = hdr.pop('CDELT4')
-sfreq = hdr.pop('CRVAL4') 
-nchan = hdr.pop('NAXIS4')
-freqs =  n.arange(nchan, dtype=n.float) * sdf + sfreq
-
-freqs = freqs/1e9   #Convert from Hz to GHz
-
-latitude = hdr.pop('LAT', None)
-longitude = hdr.pop('LON', None)  #Both in degrees
-if latitude == None:
-	telescope = hdr.pop('TELESCOP',None)
-	if not telescope == None:
-		print 'Warning: Lat/lon not specified in uvfits header. Using known location for '+telescope
-		latitude,longitude,altitude = get_telescope(telescope).telescope_location_lat_lon_alt_degrees
-	else:
-		print "Error: Cannot determine telescope location."
-		sys.exit(1)
-
-chans = a.scripting.parse_chans(opts.chan, nchan)
+freqs = a.cal.get_freqs(uv['sdf'], uv['sfreq'], uv['nchan'])
 freqs = freqs.take(chans)
-
 if opts.delay:
     if freqs.size == freqs[-1] - freqs[0] + 1:
         # XXX someday could allow for equal spaced chans
         raise ValueError('Channels must be contiguous to do delay transform (chan=%s)' % (opts.chan))
     delays = n.fft.fftfreq(freqs.size, freqs[1]-freqs[0])
     delays = n.fft.fftshift(delays)
+time_sel = gen_times(opts.time, uv, opts.time_axis, opts.decimate)
+inttime = uv['inttime'] * opts.decimate
 if not opts.src is None:
     srclist,cutoff,catalogs = a.scripting.parse_srcs(opts.src, opts.cat)
     src = a.cal.get_catalog(opts.cal, srclist, cutoff, catalogs).values()[0]
 del(uv)
 
-# Loop through fits files collecting relevant data
+# Loop through UV files collecting relevant data
 plot_x = {}
 plot_t = {'jd':[], 'lst':[], 'cnt':[]}
 times = []
+if opts.horizon:
+      bl_lengths = {}
 
 # Hold plotting handles
 plots = {}
 plt_data = {}
-print opts.ant
-
-selections = uv_selector(Nants,opts.ant, opts.pol)
-
 
 for uvfile in args:
     print 'Reading', uvfile
-    D = fits.open(uvfile)[0]
+    uv = a.miriad.UV(uvfile)
     if not opts.cal is None:
-        aa = a.cal.get_aa(opts.cal, sdf, sfreq, nchan)
+        aa = a.cal.get_aa(opts.cal, uv['sdf'], uv['sfreq'], uv['nchan'])
         aa.set_active_pol(opts.pol)
         aa.select_chans(chans)
     else: aa = None
-
     # Only select data that is needed to plot
-
-
-#    a.scripting.uv_selector(uv, opts.ant, opts.pol)
-#   uv.select('decimate', opts.decimate, opts.decphs)
-
-    #Check if an spw dimension is present
-    if hdr['NAXIS']==7:
-	    data_arr = D.data['DATA'][:,0,0,0,:,:,:]    #Get rid of extra axes
-    else:
-	    data_arr = D.data['DATA'][:,0,0,:,:,:]
-    # If the _DATE axis is present, add them together to get the time_arr
-    if '_DATE' in cols:
-	time_arr = D.data['_DATE'].astype(n.double) + D.data['DATE'].astype(n.double)
-    else:
-	time_arr = D.data['DATE'].astype(n.double)
-
-    # Need --- List of baseline numbers, referring to where to slice the array.
-    #  Currently works by looping over all visibilities in the file and skipping to what's needed.
-    #  Loop over these option arrays. Slice the data array accordingly and append to a big external array.
-    #  Append corresponding times 
-
-    for b in selections['bls']:
-       for pol in selections['pols']:
-         #Obtain an index array, telling where to find the given baseline in the data_arr
-            i,j = b
-	    print b
-            if pol < -4: pl_ind = 4 - (pol + 9)                 #linear pols
-            if pol < 0 and pol >= -4: pl_ind = 4- (pol + 5)    #circular pols
-            if pol > 0: pl_ind = pol - 1                  # Stokes
-
-            key = '%d,%d,%d' % (i,j,pol)   #Key for this plot.
-            bl = "_".join(map(str,b))
-            inds = n.where(baselines==bl)
-	    print inds
-	    if len(inds) == 0:
-		print 'No data to plot.'
-		sys.exit()
-            d = data_arr[inds,:,pl_ind,:][0]
-            try:
-		flags = d[:,:,2]<=0
-	    except IndexError:
-		flags = n.ones_like(d[:,:,0])
-            dc = d[:,:,0] + 1j*d[:,:,1]
-            d = n.ma.array(dc,mask=flags)
-         # Do delay transform if required
-            if opts.delay:
-                w = a.dsp.gen_window(d.shape[-1], window=opts.window)
-                w = n.tile(w,d.shape[0]).reshape(d.shape)
-                d = n.fft.ifft(d*w,axis=1)  #Along the frequency axis
-                ker = n.fft.ifft(flags*w)
-                gain = a.img.beam_gain(ker)
-                if not opts.clean is None and not n.all(d == 0):
-                    d, info = a.deconv.clean(d, ker, tol=opts.clean)
-                    d += info['res'] / gain
-                d = n.ma.array(d)
-                d = n.fft.fftshift(d, axes=1)
-
-        # Adding to the times
-            for jd in time_arr[inds]:
-                if len(times) == 0 or times[-1] != jd:
-                    if aa == None:  lst = Time(jd, format='jd', location=(longitude, latitude)).sidereal_time('apparent').radian
-                    else:
-                        aa.set_jultime(t)
-                        lst = aa.sidereal_time()
-                    times.append(jd)
-                    plot_t['lst'].append(lst)
-                    plot_t['jd'].append(jd)
-                    plot_t['cnt'].append(len(times)-1)
-
-            if not plot_x.has_key(key): plot_x[key] = []
-            plot_x[key] = d
+    a.scripting.uv_selector(uv, opts.ant, opts.pol)
+    uv.select('decimate', opts.decimate, opts.decphs)
+    # Read data from a single UV file
+    for (uvw,t,(i,j)),d in uv.all():
+        bl = '%d,%d,%d' % (i,j,uv['pol'])
+        if len(times) == 0 or times[-1] != t:
+            times.append(t)
+            # Implement time selection
+            use_this_time = time_sel(t, (len(times)-1) / opts.decimate)
+            if use_this_time:
+                if aa == None: lst = uv['lst']
+                else:
+                    aa.set_jultime(t)
+                    lst = aa.sidereal_time()
+                plot_t['lst'].append(lst)
+                plot_t['jd'].append(t)
+                plot_t['cnt'].append(len(times)-1)
+        if not use_this_time: continue
+        d = d.take(chans)
+        if opts.ant.find('%d_%d' % (j,i)) != -1: d = d.conj() # obey antenna ordering, if possible
+        #apply cal phases
+        if not opts.cal is None:
+            aa.set_jultime(t)
+            if not opts.src is None:
+                src.compute(aa)
+                d = aa.phs2src(d, src, i, j)
+            #else: took out this mode because it's not used, and prefer not to phase.
+            #    d *= n.exp(-1j*n.pi*aa.get_phs_offset(i,j))
+        # Do delay transform if required
+        if opts.delay:
+            w = a.dsp.gen_window(d.shape[-1], window=opts.window)
+            if opts.horizon:
+                bl_len = uvw[0:2]
+                bl_len = n.sqrt(n.dot(bl_len,bl_len))
+                if not bl_lengths.has_key(bl): bl_lengths[bl] = []
+                bl_lengths[bl].append(bl_len)
+            if opts.unmask:
+                flags = n.ones(d.shape, dtype=n.float)
+                d = d.data
+            else:
+                flags = n.logical_not(d.mask).astype(n.float)
+                d = d.filled(0)
+            d = n.fft.ifft(d*w)
+            ker = n.fft.ifft(flags*w)
+            gain = a.img.beam_gain(ker)
+            if not opts.clean is None and not n.all(d == 0):
+                d, info = a.deconv.clean(d, ker, tol=opts.clean)
+                d += info['res'] / gain
+            d = n.ma.array(d)
+            d = n.fft.fftshift(d, axes=0)
+        elif opts.unmask: d = d.data
+        d.shape = (1,) + d.shape
+        if not plot_x.has_key(bl): plot_x[bl] = []
+        plot_x[bl].append(d)
+    del(uv)
 
 bls = plot_x.keys()
 def sort_func(a, b):
@@ -375,8 +226,7 @@ dmin,dmax = None, None
 fig = p.figure()
 if not opts.src is None:fig.suptitle(opts.src)
 for cnt, bl in enumerate(bls):
-#    d = n.ma.concatenate(plot_x[bl], axis=0)
-    d = n.ma.array(plot_x[bl])
+    d = n.ma.concatenate(plot_x[bl], axis=0)
     i,j,pol = map(int,bl.split(','))
     if opts.df: d = d[:,:-2]/2 + d[:,2:]/2 - d[:,1:-1]
     if opts.dt: d = d[:-2]/2 + d[2:]/2 - d[1:-1]
@@ -452,9 +302,22 @@ for cnt, bl in enumerate(bls):
         if not opts.drng is None: dmin = dmax - opts.drng
         elif dmin is None: dmin = d.min()
         else: dmin = min(dmin,d.min())
+        if opts.save:
+		curpol = a.miriad.pol2str[pol]
+		label = '%d%s,%d%s ' % (i,curpol[0],j,curpol[-1])
+		ofname=label.replace(',','_').strip()+".npz"
+		d.dump(ofname)
         plots[cnt+1] = p.imshow(d, extent=(c1,c2,t2,t1), origin='upper',
             aspect='auto', interpolation='nearest', 
             vmax=dmax, vmin=dmin, cmap=cmap)
+        if opts.horizon:
+            tau_h = float(bl_lengths[bl][0])
+            if opts.chan_axis == 'index':    #Convert to bins
+                tau_h = C.dspec.wedge_width(tau_h, n.diff(freqs)[0], len(freqs))
+            else:
+                tau_h = [-tau_h, tau_h]
+            p.vlines(tau_h[0], t2, t1, linestyles='--', linewidth=1.5)
+            p.vlines(tau_h[1], t2, t1, linestyles='--', linewidth=1.5)
         p.colorbar(shrink=0.5)
         p.xlabel(xlabel); p.ylabel(ylabel)
         if not opts.xlim == None: p.xlim(*opts.xlim)

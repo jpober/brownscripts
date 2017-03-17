@@ -26,14 +26,14 @@ o.add_option('-r', '--right', action='store_true',
             help='Show only right plot')
 
 opts,args = o.parse_args(sys.argv[1:])
+print args
 
 def mean_temp(z):
     return 28. * ((1.+z)/10.)**.5 # mK
 
 if opts.ofilename is None:
-	#opts.ofilename = ".".join(args[0].split('.')[:-1])    #Drop npz extension, replace with png
-	#opts.ofilename = opts.ofilename+".png"
-        opts.ofilename = 'pspec.png'
+	opts.ofilename = ".".join(args[0].split('.')[:-1])    #Drop npz extension, replace with png
+	opts.ofilename = opts.ofilename+".png"
 
 #fig=p.figure(figsize=(12,7.2))
 fig=p.figure()
@@ -68,8 +68,10 @@ p.subplot(111)
 
 afreqs=[]
 
-maxpk3 = 0.0
-maxpk  = 0.0
+maxpk = 0.0
+
+left_plots = {}
+right_plots = {}
 
 for j,filename in enumerate(args):
     print 'Reading', filename
@@ -78,56 +80,28 @@ for j,filename in enumerate(args):
     ks,k3pk,k3err = f['k'], f['k3pk'], f['k3err']
     kpl,pk,err = f['kpl'], f['pk'], f['err']
 
-    maxpk3 = n.max([maxpk3,n.max(k3pk)])
-    maxpk  = n.max([maxpk ,n.max(pk)])
-
-    max_y3 = 0.5e2*maxpk3; max_y = 0.5e2*maxpk
-
-    if opts.right:
-         p.errorbar(ks,k3pk,yerr=k3err, color=colors[j], fmt='.',label=os.path.basename(filename))
-         p.vlines(k_h, -1e7, max_y, linestyles='--', linewidth=1.5)
-         if j == len(args)-1:
-           p.xlabel(r'$k\ [h\ {\rm Mpc}^{-1}]$', fontsize='large')
-           p.ylabel(r'$k^3/2\pi^2\ P(k)\ [{\rm mK}^2]$', fontsize='large')
-         p.ylim(1e-1,max_y3)
-         p.xlim(0, 0.6)
-    elif opts.left:
-         p.errorbar(kpl,pk,yerr=err, color=colors[j], fmt='.',label=os.path.basename(filename))
-         p.vlines(k_h, -1e7, max_y, linestyles='--', linewidth=1.5)
-         p.vlines(-k_h, -1e7, max_y, linestyles='--', linewidth=1.5)
-         if j == len(args)-1:
-           p.xlabel(r'$k_\parallel\ [h\ {\rm Mpc}^{-1}]$', fontsize='large')
-           p.ylabel(r'$P(k)[\ {\rm mK}^2\ (h^{-1}\ {\rm Mpc})^3]$',fontsize='large')
-         p.ylim(1e-1,max_y)
-         p.xlim(-0.6, 0.6)
-    else:
-         p.subplot(121)
-         p.errorbar(kpl,pk,yerr=err, color=colors[j], fmt='.')
-         p.vlines(k_h, -1e7, max_y, linestyles='--', linewidth=1.5)
-         p.vlines(-k_h, -1e7, max_y, linestyles='--', linewidth=1.5)
-         if j == len(args)-1:
-           p.ylim(1e-1,max_y)
-           p.xlim(-0.6, 0.6)
-           p.xlabel(r'$k_\parallel\ [h\ {\rm Mpc}^{-1}]$', fontsize='large')
-           p.ylabel(r'$P(k)[\ {\rm mK}^2\ (h^{-1}\ {\rm Mpc})^3]$',fontsize='large')
-         p.subplot(122)
-         p.errorbar(ks,k3pk,yerr=k3err, color=colors[j], fmt='.',label=os.path.basename(filename))
-         p.vlines(k_h, -1e7, max_y, linestyles='--', linewidth=1.5)
-         if j == len(args)-1:
-           p.ylim(1e-1,max_y3)
-           p.xlim(0, 0.6)
-           p.xlabel(r'$k\ [h\ {\rm Mpc}^{-1}]$', fontsize='large')
-           p.ylabel(r'$k^3/2\pi^2\ P(k)\ [{\rm mK}^2]$', fontsize='large')
+    maxpk = n.max([maxpk,n.max(n.concatenate([pk,k3pk]))])
+    left_plots[filename] = [kpl, pk, err]
+    right_plots[filename] = [ks, k3pk, k3err] 
 
 
-if opts.right or opts.left:
-       p.gca().set_yscale('log', nonposy='clip')
-       p.grid()
-else:
-       p.subplot(121)
-       p.gca().set_yscale('log', nonposy='clip'); p.grid()
-       p.subplot(122)
-       p.gca().set_yscale('log', nonposy='clip'); p.grid()
+#    if opts.right:
+#         p.errorbar(ks,k3pk,yerr=k3err, color=colors[j], fmt='.',label=os.path.basename(filename))
+#    elif opts.left:
+#         p.errorbar(ks,pk,yerr=err, color=colors[j], fmt='.',label=os.path.basename(filename))
+#    else:
+#         p.subplot(121)
+#         p.errorbar(ks,pk,yerr=err, color=colors[j], fmt='.',label=os.path.basename(filename))
+#         p.subplot(122)
+#         p.errorbar(ks,k3pk,yerr=k3err, color=colors[j], fmt='.',label=os.path.basename(filename))
+
+### Loop over the saved data and construct dual plots:
+
+
+
+
+max_y = 0.5e2*maxpk
+p.vlines(k_h, -1e7, max_y, linestyles='--', linewidth=1.5)
 
 freq=n.average(afreqs)
 
@@ -136,16 +110,21 @@ freq=n.average(afreqs)
 #print 'Reading', filename
 #d = n.array([map(float, L.split()) for L in open(filename).readlines()])
 #ks, pk = d[:,0], d[:,1]
-z = C.pspec.f2z(freq)    #Average frequency
+#z = C.pspec.f2z(freq)    #Average frequency
 #print 'Redshift = ',z
 #k3pk = ks**3 / (2*n.pi**2) * pk
 #
-#p.plot(ks, k3pk * mean_temp(z)**2, 'm-',label='Lidz EoR')
+p.plot(ks, k3pk * mean_temp(z)**2, 'm-',label='Lidz EoR')
 ##p.plot(n.array(kpl_pos), 2*n.array(kpl_pos)**3*theo_noise/(2*n.pi**2), 'c--')
 #p.gca().set_yscale('log', nonposy='clip')
+p.xlabel(r'$k\ [h\ {\rm Mpc}^{-1}]$', fontsize='large')
+p.ylabel(r'$k^3/2\pi^2\ P(k)\ [{\rm mK}^2]$', fontsize='large')
 ##p.ylim(1e0,1e7)
-
-p.legend(numpoints=1, prop={'size':12}, loc=4)
+p.ylim(1e-1,max_y)
+p.xlim(0, 0.6)
+#p.xlim(0, 3.0)
+p.grid()
+p.legend(numpoints=1, prop={'size':12})
 p.show()
 #p.savefig(opts.ofilename)
 
