@@ -1,0 +1,59 @@
+Installing Conda on Oscar
+
+1.  Copy the download link for the Python 2.7 command line installer (not the graphical
+     installer!) of Anaconda for Linux via
+
+            https://www.continuum.io/downloads
+
+     Make sure you select the tab on the Continuum downloads page corresponding
+     to Linux.
+
+2.  Login to Oscar and navigate to your home directory.  You should be in your home
+     directory by default when you ssh into Oscar, but to be certain of this, you can issue
+
+            cd ~
+
+     on the command line.
+
+3.  Download the installer via wget on Oscar.  As an example, this can be done by issuing
+
+            wget https://repo.continuum.io/archive/Anaconda2-4.3.1-Linux-x86_64.sh
+
+     on the command line.  Replace the link after 'wget' with the link you have copied to
+     ensure you are downloading the most recent version of Anaconda.
+
+4.  Once wget finishes downloading the installation file (Anaconda*.sh), install Anaconda
+     with
+
+            bash Anaconda2-4.3.1-Linux-x86_64.sh
+
+     where, again, you replace the .sh file with the file you just downloaded.
+
+5.  Proceed through the installation.  When prompted for the install location, e.g.
+
+            Anaconda2 will now be installed into this location:
+            /users/YOUR-USERNAME/anaconda2
+
+     press enter to confirm as you need to install Anaconda in your home directory.
+     You will also be prompted at the end of the installation process with a message
+     asking if you would like to prepend the Anaconda install locaiton to your PATH
+     in your bashrc, e.g.
+
+             Do you wish the installer to prepend the Anaconda2 install location
+             to PATH in your /users/YOUR-USERNAME/.bashrc ? [yes|no]
+             [no] >>
+
+     Type yes for this prompt (note that the default is no).  This will give Anaconda
+     precedence above the existing Python distribution installed by default for all users on
+     Oscar.
+
+6.  To ensure that the installation and modification of PATH have been successful,
+     first issue
+
+            source ~/.bashrc
+
+     which will update your PATH variable for your current Oscar session.  Then issue
+
+            which python
+
+     If this returns "~/anaconda2/bin/python" then Anaconda has been installed successfully.
