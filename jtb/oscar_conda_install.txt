@@ -1,4 +1,4 @@
-Installing Conda on Oscar
+Installing Conda on Oscar:
 
 1.  Copy the download link for the Python 2.7 command line installer (not the graphical
      installer!) of Anaconda for Linux via
