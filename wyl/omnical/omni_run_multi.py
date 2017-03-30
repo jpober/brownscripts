@@ -3,7 +3,7 @@ import numpy as np
 import omnical, aipy, capo
 import optparse, os, sys, glob
 from astropy.io import fits
-import pickle
+import pickle, copy
 from multiprocessing import Pool
 from scipy.io.idl import readsav
 #from IPython import embed
@@ -20,14 +20,14 @@ o.add_option('--omnipath',dest='omnipath',default='',type='string',
             help='Path to save .npz files. Include final / in path.')
 o.add_option('--ba',dest='ba',default=None,
             help='Antennas to exclude, separated by commas.')
+o.add_option('--ex_bls',dest='ex_bls',default=None,
+             help='baselines to exclude, separated by commas. eg:0_1,2_3')
 o.add_option('--flength',dest='flength',default=None,
              help='a threshold for baseline lengths to use, in meters')
 o.add_option('--ftype', dest='ftype', default='', type='string',
             help='Type of the input file, .uvfits, or miriad, or fhd, to read fhd, simply type in the path/obsid')
 o.add_option('--tave', dest='tave', default=False, action='store_true',
              help='choose to average data over time before calibration or not')
-o.add_option('--gave', dest='gave', default=False, action='store_true',
-             help='choose to average solution over time after calibration or not')
 o.add_option('--iftxt', dest='iftxt', default=False, action='store_true',
             help='Toggle: write the npz info to a ucla format txt file or not')
 o.add_option('--iffits', dest='iffits', default=False, action='store_true',
@@ -44,18 +44,35 @@ o.add_option('--fitdegen', dest='fitdegen', default=False, action='store_true',
              help='Toggle: project degeneracy to fitted fhd solutions')
 o.add_option('--divauto', dest='divauto', default=False, action='store_true',
              help='Toggle: use auto corr to weight visibilities before cal')
-o.add_option('--fhdpath', dest='fhdpath', default='/users/wl42/data/wl42/FHD_out/fhd_PhaseII_EoR0/', type='string',
-             help='path to fhd solutions for projecting degen parameters. Default=/path/to/calibration/')
-o.add_option('--metafits', dest='metafits', default='/users/wl42/data/wl42/EoR0_PhaseII/', type='string',
+o.add_option('--smooth', dest='smooth', default=False, action='store_true',
+             help='Toggle: smooth data before cal by removing any signal beyond horizon, need divauto on')
+o.add_option('--fhdpath', dest='fhdpath', default='/users/wl42/data/wl42/FHD_out/fhd_PhaseII_Longrun_EoR0/', type='string',
+             help='path to fhd dir for projecting degen parameters, or fhd output visibilities if ftype is fhd.')
+o.add_option('--metafits', dest='metafits', default='/users/wl42/data/wl42/Nov2016EoR0/', type='string',
              help='path to metafits files')
 o.add_option('--ex_dipole', dest='ex_dipole', default=False, action='store_true',
              help='Toggle: exclude tiles which have dead dipoles')
+o.add_option('--x_wgt', dest='x_wgt', default=0, type='float',
+             help='weight visbilities for x pol by num of bls in each ubl gp, to the order of x_wgt')
+o.add_option('--y_wgt', dest='y_wgt', default=0, type='float',
+             help='weight visbilities for y pol by num of bls in each ubl gp, by the order of y_wgt')
+o.add_option('--min_size', dest='min_size', default=40, type='int',
+             help='minimun size of redundant groups to use to do diagnostic')
+o.add_option('--sigma_tol', dest='sigma_tol', default=2.0, type='float',
+             help='The tolerance of excluding bad vis data in diagnostic')
 opts,args = o.parse_args(sys.argv[1:])
 
 #Dictionary of calpar gains and files
 pols = opts.pol.split(',')
+bl_wgt = {'x': float(opts.x_wgt), 'y': float(opts.y_wgt)}
 files = {}
 #files=[]
+ex_bls = []
+if opts.ex_bls:
+    ex_bl_list = opts.ex_bls.split(',')
+    for bl in ex_bl_list:
+        _bl = bl.split('_')
+        ex_bls.append((int(_bl[0]),int(_bl[1])))
 g0 = {} #firstcal gains
 g_scale = {'x': 1.0, 'y': 1.0}
 if opts.calpar != None: #create g0 if txt file is provided
@@ -149,15 +166,14 @@ for filename in args:
     elif opts.ftype == 'uvfits':
         files[filename][filename] = filename + '.uvfits'
     elif opts.ftype == 'fhd':
-        obs = filename + '*'
-        filelist = glob.glob(obs)
+        filelist = glob.glob(opts.fhdpath+'/vis_data/'+filename+'*')+glob.glob(opts.fhdpath+'/metadata/'+filename+'*')
         if len(pols) == 1:
             p = pols[0]
             if p == 'xx':
-                try: filelist.remove(filename + '_vis_YY.sav')
+                try: filelist.remove(opts.fhdpath+'/vis_data/'+filename + '_vis_YY.sav')
                 except: pass
             elif p == 'yy':
-                try: filelist.remove(filename + '_vis_XX.sav')
+                try: filelist.remove(opts.fhdpath+'/vis_data/'+filename + '_vis_XX.sav')
                 except: pass
             else:
                 raise IOError('do not support cross pol')
@@ -174,6 +190,63 @@ if opts.instru == 'mwa':
     model_files = glob.glob(opts.fhdpath+'vis_data/'+args[0]+'*') + glob.glob(opts.fhdpath+'metadata/'+args[0]+'*')
     model_dict = capo.wyl.uv_read_omni([model_files],filetype='fhd', antstr='cross', p_list=pols, use_model=True)
 #################################################################################################
+
+def diagnostic(infodict):
+    min_size_bl_gp = int(opts.min_size)
+    exclude_bls = []
+    g0 = infodict['g0']
+    p = infodict['pol']
+    d = infodict['data']
+    f = infodict['flag']
+    ginfo = infodict['ginfo']
+    freqs = infodict['freqs']
+    ex_ants = infodict['ex_ants']
+    info = capo.omni.pos_to_info(antpos, pols=list(set(''.join([p]))), ex_ants=ex_ants, crosspols=[p])
+    reds = info.get_reds()
+    data = {}
+    for bl in d.keys():
+        i,j = bl
+        if not (i in info.subsetant and j in info.subsetant): continue
+        m = np.ma.masked_array(d[bl][p],mask=f[bl][p])
+        m = np.mean(m,axis=0)
+        data[bl] = {p: np.complex64(m.data.reshape(1,-1))}
+    #if txt file or first cal is not provided, g0 is initiated here, with all of them to be 1.0
+    if opts.calpar == None:
+        if not g0.has_key(p[0]): g0[p[0]] = {}
+        for iant in range(0, ginfo[0]):
+            g0[p[0]][iant] = np.ones((1,ginfo[2]))
+    elif opts.calpar.endswith('.sav'):
+        for key in g0[p[0]].keys():
+            g0_temp = g0[p[0]][key]
+            if opts.tave: g0[p[0]][key] = np.resize(g0_temp,(1,ginfo[2]))
+            else: g0[p[0]][key] = np.resize(g0_temp,(ginfo[1],ginfo[2]))
+    elif opts.calpar.endswith('.npz'):
+        for key in g0[p[0]].keys():
+            g0_temp = g0[p[0]][key]
+            if opts.tave: g0[p[0]][key] = np.resize(g0_temp,(1,ginfo[2]))
+            else: g0[p[0]][key] = np.resize(g0_temp,(ginfo[1],ginfo[2]))
+            if opts.initauto: g0[p[0]][key] *= auto[key]
+    m1,g1,v1 = capo.omni.redcal(data,info,gains=g0, removedegen=opts.removedegen)
+    m2,g2,v2 = capo.omni.redcal(data, info, gains=g1, vis=v1, uselogcal=False, removedegen=opts.removedegen)
+    for r in reds:
+        if len(r) < min_size_bl_gp: continue
+        stack_data = []
+        stack_bl = []
+        for bl in r:
+            stack_bl.append(bl)
+            try: stack_data.append(data[bl][p][0]/(g2[p[0]][bl[0]][0]*g2[p[0]][bl[1]][0].conj()))
+            except(KeyError): stack_data.append(data[bl[::-1]][p][0]/(g2[p[0]][bl[1]][0]*g2[p[0]][bl[0]][0].conj()))
+        stack_data = np.array(stack_data)
+        stack_bl = np.array(stack_bl)
+        vis_std = np.nanstd(stack_data,axis=0)
+        vis_ave = np.nanmean(stack_data,axis=0)
+        n_sigmas = np.nanmean(np.abs(stack_data-vis_ave)/vis_std,axis=1)
+        ind = np.where(n_sigmas > float(opts.sigma_tol))
+        for ii in ind[0]: exclude_bls.append(tuple(stack_bl[ii]))
+    return exclude_bls
+
+
+
 def calibration(infodict):#dict=[filename, g0, timeinfo, d, f, ginfo, freqs, pol, auto_corr]
     filename = infodict['filename']
     g0 = infodict['g0']
@@ -185,12 +258,16 @@ def calibration(infodict):#dict=[filename, g0, timeinfo, d, f, ginfo, freqs, pol
     timeinfo = infodict['timeinfo']
     ex_ants = infodict['ex_ants']
     auto = infodict['auto_corr']
+    mask_arr = infodict['mask']
+    for bl in ex_bls:
+        if not bl in infodict['ex_bls']: infodict['ex_bls'].append(bl)
     print 'Getting reds from calfile'
     print 'generating info:'
     filter_length = None
     if not opts.flength == None: filter_length = float(opts.flength)
-    info = capo.omni.pos_to_info(antpos, pols=list(set(''.join([p]))), filter_length=filter_length, ex_ants=ex_ants, crosspols=[p])
+    info = capo.omni.pos_to_info(antpos, pols=list(set(''.join([p]))), filter_length=filter_length, ex_ants=ex_ants, ex_bls=infodict['ex_bls'], crosspols=[p])
 
+    reds = info.get_reds()
     ### Omnical-ing! Loop Through Compressed Files ###
 
     print '   Calibrating ' + p + ': ' + filename
@@ -219,12 +296,36 @@ def calibration(infodict):#dict=[filename, g0, timeinfo, d, f, ginfo, freqs, pol
 
     data,wgts,xtalk = {}, {}, {}
     m2,g2,v2 = {}, {}, {}
+
+    # organize data for redundant cal
+    for bl in d.keys():
+        i,j = bl
+        if not (i in info.subsetant and j in info.subsetant): continue
+        if opts.tave:
+            m = np.ma.masked_array(d[bl][p],mask=f[bl][p])
+            m = np.mean(m,axis=0)
+            data[bl] = {p: np.complex64(m.data.reshape(1,-1))}
+        else: data[bl] = {p: copy.copy(d[bl][p])}
+    # if weight data by baseline number in each ubl group:
+    if not bl_wgt[p[0]] == 0:
+        for r in reds:
+            for bl in r:
+                try: data[bl][p] *= np.power(1./float(len(r)),bl_wgt[p[0]])
+                except(KeyError): data[bl[::-1]][p] *= np.power(1./float(len(r)),bl_wgt[p[0]])
+    # if weight antennas by auto corr:
     if opts.divauto:
-        for bl in d.keys():
+        for bl in data.keys():
             i,j = bl
-            data[bl] = {}
-            data[bl][p] = d[bl][p]/(auto[i]*auto[j])
-    else: data = d #indexed by bl and then pol (backwards from everything else)
+            data[bl][p] /= (auto[i]*auto[j])
+            if opts.smooth:
+                tfq = np.fft.fftfreq(freqs.size,(freqs[1]-freqs[0]))
+                fftdata = np.fft.fft(data[bl][p],axis=1)
+                ri,rj = realpos[i],realpos[j]
+                rij = np.array([ri['top_x']-rj['top_x'],ri['top_y']-rj['top_y'],ri['top_z']-rj['top_z']])
+                inds = np.where(np.abs(tfq)>(np.linalg.norm(rij)/3e8+50e-9))
+                fftdata[:,inds]=0
+                data[bl][p] = np.complex64(np.fft.ifft(fftdata,axis=1))
+     #indexed by bl and then pol (backwards from everything else)
 
     wgts[p] = {} #weights dictionary by pol
     for bl in f:
@@ -237,59 +338,56 @@ def calibration(infodict):#dict=[filename, g0, timeinfo, d, f, ginfo, freqs, pol
     if opts.divauto:
         for a in g2[p[0]].keys():
             g2[p[0]][a] *= auto[a]
-    if opts.tave:
-        for a in g2[p[0]].keys():
-            g2[p[0]][a] = np.resize(g2[p[0]][a],(ginfo[1],ginfo[2]))
+    if not bl_wgt[p[0]] == 0:
         for bl in v2[p].keys():
-            v2[p][bl] = np.resize(v2[p][bl],(ginfo[1],ginfo[2]))
-    if opts.gave:
-        for a in g2[p[0]].keys():
-            gmean = np.mean(g2[p[0]][a],axis=0)
-            g2[p[0]][a] = np.resize(gmean,(ginfo[1],ginfo[2]))
+            for r in reds:
+                if bl in r or bl[::-1] in r:
+                    v2[p][bl] *= np.power(float(len(r)),bl_wgt[p[0]])
     xtalk = capo.omni.compute_xtalk(m2['res'], wgts) #xtalk is time-average of residual
-    ############# correct the center of each coarse band and coarse band edge if instrument is mwa ######################
-#    if opts.instru == 'mwa':
-#        for a in g2[p[0]].keys():
-#            for ff in range(0,384):
-#                if ff%16==8:
-#                    g2[p[0]][a][:,ff] = (g2[p[0]][a][:,ff-1]+g2[p[0]][a][:,ff+1])/2
-#                if ff%16 in [0,15]:
-#                    g2[p[0]][a][:,ff] = 0
+
     ############# To project out degeneracy parameters ####################
     if opts.projdegen or opts.fitdegen:
+        fuse = []
+        for ff in range(384):
+            if not ff%16 in [0,15]: fuse.append(ff)
         print '   Projecting degeneracy'
-        for a in g2[p[0]].keys():
-            if g2[p[0]][a].ndim == 2 : g2[p[0]][a] = np.mean(g2[p[0]][a][1:53],axis=0)
         ref = g2[p[0]].keys()[0] # pick a reference tile to reduce the effect of phase wrapping
-        ref_exp = np.exp(1j*np.angle(g2[p[0]][ref]/gfhd[p[0]][ref]))
-        for a in g2[p[0]].keys(): g2[p[0]][a] /= ref_exp
+        ref_exp = np.exp(1j*np.angle(g2[p[0]][ref][:,fuse]/gfhd[p[0]][ref][fuse]))
+        for a in g2[p[0]].keys(): g2[p[0]][a][:,fuse] /= ref_exp
         print '   projecting amplitude'
-        amppar = capo.wyl.ampproj(g2,gfhd)
+        amppar = capo.wyl.ampproj(v2,model_dict,realpos,reds,tave=opts.tave)
         print '   projecting phase'
         phspar = capo.wyl.phsproj(g2,gfhd,realpos,EastHex,SouthHex,ref)
+        degen_proj = {}
         for a in g2[p[0]].keys():
             dx = realpos[a]['top_x']-realpos[ref]['top_x']
             dy = realpos[a]['top_y']-realpos[ref]['top_y']
             proj = amppar[p[0]]*np.exp(1j*(dx*phspar[p[0]]['phix']+dy*phspar[p[0]]['phiy']))
-            if a < 92: proj *= phspar[p[0]]['offset_east']
+            if a < 93: proj *= phspar[p[0]]['offset_east']
             else: proj *= phspar[p[0]]['offset_south']
+            degen_proj[a] = proj
             g2[p[0]][a] *= proj
-        print '   linear projecting'
-        lp = capo.wyl.linproj(g2,gfhd,realpos)
         for a in g2[p[0]].keys():
-            dx = realpos[a]['top_x']/100
-            dy = realpos[a]['top_y']/100
-            proj = np.exp(lp[p[0]]['eta']+1j*(dx*lp[p[0]]['phix']+dy*lp[p[0]]['phiy']+lp[p[0]]['offset']))
-            g2[p[0]][a] *= proj
-            g2[p[0]][a] = np.resize(g2[p[0]][a],(ginfo[1],ginfo[2]))
             for ff in range(384):
                 if ff%16 in [0,15]:
-                    g2[p[0]][a][:,ff] = 0    #clean nans
+                    g2[p[0]][a][:,ff] = 0
+                    degen_proj[a][:,ff] = np.inf    #clean nans
+        for bl in v2[p].keys():
+            i,j = bl
+            v2[p][bl] /= (degen_proj[j].conj()*degen_proj[i])
+    for a in g2[p[0]].keys():
+        if opts.tave:
+            g2[p[0]][a] = np.resize(g2[p[0]][a],(ginfo[2]))
+        else:
+            g_temp = np.ma.masked_array(g2[p[0]][a],mask_arr,fill_value=1.0)
+            g_temp = np.mean(g_temp,axis=0)
+            g2[p[0]][a] = g_temp.data
     ###########################################################################################
     m2['history'] = 'OMNI_RUN: '+''.join(sys.argv) + '\n'
     m2['jds'] = t_jd
     m2['lsts'] = t_lst
     m2['freqs'] = freqs
+    m2['ex_bls'] = infodict['ex_bls']
     if opts.instru == 'mwa':
         print '   start non-hex tiles calibration using fhd model'
         g3 = capo.wyl.non_hex_cal(d,g2,model_dict[p],realpos,ex_ants=ex_ants)
@@ -314,12 +412,12 @@ for f,filename in enumerate(args):
     print "  Reading data: " + filename
     if opts.ftype == 'miriad':
         for p in pols:
-            dict0 = capo.wyl.uv_read_omni([filegroup[p]], filetype = 'miriad', antstr='cross', p_list=[p], tave=opts.tave)
+            dict0 = capo.wyl.uv_read_omni([filegroup[p]], filetype = 'miriad', antstr='cross', p_list=[p])
             infodict[p] = dict0[p]
             infodict[p]['filename'] = filegroup[p]
             infodict['name_dict'] = dict0['name_dict']
     else:
-        infodict = capo.wyl.uv_read_omni([filegroup[key] for key in filegroup.keys()], filetype=opts.ftype, antstr='cross', p_list=pols, tave=opts.tave)
+        infodict = capo.wyl.uv_read_omni([filegroup[key] for key in filegroup.keys()], filetype=opts.ftype, antstr='cross', p_list=pols)
         for p in pols:
             infodict[p]['filename'] = filename
     print "  Finish reading."
@@ -334,7 +432,7 @@ for f,filename in enumerate(args):
                 if not int(a) in infodict[p]['ex_ants']:
                     infodict[p]['ex_ants'].append(int(a))
         if opts.ex_dipole:
-            metafits_path = opts.metafits + args[0] + '.metafits'
+            metafits_path = opts.metafits + filename + '.metafits'
             if os.path.exists(metafits_path):
                 print '    Finding dead dipoles in metafits'
                 hdu = fits.open(metafits_path)
@@ -348,10 +446,16 @@ for f,filename in enumerate(args):
         print '   Excluding antennas:', ex_ants
 
         info_dict.append(infodict[p])
-    print "  Start Parallelism:"
-    par = Pool(2)
-    npzlist = par.map(calibration, info_dict)
-    par.close()
+    print "  Start Diagnostic:"
+    par1 = Pool(2)
+    list_exclude_bls = par1.map(diagnostic, info_dict)
+    par1.close()
+    print '   excluded baselines:', list_exclude_bls
+    for ii in range(len(info_dict)): info_dict[ii]['ex_bls'] = list_exclude_bls[ii]
+    print "  Start Calibration:"
+    par2 = Pool(2)
+    npzlist = par2.map(calibration, info_dict)
+    par2.close()
     name_dict = infodict['name_dict']
 
     if opts.iftxt: #if True, write npz gains to txt files
