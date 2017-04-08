@@ -38,7 +38,7 @@ if opts.gain:
     for i in range(uv.Nbls):
         g['x'][1].append(cal['cal']['GAIN'][0][0][a1[i]])
         g['x'][2].append(cal['cal']['GAIN'][0][0][a2[i]])
-        g['y'][1].append(cal['cal']['GAIN'][0][1][a2[i]])
+        g['y'][1].append(cal['cal']['GAIN'][0][1][a1[i]])
         g['y'][2].append(cal['cal']['GAIN'][0][1][a2[i]])
     g['x'][1] = g['x'][1]*uv.Ntimes
     g['x'][2] = g['x'][2]*uv.Ntimes
