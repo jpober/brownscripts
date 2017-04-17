@@ -1,7 +1,7 @@
 import uvdata, argparse, numpy, pylab
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--uvf', '-u', 'action=store_true')
+parser.add_argument('--uvf', '-u', action='store_true')
 parser.add_argument('n1', type=int)
 parser.add_argument('n2', type=int)
 parser.add_argument('heradat', nargs=argparse.REMAINDER)
