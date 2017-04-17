@@ -1,3 +1,5 @@
+import uvdata, argparse, numpy, pylab
+
 parser = argparse.ArgumentParser()
 parser.add_argument('--uvf', '-u', 'action=store_true')
 parser.add_argument('n1', type=int)
