@@ -13,11 +13,11 @@ o.set_usage('make_some_noise [options] <input files>')  #Miriad files only
 
 o.add_option('-o', dest='opath', help='Destination directory',default='./noise_files')
 o.add_option('-i', dest='ipath', help='Input directory', default=None)
-#o.add_option('-s', dest='suffix', help='Optional suffix for output files', default=None)
-o.add_option('--new', action='store_true', dest='newflag', help='Create a new file of purely noise.', default=True)
+o.add_option('--new', action='store_true', dest='newflag', help='Create a new file of purely noise.', default=False)
 o.add_option('-N', dest='nfiles', help='Number of output files per input.', default=1)   #To create two or more noise realizations per file.
 o.add_option('-A', dest='Area', help='Effective Area (cm^2)', default=55000.)  #cm^2
 o.add_option('-I', '--instrument', dest='instr', help='Instrument (HERA/PAPER/MWA). Overrides A and Trec')
+o.add_option('--scale', type="float", help='Arbitrary scaling on the noise level.', default=1)
 o.add_option('--Trec', dest='Trec', help='Receiver temperature (K)', default=100. ) #K
 o.add_option('--Tref', dest='Tref', help='Sky temperature at 150 MHz (K)', default=400 ) #K
 #o.add_option('-df', dest='df', help='Channel width (Hz)', default=492610.837 )  #Hz
@@ -36,7 +36,7 @@ if basepath=='': basepath='.'
 basepath = os.path.realpath(basepath)
 if opts.ipath == None: opts.ipath = basepath
 
-optfile = open('/tmp/opts.pkl', 'w')
+optfile = open('/gpfs_home/alanman/extra_scripts/opts.pkl', 'w')
 pkl.dump(opts,optfile)
 
 args = map(os.path.basename, args)

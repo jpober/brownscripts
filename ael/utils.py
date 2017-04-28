@@ -1,5 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib.animation as anim
 import healpy as hp
 
 def quick_image(arr, cmap='jet'):
@@ -20,9 +21,40 @@ def get_filelist(obsid):
         ]
 	return filelist
 
-def quick_image_animate(arr, cmap='jet', axis=0):
-	##Animate a 2D heatmap along a third axis, 
-	return 0
+def quick_image_animate(arr, cmap='jet', axis=0, save=None, annotate='frame'):
+	"""Animate a 2D heatmap along a given axis.
+		axis = Which axis of the array is "time". The other two are x/y
+		save = Save file name
+                annotate = If string, 'frame' or 'none'. Frame = write frame number in top left. None = write nothing
+                           If list, treat each entry as a string to annotate the corresponding frame
+	"""
+	if not len(arr.shape) == 3:
+             print "Invalid array shape"
+             return
+
+	#Swap axes so that 0 is the time axis, if necessary.
+        if not axis == 0:
+		arr= np.swapaxes(arr,axis,0)
+	fig = plt.figure()
+        if isinstance(annotate, list):
+            if not len(annotate) == arr.shape[0]: annotate='frame'    #Default to frame if incorrect shape
+            else: frame_labels = map(str, annotate)
+        if isinstance(annotate, str):
+            if annotate=='frame': frame_labels=map(str,range(arr.shape[0]))
+            if annotate=='none' : frame_labels=None
+
+	im = plt.imshow(arr[0,:,:], cmap=cmap, interpolation='nearest')
+        if not annotate is None:  text = plt.title(frame_labels[0], ha='center', va='center')
+	def update_image(n):
+		im.set_data(arr[n,:,:])
+                if not annotate is None: text.set_text(frame_labels[n])
+
+	ani = anim.FuncAnimation(fig, update_image, arr.shape[0], interval=5)
+        if not save is None:
+		writer = anim.writers['ffmpeg'](fps=20)
+		ani.save(save,writer=writer, dpi=200)
+	else:
+		plt.show()
 
 
 ## Convert between healpix indices and ra/dec

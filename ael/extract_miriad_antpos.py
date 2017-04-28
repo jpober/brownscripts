@@ -13,7 +13,7 @@ from astropy import constants as const
 from astropy.coordinates import Angle
 from astropy import units as u
 
-generic_cal_filepath = '/users/alanman/GrowMIRIAD/generic_cal.py'
+generic_cal_filepath = '/users/alanman/brownscripts/ael/generic_cal.py'
 
 o = optparse.OptionParser()
 o.set_usage('extract_miriad_antpos.py [options] <input file>')  #Miriad files only!
