@@ -10,12 +10,6 @@ import glob
 ### Plot the |k| power spectra from npz files, each a different color set of points.
 
 o=optparse.OptionParser()
-o.add_option('--beam', action='store_true',
-                help='scale data by beam square instead of beam')
-o.add_option('--cov', action='store', type='float', default=None,
-            help='scale factor for signal loss in covariance removal')
-o.add_option('--med', action='store_true',
-            help='correction factor for using median statistics instead of the mean')
 o.add_option('--length', default=14.,
             help='Baseline length in meters.')
 o.add_option('-o','--ofilename',
@@ -26,9 +20,12 @@ o.add_option('-r', '--right', action='store_true',
             help='Show only right plot')
 o.add_option('--lin', action='store_true',
             help='Plot on a linear scale')
-
+o.add_option('--eor', action='store_true',
+            help='Add the Lidz EoR curve.')
 
 opts,args = o.parse_args(sys.argv[1:])
+
+c = 3e8
 
 def mean_temp(z):
     return 28. * ((1.+z)/10.)**.5 # mK
@@ -51,9 +48,6 @@ colors = ['black', 'grey', 'darkgreen', 'lime', 'mediumblue', 'darkviolet', 'mar
 tau_h = float(opts.length)*(100.)/(a.const.len_ns)
 k_h = C.pspec.dk_deta(C.pspec.f2z(.151)) * tau_h
 
-p.subplot(111)
-
-#theo_noise = noise_level(freq=freq)
 
 afreqs=[]
 
@@ -62,6 +56,25 @@ maxpk  = 0.0
 min_y  = 1e-3
 
 
+if opts.eor:
+     #Make the theoretical EoR curves
+
+     #Assuming all files have the same frequency channels, get the mean frequency from the first:
+     freq = 0.151
+     filename = glob.glob('/users/alanman/capo/ael/lidz_mcquinn_k3pk/*8.34.dat')[0]
+     print 'Reading', filename
+     d = n.array([map(float, L.split()) for L in open(filename).readlines()])
+     ks_eor, pk_eor = d[:,0], d[:,1]
+     z  = C.pspec.f2z(freq)    #Average frequency
+     print 'Redshift = ',z
+     k3pk_eor = ks_eor**3 / (2*n.pi**2) * pk_eor
+     u = opts.length*(freq*1e9)/c
+     kperp = C.cosmo_units.u2kperp(u,z)
+     kpl_eor = n.sqrt(ks_eor**2 - kperp**2)
+     kpl_eor_fold = n.concatenate((-kpl_eor[::-1], kpl_eor))
+     pk_eor_fold  = n.concatenate((pk_eor[::-1],pk_eor))
+
+n_files = len(args)
 for j,filename in enumerate(args):
     print 'Reading', filename
     f = n.load(filename)
@@ -98,9 +111,11 @@ for j,filename in enumerate(args):
          p.errorbar(kpl,pk,yerr=err, color=colors[j], fmt='.',label=os.path.basename(filename))
          p.vlines(k_h, -1e7, max_y, linestyles='--', linewidth=1.5)
          p.vlines(-k_h, -1e7, max_y, linestyles='--', linewidth=1.5)
+         if opts.eor and j == n_files -1 : p.plot(kpl_eor_fold,pk_eor_fold * mean_temp(z)**2, label='Lidz EoR')
          if j == len(args)-1:
            p.xlabel(r'$k_\parallel\ [h\ {\rm Mpc}^{-1}]$', fontsize='large')
            p.ylabel(r'$P(k)[\ {\rm mK}^2\ (h^{-1}\ {\rm Mpc})^3]$',fontsize='large')
+         if opts.eor and j == n_files - 1:   p.plot(ks_eor, k3pk_eor * mean_temp(z)**2, 'm-',label='Lidz EoR')
          if opts.lin:   p.ylim(-max_y,max_y)
          else:          p.ylim(min_y,max_y)
          p.xlim(-0.6, 0.6)
@@ -109,6 +124,7 @@ for j,filename in enumerate(args):
          p.errorbar(kpl,pk,yerr=err, color=colors[j], fmt='.')
          p.vlines(k_h, -1e7, max_y, linestyles='--', linewidth=1.5)
          p.vlines(-k_h, -1e7, max_y, linestyles='--', linewidth=1.5)
+         if opts.eor and j == n_files -1 : p.plot(kpl_eor_fold,pk_eor_fold * mean_temp(z)**2, label='Lidz EoR')
          if j == len(args)-1:
            if opts.lin:   p.ylim(-max_y,max_y)
            else:          p.ylim(min_y,max_y)
@@ -118,6 +134,7 @@ for j,filename in enumerate(args):
          p.subplot(122)
          p.errorbar(ks,k3pk,yerr=k3err, color=colors[j], fmt='.',label=os.path.basename(filename))
          p.vlines(k_h, -1e7, max_y, linestyles='--', linewidth=1.5)
+         if opts.eor and j == n_files - 1:   p.plot(ks_eor, k3pk_eor * mean_temp(z)**2, 'm-',label='Lidz EoR')
          if j == len(args)-1:
            if opts.lin:   p.ylim(-max_y3,max_y3)
            else:          p.ylim(min_y,max_y3)
@@ -138,36 +155,8 @@ else:
        if not opts.lin: p.gca().set_yscale('log', nonposy='clip')
 
 freq=n.average(afreqs)
-
-#TODO --- Enable this.  Plot theoretical EoR curve
-#fiilename = glob.glob('/users/alanman/capo/ael/lidz_mcquinn_k3pk/*7.32.dat')[0]
-#print 'Reading', filename
-#d = n.array([map(float, L.split()) for L in open(filename).readlines()])
-#ks, pk = d[:,0], d[:,1]
-z = C.pspec.f2z(freq)    #Average frequency
-print 'Redshift = ',z
-#k3pk = ks**3 / (2*n.pi**2) * pk
-#
-#p.plot(ks, k3pk * mean_temp(z)**2, 'm-',label='Lidz EoR')
-##p.plot(n.array(kpl_pos), 2*n.array(kpl_pos)**3*theo_noise/(2*n.pi**2), 'c--')
-#p.gca().set_yscale('log', nonposy='clip')
-##p.ylim(1e0,1e7)
-
 p.legend(numpoints=1, prop={'size':12}, loc=4)
+
+
 p.show()
-#p.savefig(opts.ofilename)
-
-sys.exit()
-
-#p.subplot(121)
-#p.xlabel(r'$k_\parallel\ [h\ {\rm Mpc}^{-1}]$')
-#p.ylabel(r'$P(k)\ [{\rm mK}^2\ (h^{-1}\ {\rm Mpc})^3]$')
-#p.ylim(-1e2,1e5)
-#p.grid()
-#p.subplot(122)
-#p.xlabel(r'$k\ [h\ {\rm Mpc}^{-1}]$')
-#p.ylabel(r'$k^3/2\pi^2\ P(k)\ [{\rm mK}^2]$')
-#p.ylim(-1e3,1e3)
-#p.xlim(0, 0.6)
-#p.grid()
 
