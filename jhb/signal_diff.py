@@ -1,7 +1,7 @@
 import uvdata, argparse, numpy, pylab
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--uvf', '-u', 'action=store_true', help="takes uvfits file instead of default miriad")
+parser.add_argument('--uvf', '-u', action='store_true', help="takes uvfits file instead of default miriad")
 parser.add_argument('n11', type=int)
 parser.add_argument('n12', type=int)
 parser.add_argument('n21', type=int)
