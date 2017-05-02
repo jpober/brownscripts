@@ -21,7 +21,7 @@ for i in range(len(weredids)):
 	plots.append(numpy.empty([0,1024]))
 
 for f in args.heradat:
-	if uvf:
+	if args.uvf:
 		uv.read_uvfits(f)
 	else:
 		uv.read_miriad(f)
