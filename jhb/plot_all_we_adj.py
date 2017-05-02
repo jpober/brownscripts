@@ -22,9 +22,9 @@ for i in range(len(weredids)):
 
 for f in args.heradat:
 	if uvf:
-		uv.read_uvfits(heradat)
+		uv.read_uvfits(f)
 	else:
-		uv.read_miriad(heradat)
+		uv.read_miriad(f)
 	for i in range(len(weredids)):
 		plots[i] = numpy.concatenate((plots[i], uv.data_array[numpy.where(uv.baseline_array == weredids[i])].squeeze()))
 
