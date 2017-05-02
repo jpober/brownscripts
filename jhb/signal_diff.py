@@ -1,4 +1,4 @@
-import uvdata, argparse, numpy, pylab
+	import uvdata, argparse, numpy, pylab
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--uvf', '-u', action='store_true', help="takes uvfits file instead of default miriad")

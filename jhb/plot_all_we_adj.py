@@ -18,7 +18,7 @@ for i in range(len(reda1)):
 
 plots = []
 for i in range(len(weredids)):
-	plots.append(numpy.empty([0,1024])
+	plots.append(numpy.empty([0,1024]))
 
 for f in args.heradat:
 	if uvf:
@@ -30,6 +30,6 @@ for f in args.heradat:
 
 for i in range(len(weredids)):
 	pylab.subplot(3 5 i)
-	pylab.imshow(numpy.log(numpy.absolute(plots[i])), interpolation='nearest', aspect='auto', vmin=-3, vmax=0)
+	pylab.imshow(numpy.log(numpy.absolute(plots[i])), interpolation='nearest', aspect='auto', vmin=-4, vmax=0)
 	pylab.colorbar()
 pylab.show()
