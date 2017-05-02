@@ -12,9 +12,9 @@ reda2 = [112, 97, 22, 81, 10, 9, 20, 89, 43, 53, 31, 65, 104, 96]
 weredids = []
 for i in range(len(reda1)):
 	if reda1[i] > reda2[i]:
-		weredids.append = uv.antnums_to_baseline(reda2[i], reda1[i])
+		weredids.append(uv.antnums_to_baseline(reda2[i], reda1[i]))
 	else:
-		weredids.append = uv.antnums_to_baseline(reda1[i], reda2[i])
+		weredids.append(uv.antnums_to_baseline(reda1[i], reda2[i]))
 
 plots = []
 for i in range(len(weredids)):
