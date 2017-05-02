@@ -29,7 +29,7 @@ for f in args.heradat:
 		plots[i] = numpy.concatenate((plots[i], uv.data_array[numpy.where(uv.baseline_array == weredids[i])].squeeze()))
 
 for i in range(len(weredids)):
-	pylab.subplot(3 5 i)
+	pylab.subplot(3, 5, i)
 	pylab.imshow(numpy.log(numpy.absolute(plots[i])), interpolation='nearest', aspect='auto', vmin=-4, vmax=0)
 	pylab.colorbar()
 pylab.show()
