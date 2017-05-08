@@ -20,10 +20,10 @@ name = { 0: '11', 1: '12', 2: '13', 3: '14', 4: '15', 5: '16', 6: '17', 7: '18',
 
 dx=np.load(obs+'.xx.npz')
 dy=np.load(obs+'.yy.npz')
-fm=np.zeros((56,384),dtype=bool)
+fm=np.zeros((384),dtype=bool)
 badf = [0,1,2,13,14,15]
 for nn in range(0,384):
-    if nn%16 in badf: fm[:,nn]=True
+    if nn%16 in badf: fm[nn]=True
 freq=dx['freqs']
 SH=fm.shape
 sol={}
@@ -42,13 +42,13 @@ for ii in range(0,128):
         x*=np.nan
         y*=np.nan
         exist=False
-    mx=np.ma.masked_array(x,mask=fm)
-    mx=np.mean(mx,axis=0)
-    my=np.ma.masked_array(y,mask=fm)
-    my=np.mean(my,axis=0)
-    ddx=mx.data
-    ddy=my.data
-    ff=mx.mask
+#    mx=np.ma.masked_array(x,mask=fm)
+#    mx=np.mean(mx,axis=0)
+#    my=np.ma.masked_array(y,mask=fm)
+#    my=np.mean(my,axis=0)
+    ddx=x
+    ddy=y
+    ff=fm
     for jj in range(0,ff.size):
         if ff[jj]:
             ddx[jj]=np.nan
