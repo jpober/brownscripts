@@ -20,6 +20,7 @@ o.add_option('-I', '--instrument', dest='instr', help='Instrument (HERA/PAPER/MW
 o.add_option('--scale', type="float", help='Arbitrary scaling on the noise level.', default=1)
 o.add_option('--Trec', dest='Trec', help='Receiver temperature (K)', default=100. ) #K
 o.add_option('--Tref', dest='Tref', help='Sky temperature at 150 MHz (K)', default=400 ) #K
+o.add_option('--oname', help='Output file name key', default=None)
 #o.add_option('-df', dest='df', help='Channel width (Hz)', default=492610.837 )  #Hz
 #o.add_option('-dt', dest='dt', help='Integration length (seconds)', default=30.0 ) #sec
 
@@ -50,7 +51,20 @@ time='01:30:00'
 
 Nf = len(args)
 
-batstr = 'sbatch --array=0-'+str(Nf-1) + ' -o \'slurm-%a.out\' --mem='+mem+' -t '+time+' /gpfs_home/alanman/extra_scripts/add_noise.py '+filelist
+logfile_base = "slurm"
+if not opts.oname is None:
+     logfile_base += "_"+opts.oname
+copynum=1
+if os.path.exists(logfile_base+'-0.out'):
+    logfile_name = logfile_base + str(copynum)
+    while os.path.exists(logfile_name+"-0.out"):
+        copynum+=1
+        logfile_name = logfile_base + str(copynum)
+else:
+    logfile_name=logfile_base
+
+
+batstr = 'sbatch --array=0-'+str(Nf-1) + ' -o \''+logfile_name+'-%a.out\' --mem='+mem+' -t '+time+' /gpfs_home/alanman/extra_scripts/add_noise.py '+filelist
 
 #print batstr
 

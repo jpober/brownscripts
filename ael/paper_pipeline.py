@@ -22,7 +22,7 @@ class params:
    EVEN_DATAPATH=OUT+'/even/'
    ODD_DATAPATH=OUT+'/odd/'
    WINDOW='blackman-harris'
-   length=14
+   length="14"
    auto_redundancy=1
    min=8              ## Minimum number for a redundant group to be included
 
@@ -62,7 +62,7 @@ if __name__ == '__main__':
     
     o.add_option('-c', dest='config', help='Config file')
     o.add_option('-s', dest='skiptoplot', action='store_true', help='Skip to plot')
-#    o.add_option('-b', '--batch', action='store_true', help='Run as a slurm batch job')
+    o.add_option('--append', help='Append string to prefix in config file')
     
     opt,args = o.parse_args(sys.argv[1:])
 
@@ -74,6 +74,8 @@ if __name__ == '__main__':
        raise AttributeError("Please provide some files to process")
     
     opts = read_config(config)
+    if not opt.append is None:
+       opts.PREFIX += "_" + opt.append
     
     #Locate cal file and move nearby, if necessary
 #    seek=False
@@ -92,7 +94,7 @@ if __name__ == '__main__':
               sys.exit()
         else:
               found = finds[0].strip()
-              shutil.copyfile(found,'.')                                #Copy the cal file locally
+              shutil.copy(found,'.')                                #Copy the cal file locally
     
 #    if opts.auto_redundancy == 1:
 #         s = build_redundant('count', opts, cal=opts.cal, restore=opts.cal+"_reds")
@@ -151,24 +153,17 @@ if __name__ == '__main__':
 #           if opt.batch:
 #                 cmd = "sbatch --mem=20G -t 2:00:00 -n 10 "+cmd
 
-           print cmd
-           p = subprocess.Popen(cmd, stderr=subprocess.PIPE, shell=True)   #Careful with shell=True!
-#           if opt.batch:
-#                rcode = p.wait()
-#                lines = " ".join(p.stdout.readlines()).strip()
-#                pid   = lines.split(" ")[-1]
-#                cmd = '~/extra_scripts/wait_for_slurm.sh '+pid
-#                p0 = subprocess.Popen(cmd, shell=True)
-#                rcode = p0.wait()
-#           else:
-           rcode = p.wait()
+           p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)   #Careful with shell=True!
+           for c in iter(lambda: p.stdout.readline(), ""):
+                 print c.strip()
+           stdout, stderr = p.communicate()
+           rcode = p.returncode
            if not rcode==0:
-                print "\n".join(p.stderr.readlines())
+                print stderr
                 sys.exit()
            bootstrap_files = glob.glob(outdir+"/pspec_boot*.npz")
            cmd = "python ~/capo/pspec_pipeline/pspec_simple_2d_to_1d.py " \
                  +" --output="+outdir+" --nboot="+opts.NBOOT+" "+' '.join(bootstrap_files)
-           print cmd
            p = subprocess.Popen(cmd, stderr=subprocess.PIPE, shell=True)   #Careful with shell=True!
            rcode = p.wait()
            if not rcode==0:

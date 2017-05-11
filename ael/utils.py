@@ -49,7 +49,7 @@ def quick_image_animate(arr, cmap='jet', axis=0, save=None, annotate='frame'):
 		im.set_data(arr[n,:,:])
                 if not annotate is None: text.set_text(frame_labels[n])
 
-	ani = anim.FuncAnimation(fig, update_image, arr.shape[0], interval=5)
+	ani = anim.FuncAnimation(fig, update_image, arr.shape[0], interval=1)
         if not save is None:
 		writer = anim.writers['ffmpeg'](fps=20)
 		ani.save(save,writer=writer, dpi=200)

@@ -22,6 +22,8 @@ o.add_option('--lin', action='store_true',
             help='Plot on a linear scale')
 o.add_option('--eor', action='store_true',
             help='Add the Lidz EoR curve.')
+o.add_option('--eor2', action='store_true',
+            help='Add the FHD EoR curve')
 
 opts,args = o.parse_args(sys.argv[1:])
 
@@ -53,8 +55,28 @@ afreqs=[]
 
 maxpk3 = 0.0
 maxpk  = 0.0
+max_x  = 0.0
 min_y  = 1e-3
 
+if opts.eor2:
+     #Make the theoretical EoR curves
+     if opts.eor:
+          print 'Error: cannot plot both model EoR curves at once, yet'
+     else:
+          freq = 0.151
+          z  = C.pspec.f2z(freq)    #Average frequency
+          u = opts.length*(freq*1e9)/c
+          kperp = C.cosmo_units.u2kperp(u,z)
+          filename = glob.glob('/users/alanman/capo/ael/FHD_EoR_model.dat')[0]
+          print 'Reading', filename
+          d = n.array([map(float, L.split()) for L in open(filename).readlines()])
+          ks_eor, pk_eor = d[:,0], d[:,1]*(1./mean_temp(z)**2)
+          print 'Redshift = ',z
+          k3pk_eor = ks_eor**3 / (2*n.pi**2) * pk_eor   ### Is the saved a dimensionless or dimensionful ps curve?
+          kpl_eor = n.sqrt(ks_eor**2 - kperp**2)
+          kpl_eor_fold = n.concatenate((-kpl_eor[::-1], kpl_eor))
+          pk_eor_fold  = n.concatenate((pk_eor[::-1],pk_eor))
+          eor_label="Furlanetto EoR"
 
 if opts.eor:
      #Make the theoretical EoR curves
@@ -67,12 +89,15 @@ if opts.eor:
      ks_eor, pk_eor = d[:,0], d[:,1]
      z  = C.pspec.f2z(freq)    #Average frequency
      print 'Redshift = ',z
-     k3pk_eor = ks_eor**3 / (2*n.pi**2) * pk_eor
+     k3pk_eor = ks_eor**3 / (2*n.pi**2) * pk_eor 
      u = opts.length*(freq*1e9)/c
      kperp = C.cosmo_units.u2kperp(u,z)
      kpl_eor = n.sqrt(ks_eor**2 - kperp**2)
      kpl_eor_fold = n.concatenate((-kpl_eor[::-1], kpl_eor))
      pk_eor_fold  = n.concatenate((pk_eor[::-1],pk_eor))
+     eor_label = "Lidz EOR"
+
+if opts.eor2: opts.eor = True
 
 n_files = len(args)
 for j,filename in enumerate(args):
@@ -92,7 +117,7 @@ for j,filename in enumerate(args):
         except:
             raise AttributeError
 
-
+    max_x  = n.max([max_x, n.max(kpl)])
     maxpk3 = n.max([maxpk3,n.max(k3pk)])
     maxpk  = n.max([maxpk ,n.max(pk)])
 
@@ -106,39 +131,39 @@ for j,filename in enumerate(args):
            p.ylabel(r'$k^3/2\pi^2\ P(k)\ [{\rm mK}^2]$', fontsize='large')
          if opts.lin:   p.ylim(-max_y3,max_y3)
          else:          p.ylim(min_y,max_y3)
-         p.xlim(0, 0.6)
+         p.xlim(0, max_x*1.1)
     elif opts.left:
          p.errorbar(kpl,pk,yerr=err, color=colors[j], fmt='.',label=os.path.basename(filename))
          p.vlines(k_h, -1e7, max_y, linestyles='--', linewidth=1.5)
          p.vlines(-k_h, -1e7, max_y, linestyles='--', linewidth=1.5)
-         if opts.eor and j == n_files -1 : p.plot(kpl_eor_fold,pk_eor_fold * mean_temp(z)**2, label='Lidz EoR')
+         if opts.eor and j == n_files -1 : p.plot(kpl_eor_fold,pk_eor_fold * mean_temp(z)**2, label=eor_label)
          if j == len(args)-1:
            p.xlabel(r'$k_\parallel\ [h\ {\rm Mpc}^{-1}]$', fontsize='large')
            p.ylabel(r'$P(k)[\ {\rm mK}^2\ (h^{-1}\ {\rm Mpc})^3]$',fontsize='large')
-         if opts.eor and j == n_files - 1:   p.plot(ks_eor, k3pk_eor * mean_temp(z)**2, 'm-',label='Lidz EoR')
+         if opts.eor and j == n_files - 1:   p.plot(ks_eor, k3pk_eor * mean_temp(z)**2, 'm-',label=eor_label)
          if opts.lin:   p.ylim(-max_y,max_y)
          else:          p.ylim(min_y,max_y)
-         p.xlim(-0.6, 0.6)
+         p.xlim(-max_x*1.1, max_x*1.1)
     else:
          p.subplot(121)
          p.errorbar(kpl,pk,yerr=err, color=colors[j], fmt='.')
          p.vlines(k_h, -1e7, max_y, linestyles='--', linewidth=1.5)
          p.vlines(-k_h, -1e7, max_y, linestyles='--', linewidth=1.5)
-         if opts.eor and j == n_files -1 : p.plot(kpl_eor_fold,pk_eor_fold * mean_temp(z)**2, label='Lidz EoR')
+         if opts.eor and j == n_files -1 : p.plot(kpl_eor_fold,pk_eor_fold * mean_temp(z)**2, label=eor_label)
          if j == len(args)-1:
            if opts.lin:   p.ylim(-max_y,max_y)
            else:          p.ylim(min_y,max_y)
-           p.xlim(-0.6, 0.6)
+           p.xlim(-max_x*1.1, max_x*1.1)
            p.xlabel(r'$k_\parallel\ [h\ {\rm Mpc}^{-1}]$', fontsize='large')
            p.ylabel(r'$P(k)[\ {\rm mK}^2\ (h^{-1}\ {\rm Mpc})^3]$',fontsize='large')
          p.subplot(122)
          p.errorbar(ks,k3pk,yerr=k3err, color=colors[j], fmt='.',label=os.path.basename(filename))
          p.vlines(k_h, -1e7, max_y, linestyles='--', linewidth=1.5)
-         if opts.eor and j == n_files - 1:   p.plot(ks_eor, k3pk_eor * mean_temp(z)**2, 'm-',label='Lidz EoR')
+         if opts.eor and j == n_files - 1:   p.plot(ks_eor, k3pk_eor * mean_temp(z)**2, 'm-',label=eor_label)
          if j == len(args)-1:
            if opts.lin:   p.ylim(-max_y3,max_y3)
            else:          p.ylim(min_y,max_y3)
-           p.xlim(0, 0.6)
+           p.xlim(0, max_x*1.1)
            p.xlabel(r'$k\ [h\ {\rm Mpc}^{-1}]$', fontsize='large')
            p.ylabel(r'$k^3/2\pi^2\ P(k)\ [{\rm mK}^2]$', fontsize='large')
 
