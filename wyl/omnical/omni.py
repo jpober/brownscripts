@@ -109,7 +109,7 @@ def aa_to_info(aa, pols=['x'], fcal=False, **kwargs):
     return info
 
 #generate info from perfect positions
-def pos_to_info(position, pols=['x'], fcal=False, filter_length=None, **kwargs):
+def pos_to_info(position, pols=['x'], fcal=False, **kwargs):
 ### the position is a dictionary, containing only antennas involved in redundant groups.    ###
 ### position dict should have keys of ant inds, with values of ideal positions, and cable   ###
 ### lengths, and a key named 'nant', indicate the number of total antennas across the array ###
@@ -134,15 +134,6 @@ def pos_to_info(position, pols=['x'], fcal=False, filter_length=None, **kwargs):
             antpos[i.val,0],antpos[i.val,1],antpos[i.val,2] = x,y,z
 #            redinfo[i,0],redinfo[i,1],redinfo[i,2] = x,y,cable*z
     reds = compute_reds(nant, pols, antpos[:nant],tol=0.01)
-    ubls = None
-    if not filter_length == None:
-        ubls = []
-        for r in reds:
-            bli = int(r[0][0])
-            blj = int(r[0][1])
-            length = np.linalg.norm(antpos[blj]-antpos[bli])
-            if length < filter_length: ubls.append((bli,blj))
-        kwargs['ubls'] = kwargs.get('ubls',[]) + ubls
     ex_ants = [Antpol(i,nant).ant() for i in range(antpos.shape[0]) if antpos[i,0] < 0]
     kwargs['ex_ants'] = kwargs.get('ex_ants',[]) + ex_ants
     reds = filter_reds(reds, **kwargs)
@@ -154,7 +145,7 @@ def pos_to_info(position, pols=['x'], fcal=False, filter_length=None, **kwargs):
     return info
 
 
-def cal_reds_from_pos(position):
+def cal_reds_from_pos(position,**kwargs):
     nant = position['nant']
     antpos = -np.ones((nant,3))
     xmin = 0
@@ -172,8 +163,8 @@ def cal_reds_from_pos(position):
         i = ant
         antpos[i,0],antpos[i,1],antpos[i,2] = x,y,z
     reds = omnical.arrayinfo.compute_reds(antpos,tol=0.01)
-    ex_ants = [i for i in range(antpos.shape[0]) if antpos[i,0] < 0]
-    reds = omnical.arrayinfo.filter_reds(reds,ex_ants=ex_ants)
+    kwargs['ex_ants'] = kwargs.get('ex_ants',[]) + [i for i in range(antpos.shape[0]) if antpos[i,0] < 0]
+    reds = omnical.arrayinfo.filter_reds(reds,**kwargs)
     return reds
 
 
@@ -235,7 +226,7 @@ def to_npz(filename, meta, gains, vismdl, xtalk):
     '''Write results from omnical.calib.redcal (meta,gains,vismdl,xtalk) to npz file.
     Each of these is assumed to be a dict keyed by pol, and then by bl/ant/keyword'''
     d = {}
-    metakeys = ['jds','lsts','freqs','history']#,chisq]
+    metakeys = ['jds','lsts','freqs','history','ex_bls']#,chisq]
     for key in meta:
         if key.startswith('chisq'): d[key] = meta[key] #separate if statements  pending changes to chisqs
         for k in metakeys: 
@@ -313,7 +304,7 @@ def from_npz(filename, pols=None, bls=None, ants=None, verbose=False):
         #     pol,ant = k[-1:],int(k[:-1])
         #     if not gains.has_key(pol): gains[pol] = {}
         #     gains[pol][ant] = gains[pol].get(ant,[]) + [np.copy(npz[k])]
-        kws = ['chi','hist','j','l','f']
+        kws = ['chi','hist','j','l','f','ex_bls']
         for kw in kws:
             for k in [f for f in npz.files if f.startswith(kw)]:
                 meta[k] = meta.get(k,[]) + [np.copy(npz[k])]

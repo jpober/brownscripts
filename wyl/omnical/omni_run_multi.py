@@ -22,8 +22,8 @@ o.add_option('--ba',dest='ba',default=None,
             help='Antennas to exclude, separated by commas.')
 o.add_option('--ex_bls',dest='ex_bls',default=None,
              help='baselines to exclude, separated by commas. eg:0_1,2_3')
-o.add_option('--flength',dest='flength',default=None,
-             help='a threshold for baseline lengths to use, in meters')
+o.add_option('--ex_ubls',dest='ex_ubls',default=None,
+             help='exclude unique type of baselines,separated by comma, eg: 0_1,1_2')
 o.add_option('--ftype', dest='ftype', default='', type='string',
             help='Type of the input file, .uvfits, or miriad, or fhd, to read fhd, simply type in the path/obsid')
 o.add_option('--tave', dest='tave', default=False, action='store_true',
@@ -192,6 +192,11 @@ if opts.cal_all == 'model':
     model_dict = capo.wyl.uv_read_omni([model_files],filetype='fhd', antstr='cross', p_list=pols, use_model=True)
 #################################################################################################
 
+ex_ubls = []
+for ubls in opts.ex_ubls.split(','):
+    i,j = ubls.split('_')
+    ex_ubls.append((int(i),int(j)))
+
 def diagnostic(infodict):
     min_size_bl_gp = int(opts.min_size)
     exclude_bls = []
@@ -202,7 +207,7 @@ def diagnostic(infodict):
     ginfo = infodict['ginfo']
     freqs = infodict['freqs']
     ex_ants = infodict['ex_ants']
-    info = capo.omni.pos_to_info(antpos, pols=list(set(''.join([p]))), ex_ants=ex_ants, crosspols=[p])
+    info = capo.omni.pos_to_info(antpos, pols=list(set(''.join([p]))), ex_ants=ex_ants, ex_ubls=ex_ubls, crosspols=[p])
     reds = info.get_reds()
     data = {}
     for bl in d.keys():
@@ -267,8 +272,7 @@ def calibration(infodict):#dict=[filename, g0, timeinfo, d, f, ginfo, freqs, pol
     print 'Getting reds from calfile'
     print 'generating info:'
     filter_length = None
-    if not opts.flength == None: filter_length = float(opts.flength)
-    info = capo.omni.pos_to_info(antpos, pols=list(set(''.join([p]))), filter_length=filter_length, ex_ants=ex_ants, ex_bls=infodict['ex_bls'], crosspols=[p])
+    info = capo.omni.pos_to_info(antpos, pols=list(set(''.join([p]))), ex_ants=ex_ants, ex_ubls=ex_ubls, ex_bls=infodict['ex_bls'], crosspols=[p])
 
     reds = info.get_reds()
     ### Omnical-ing! Loop Through Compressed Files ###
@@ -333,7 +337,7 @@ def calibration(infodict):#dict=[filename, g0, timeinfo, d, f, ginfo, freqs, pol
     for bl in f:
         i,j = bl
         wgts[p][(j,i)] = wgts[p][(i,j)] = np.logical_not(f[bl][p]).astype(np.int)
-    print '   Logcal-ing' 
+    print '   Logcal-ing'
     m1,g1,v1 = capo.omni.redcal(data,info,gains=g0, removedegen=opts.removedegen) #SAK CHANGE REMOVEDEGEN
     print '   Lincal-ing'
     m2,g2,v2 = capo.omni.redcal(data, info, gains=g1, vis=v1, uselogcal=False, removedegen=opts.removedegen)

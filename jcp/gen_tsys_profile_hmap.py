@@ -23,11 +23,12 @@ lons,lats,x,y = coords.makegrid(200,200, returnxy=True)
 lons = 360 - lons
 lats *= a.img.deg2rad; lons *= a.img.deg2rad
 y,x,z = a.coord.radec2eq(np.array([lons.flatten(), lats.flatten()]))
-#beammap = np.abs(beam[x,y,z]/beam[0,0,1])
-beammap = np.real((beam[x,y,z]/beam[0,0,1])*np.conj(beam[x,y,z]/beam[0,0,1]))
+beammap = np.real(beam[x,y,z]*np.conj(beam[x,y,z]))
+#beammap = np.real((beam[x,y,z]/beam[0,0,1])*np.conj(beam[x,y,z]/beam[0,0,1]))
 beammap.shape = (200,200)
 beammap = np.where(a.img.recenter(invalid,(100,100)), 0, beammap)
 plt.imshow(np.log10(beammap));plt.colorbar();plt.show()
+#plt.imshow(beammap);plt.colorbar();plt.show()
 #beammap = np.ones_like(beammap)
 
 ha_range = np.arange(0,2*np.pi, .01)

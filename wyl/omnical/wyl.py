@@ -365,8 +365,7 @@ def polyfunc(x,z):
         sum += z[ii]
     return sum
 
-
-def mwa_bandpass_fit(gains, auto, tile_info, amp_order=2, phs_order=1):
+def mwa_bandpass_fit(gains, auto, tile_info, amp_order=2, phs_order=1, fit_reflection=True):
     fqs = np.linspace(167.075,197.715,384)
     freq = np.arange(384)
     for p in gains.keys():
@@ -382,13 +381,13 @@ def mwa_bandpass_fit(gains, auto, tile_info, amp_order=2, phs_order=1):
             y2 = np.angle(gains[p][ant][x])
             y2 = np.unwrap(y2)
             z2 = np.polyfit(x,y2,phs_order)
-            rp = np.zeros((384),dtype=np.complex)
+            rp = np.zeros((384))
             cable = tile_info[ant]['cable']
-            if cable == 150:
-                t0 = 2*150./299792458.0/0.81*1e6
-                rp[x] = gains[p][ant][x]-(A[x]*np.exp(1j*(z2[0]*x+z2[1])))
-                cable = tile_info[ant]['cable']
-                tau = np.fft.fftfreq(384,(fqs[-1]-fqs[0])/384)
+            if fit_reflection and cable==150:
+                vf = tile_info[ant]['vf']
+                t0 = 2*cable/299792458.0/vf*1e6
+                rp[x] = y2 - polyfunc(x,z2)
+                tau = np.fft.fftfreq(384,(fqs[-1]-fqs[0])/383)
                 fftrp = np.fft.fft(rp,n=384)
                 inds = np.where(abs(np.abs(tau)-t0)<0.05)
                 imax = np.argmax(np.abs(fftrp[inds]))
@@ -397,8 +396,8 @@ def mwa_bandpass_fit(gains, auto, tile_info, amp_order=2, phs_order=1):
                 mask[ind] = 1.
                 fftrp *= mask
                 rp = np.fft.ifft(fftrp)
-            gains[p][ant] = A*np.exp(1j*polyfunc(freq,z2))
-            gains[p][ant][x] += rp[x]
+            gains[p][ant][x] = A[x]*np.exp(1j*polyfunc(x,z2))
+            gains[p][ant][x] *= np.exp(1j*rp[x])
     return gains
 
 
