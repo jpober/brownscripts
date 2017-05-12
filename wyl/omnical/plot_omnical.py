@@ -21,7 +21,7 @@ name = { 0: '11', 1: '12', 2: '13', 3: '14', 4: '15', 5: '16', 6: '17', 7: '18',
 dx=np.load(obs+'.xx.npz')
 dy=np.load(obs+'.yy.npz')
 fm=np.zeros((384),dtype=bool)
-badf = [0,1,2,13,14,15]
+badf = [0,15]
 for nn in range(0,384):
     if nn%16 in badf: fm[nn]=True
 freq=dx['freqs']
