@@ -1,7 +1,8 @@
-import numpy as np
+import numpy as np, aipy as a, os
 import matplotlib.pyplot as plt
 import matplotlib.animation as anim
 import healpy as hp
+from capo import omni
 
 def quick_image(arr, cmap='jet'):
 	##Quickly generate a 2D heatmap, akin to Bryna's quick_image IDL procedure.
@@ -65,3 +66,45 @@ def idx_to_radec(index,NSIDE):
 
 def radec_to_index(ra,dec,NSIDE):
     return hp.pixelfunc.ang2pix(NSIDE,np.radians(-dec+90.),np.radians(360.-RA))
+
+
+
+def build_redundant(mode='sep', aa=None, cal=None, sep=-1, restore="nofile", length=None, min_count=2):
+   if cal is None and restore is None:
+        raise NameError("Either cal or restore, or both, must be defined.")
+   if os.path.isfile(restore):
+        cal = None
+        fil=np.load(restore)
+        reds=fil['reds']
+        if 'lens' in fil.keys(): lens = fil['lens']
+   if ((cal is not None) or (aa is not None)) and (not os.path.isfile(restore)):
+        if aa is None: aa = a.cal.get_aa(cal, 1024/100e6, .1, 1024)
+        info = omni.aa_to_info(aa)
+        reds = info.get_reds()
+        reds = [gp for gp in reds if len(gp) >= int(min_count)]
+        lens = []
+        for gp in reds:
+                i,j = gp[0]
+                bl = aa.get_baseline(i,j)   #baseline vector in light ns
+                lens.append(np.sqrt(sum(i**2 for i in bl)) * a.const.len_ns / 100.)    #Convert to meters
+        reds = np.array(reds)
+        lens = np.array(lens)
+        if mode == 'lengths':
+             lens = np.unique(np.round(lens,3))
+             return ','.join(lens)
+        tolerance=0.50 if float(length)>0 else min(lens)+0.50     #50 cm good enough?
+        if not length is None:
+            ### Select only groups of baselines with a given length.
+            reds=reds[np.where(np.abs(lens - float(length)) < tolerance)]
+        if not restore is None and not restore == 'nofile':
+              np.savez(restore,reds=reds,lens=lens)
+
+   if mode == 'flatten':
+	return ",".join([str(it[0])+"_"+str(it[1]) for sublist in reds for it in sublist])
+
+   if mode == 'count':
+	return len(reds)
+
+   if mode == 'sep':
+        if sep == -1: raise ValueError("Choose a valid redundant group index.")
+	return [str(it[0])+"_"+str(it[1]) for it in reds[int(sep)]]

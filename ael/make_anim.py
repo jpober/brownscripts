@@ -9,9 +9,11 @@ import matplotlib.image as mpimg
 import matplotlib.animation as anim
 #from moviepy.editor import VideoClip
 
-### Load the latest ffmpeg module before using this!!!
+###!!!! Load the latest ffmpeg module before using this!!!
 
 files = sys.argv[1:]  #glob.glob('*[0-17]*Dirty_XX.png')
+
+#files = files[::-1]
 
 frames = []
 
@@ -25,9 +27,11 @@ fig = plt.figure()
 im = plt.imshow(frames[0], cmap='brg_r', interpolation='nearest')
 def update_image(n):
 	im.set_data(frames[n])
-ani = anim.FuncAnimation(fig, update_image, len(frames), interval=5)
+
+ani = anim.FuncAnimation(fig, update_image, len(frames), interval=200)
 plt.show()
 
-#writer = anim.writers['ffmpeg'](fps=20)
+#writer=anim.writers['ffmpeg'](fps=5)
 #ani.save('anim.mp4',writer=writer, dpi=200)
 
+#plt.show()
