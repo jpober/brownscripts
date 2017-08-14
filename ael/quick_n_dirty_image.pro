@@ -65,5 +65,4 @@ normalization_arr*=((beam_base_out)[obs.obsx,obs.obsy])^2.
 Imagefast,(*instr_dirty_arr)[zoom_low:zoom_high,zoom_low:zoom_high],file_path=fhd_dir+'Dirty_'+obs.pol_names[pol_i]+"_chan-"+strtrim(freq,2),reverse_image=0,/right,sig=2,color_table=0,back='white',title=obsID,/show_grid,astr=obs.astr
 
 
-message, "artificial breakpoint"
 END
