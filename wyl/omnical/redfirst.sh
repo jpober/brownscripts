@@ -1,10 +1,11 @@
 ### Submit the sbatch array command to do omnical
 
-obs_file_name='/users/wl42/IDL/FHD/Observations/PhaseII_EoR0_obs'
+obs_file_name='/users/wl42/IDL/FHD/Observations/AllNov2016'
+#obs_file_name='ALL'
 poscal='PhaseII_cal'
 #pol='xx,yy'
-mem='50G'
-time='10:00:00'
+mem='60G'
+time='1:00:00'
 
 #Read the obs file and put into an array, skipping blank lines if they exist
 i=0
