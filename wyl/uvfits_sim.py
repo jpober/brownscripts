@@ -40,6 +40,6 @@ for ii in range(uv.Nblts):
     i = uv.ant_1_array[ii]
     j = uv.ant_2_array[ii]
     uvw_array.append(aa.get_baseline(i,j,src='z'))
-uv.uvw_array = -np.uvw_array(uvw_array)*a.const.len_ns/100
+uv.uvw_array = -np.array(uvw_array)*a.const.len_ns/100
 print 'writing...'
 uv.write_uvfits(opts.outdir+obsid+'_sim.uvfits')
