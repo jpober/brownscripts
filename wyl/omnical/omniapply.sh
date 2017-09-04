@@ -5,5 +5,5 @@
 obsids=("$@")
 obs=${obsids[$SLURM_ARRAY_TASK_ID]}
 
-python /users/wl42/OmniCal/capo/wyl/scripts/omni_apply_multi.py -p 'xx,yy' --omnipath='./omni_sol/%s.npz' --intype='uvfits' $obs
-#python omni_run_multi.py -p $pol -C $poscal --ftype='uvfits' --iffits --omnipath='./' $obs
+python /users/wl42/OmniCal/mp2cal/scripts/omni_apply_mwa.py -p 'xx,yy' -C 'PhaseII_cal' --omnipath='./omni_sol/' --metafits='/users/wl42/data/wl42/Nov2016EoR0/' --ave --intype='uvfits' --appfhd $obs
+
