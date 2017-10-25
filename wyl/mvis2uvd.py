@@ -1,11 +1,11 @@
-import sys,optparse,aipy
+import sys,optparse,aipy,glob
 import numpy as np, mp2cal 
 import pyuvdata.uvdata as uvd
 
 o = optparse.OptionParser()
 o.set_usage('mvis2uvd.py [options] obsid') #only takes 1 obsid
 o.set_description(__doc__)
-o.add_option('-d',dest='datpath',default='/users/wl42/data/wl42/Nov2016EoR0/',type='string', help='Path to data. Include final / in path.')
+o.add_option('-d',dest='datpath',default='/users/wl42/data/wl42/FHD_out/fhd_MWA_PhaseII_EoR0/',type='string', help='Path to data. Include final / in path.')
 o.add_option('-s',dest='solpath',default='/users/wl42/data/wl42/Nov2016EoR0/mdl_sol/',type='string', help='Path to omnical solutions. Include final / in path.')
 o.add_option('-o',dest='outpath',default='/users/wl42/data/wl42/MDLVIS/',type='string', help='Path to save uvfits. Include final / in path.')
 opts,args = o.parse_args(sys.argv[1:])
@@ -13,7 +13,8 @@ exec('from PhaseII_cal import *')
 obsid = args[0]
 uv = uvd.UVData()
 print '     Loading data'
-uv.read_uvfits(opts.datpath+obsid+'.uvfits',run_check=False,run_check_acceptability=False)
+fhdlist = glob.glob(opts.datpath+'vis_data/'+obsid+'*') + glob.glob(opts.datpath+'metadata/'+obsid+'*')
+uv.read_fhd(fhdlist,run_check=False,run_check_acceptability=False)
 print '     Loading mdlvis'
 npz_x = np.load(opts.solpath+obsid+'.xx.omni.npz')
 npz_y = np.load(opts.solpath+obsid+'.yy.omni.npz')
