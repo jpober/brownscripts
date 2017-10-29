@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.14159265-2.6-1.40.17 (TeX Live 2016) (preloaded format=pdflatex 2016.5.22)  29 OCT 2017 16:54
+This is pdfTeX, Version 3.14159265-2.6-1.40.17 (TeX Live 2016) (preloaded format=pdflatex 2016.5.22)  29 OCT 2017 17:07
 entering extended mode
  restricted \write18 enabled.
  file:line:error style messages enabled.
@@ -616,36 +616,36 @@ File: figures/sim_flowchart.png Graphic file (type png)
 <use figures/sim_flowchart.png>
 Package pdftex.def Info: figures/sim_flowchart.png used on input line 203.
 (pdftex.def)             Requested size: 660.86739pt x 163.81158pt.
+ <figures/f299.png, id=9, 1228.59pt x 867.24pt>
+File: figures/f299.png Graphic file (type png)
 
-<figures/omnical_on_ORBCOMM.png, id=9, 1324.95pt x 803.0pt>
-File: figures/omnical_on_ORBCOMM.png Graphic file (type png)
+<use figures/f299.png>
+Package pdftex.def Info: figures/f299.png used on input line 217.
+(pdftex.def)             Requested size: 749.2364pt x 528.87007pt.
+LaTeX Font Info:    Try loading font information for OT1+pcr on input line 218.
 
-<use figures/omnical_on_ORBCOMM.png>
-Package pdftex.def Info: figures/omnical_on_ORBCOMM.png used on input line 222.
 
-(pdftex.def)             Requested size: 749.2364pt x 454.07568pt.
-
+(/usr/local/texlive/2016/texmf-dist/tex/latex/psnfss/ot1pcr.fd
+File: ot1pcr.fd 2001/06/04 font definitions for OT1/pcr.
+)
 <figures/paper.jpg, id=10, 1003.75pt x 667.49374pt>
 File: figures/paper.jpg Graphic file (type jpg)
  <use figures/paper.jpg>
-Package pdftex.def Info: figures/paper.jpg used on input line 235.
+Package pdftex.def Info: figures/paper.jpg used on input line 230.
 (pdftex.def)             Requested size: 636.85551pt x 423.52791pt.
 
 <figures/phaseII_tiles.jpg, id=11, 5492.52pt x 3661.68pt>
 File: figures/phaseII_tiles.jpg Graphic file (type jpg)
 
 <use figures/phaseII_tiles.jpg>
-Package pdftex.def Info: figures/phaseII_tiles.jpg used on input line 242.
+Package pdftex.def Info: figures/phaseII_tiles.jpg used on input line 237.
 (pdftex.def)             Requested size: 636.85551pt x 424.52052pt.
 
 <figures/HERA19.png, id=12, 770.88pt x 578.16pt>
 File: figures/HERA19.png Graphic file (type png)
  <use figures/HERA19.png>
-Package pdftex.def Info: figures/HERA19.png used on input line 249.
+Package pdftex.def Info: figures/HERA19.png used on input line 244.
 (pdftex.def)             Requested size: 636.85551pt x 477.64072pt.
-
-Overfull \vbox (2.23601pt too high) has occurred while \output is active []
-
 
 [1
 
@@ -655,33 +655,37 @@ Non-PDF special ignored!{/usr/local/texlive/2016/texmf-var/fonts/map/pdftex/upd
 map/pdftex.map} <./figures/radiologo.png> <./figures/differential_brightness.pn
 g> <./figures/global_history.png> <./figures/foreground_figure.png> <./figures/
 foresub.png> <./figures/delaytransform.png> <./figures/sim_flowchart.png> <./fi
-gures/omnical_on_ORBCOMM.png> <./figures/paper.jpg> <./figures/phaseII_tiles.jp
-g> <./figures/HERA19.png>] (./conference_poster_5.aux)
+gures/f299.png> <./figures/paper.jpg> <./figures/phaseII_tiles.jpg> <./figures/
+HERA19.png>] (./conference_poster_5.aux)
 
 LaTeX Warning: There were undefined references.
 
+
+LaTeX Warning: Label(s) may have changed. Rerun to get cross-references right.
+
  ) 
 Here is how much of TeX's memory you used:
- 4985 strings out of 493014
- 75327 string characters out of 6133351
- 187595 words of memory out of 5000000
- 8412 multiletter control sequences out of 15000+600000
- 39419 words of font info for 105 fonts, out of 8000000 for 9000
+ 5020 strings out of 493014
+ 75794 string characters out of 6133351
+ 185045 words of memory out of 5000000
+ 8442 multiletter control sequences out of 15000+600000
+ 39934 words of font info for 107 fonts, out of 8000000 for 9000
  1141 hyphenation exceptions out of 8191
- 38i,7n,39p,1008b,464s stack positions out of 5000i,500n,10000p,200000b,80000s
+ 38i,7n,39p,1008b,493s stack positions out of 5000i,500n,10000p,200000b,80000s
 {/usr/local/texlive/2016/texmf-dist/fonts/enc/dvips/base/8r.enc}</usr/local/t
 exlive/2016/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy10.pfb></usr/local/te
 xlive/2016/texmf-dist/fonts/type1/public/amsfonts/euler/euex10.pfb></usr/local/
 texlive/2016/texmf-dist/fonts/type1/public/amsfonts/euler/eufm10.pfb></usr/loca
 l/texlive/2016/texmf-dist/fonts/type1/public/amsfonts/euler/eurm10.pfb></usr/lo
 cal/texlive/2016/texmf-dist/fonts/type1/public/amsfonts/euler/eusm10.pfb></usr/
-local/texlive/2016/texmf-dist/fonts/type1/urw/times/utmb8a.pfb></usr/local/texl
-ive/2016/texmf-dist/fonts/type1/urw/times/utmr8a.pfb></usr/local/texlive/2016/t
-exmf-dist/fonts/type1/urw/times/utmri8a.pfb>
-Output written on conference_poster_5.pdf (1 page, 6067529 bytes).
+local/texlive/2016/texmf-dist/fonts/type1/urw/courier/ucrr8a.pfb></usr/local/te
+xlive/2016/texmf-dist/fonts/type1/urw/times/utmb8a.pfb></usr/local/texlive/2016
+/texmf-dist/fonts/type1/urw/times/utmr8a.pfb></usr/local/texlive/2016/texmf-dis
+t/fonts/type1/urw/times/utmri8a.pfb>
+Output written on conference_poster_5.pdf (1 page, 6175775 bytes).
 PDF statistics:
- 61 PDF objects out of 1000 (max. 8388607)
- 30 compressed objects within 1 object stream
+ 65 PDF objects out of 1000 (max. 8388607)
+ 33 compressed objects within 1 object stream
  0 named destinations out of 1000 (max. 500000)
  56 words of extra memory for PDF output out of 10000 (max. 10000000)
 
