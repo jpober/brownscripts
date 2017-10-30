@@ -36,7 +36,16 @@
 \usepackage{amsfonts, amsmath, amsthm, amssymb} % For math fonts, symbols and environments
 \usepackage{wrapfig} % Allows wrapping text around tables and figures
 \usepackage[center]{titlesec}
+\usepackage{background}
+\usepackage{blindtext}
 \usepackage{euler}
+\backgroundsetup{
+scale=1,
+angle=0,
+opacity=1,
+contents={\begin{tikzpicture}[remember picture,overlay] 
+\path [bottom color = Maroon!20!white, top color = white] (current page.south west)rectangle (current page.north east);\end{tikzpicture}}
+}
 \begin{document}
 
 %----------------------------------------------------------------------------------------
@@ -51,11 +60,11 @@
 
 \begin{minipage}[b]{0.5\textwidth}
 \veryHuge \color{Brown} \textbf{Radio Cosmology Lab} \color{Black}\textbf{$|$} \color{Black}\LARGE\textit{Exploring the Epoch of Reionization}\\
-\huge \textbf{Joshua Kerrigan, Adam Lanman, Wenyang Li, Jonathan Pober}\\ % Author(s)
+\textbf{Adam Lanman, Wenyang Li, Joshua Kerrigan,\\ Jacob Burba, Peter Sims, Jonathan Pober}\\ % Author(s)
 \huge Brown University Physics\\ % University/organization
 \end{minipage}
 \begin{minipage}[b]{0.6\linewidth}
-\includegraphics[width=45cm]{radiologo.png} % Logo or a photo of you, adjust its dimensions here
+\includegraphics[width=45cm]{radiologo_update.png} % Logo or a photo of you, adjust its dimensions here
 \end{minipage}
 %I CANT SEEM TO GET THIS DAMN LOGO TO THE RIGHT
 
@@ -164,7 +173,7 @@ Foreground subtraction is performed in the image domain using an extragalactic s
 %from the observation leaving behind the EoR signal and diffuse emissions.
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.6\linewidth]{figures/foresub.png}
+\framebox{\includegraphics[width=0.6\linewidth]{figures/foresub.png}}
 \caption{LST binned visibility of a 30m East-West baseline from the PAPER-64 array. The left plots show a baseline visibility pre- and post subtraction. The right plots show the delay transform of the left plots, demonstrating the foreground power being concentrated within the horizon limit (dotted lines).}
 \label{foregroundsrcs1}
 \end{figure}
