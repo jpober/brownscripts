@@ -125,7 +125,7 @@ contents={\begin{tikzpicture}[remember picture,overlay]
 \section*{Introduction}
 Following the recombination of hydrogen and release of the cosmic microwave background radiation, the baryonic matter of the universe consisted mostly of neutral hydrogen and helium. Gradually, small inhomogeneities collapsed and ignited into the first luminous structures. Energetic photons emitted from the first stars and quasars reionized the surrounding medium, producing ionized bubbles which grew and merged into the fully ionized intergalactic medium we see today. This \emph{Epoch of Reionization} (EoR) remains a poorly-understood period of the universe's history which offers a wealth of cosmological and astrophysical information.
 
-The Pober lab is part of an international effort to build instruments capable of studying the EoR. The neutral hydrogen (HI) of the EoR emits faintly at a wavelength of 21cm due to the hyperfine transition. This emission is unique to neutral hydrogen, and is anti-correlated with the ionized (HII) regions that fill the universe through the EoR. CMB constraints and quasar absorption spectra place the EoR within the redshift range $6 < z < 12$, which means 21cm emissions will reach us at meter scale wavelengths. This is accessible to modern radio interferometers, including the \emph{Donald C. Backer Precision Array for Probing the Epoch of Reionization} (PAPER), the \emph{Murchison Widefield Array} (MWA), and the recently-funded \emph{Hydrogen Epoch of Reionization Array} (HERA). Extracting this weak signal remains a challenge unprecedented in radio astronomy.
+The Pober lab is part of an international effort to build instruments capable of studying the EoR. The neutral hydrogen (HI) of the EoR emits faintly at a wavelength of 21cm due to the hyperfine transition. This emission is unique to neutral hydrogen, and is anti-correlated with the ionized (HII) regions that fill the universe through the EoR. CMB constraints and quasar absorption spectra place the EoR within the redshift range $6 < z < 12$, which means 21cm emissions will reach us at meter scale wavelengths. This is accessible to modern radio interferometers, including the \emph{Donald C. Backer Precision Array for Probing the Epoch of Reionization} (PAPER), the \emph{Murchison Widefield Array} (MWA), and our newly observing \emph{Hydrogen Epoch of Reionization Array} (HERA). Extracting this weak signal remains a challenge unprecedented in radio astronomy.
 
 
 
@@ -154,7 +154,7 @@ Eqn. \ref{difftemp}. Source: Pritchard \& Loeb. Nature 468.7325 (2010): 772-773.
 \section*{The Foreground Problem} %[I dont need all of these plots, they're just there to be cut as needed or if necessary to take up more space]
 %Galactic and extragalactic foregrounds pose a difficult problem when trying to measure the 21cm EoR signal. Relative to galactic foregrounds, the EoR signal is $\sim$ 5 orders of magnitude smaller than the galactic emissions that exist between our observing radio telescope arrays and the highly redshifted 21cm signal. The overlapping sources of power in our observations can be seen in Fig. \ref{fig:foregroundsrcs}.  -- Just making this shorter, and clarifying a bit on what the foregrounds are.
 
-The expected EoR signal is $\sim$ 5 orders of magnitude smaller than known foreground sources, such as diffuse emission from the Galaxy and extragalactic point sources. Removing these foregrounds, as well as instrumental noise, is a nontrivial problem. The overlapping sources of power in our observations can be seen in Fig. \ref{fig:foregroundsrcs}.
+The expected EoR signal is $\sim$ 5 orders of magnitude weaker than known foreground sources, such as diffuse emission from the Galaxy and extragalactic point sources. Removing these foregrounds, as well as instrumental noise, is a nontrivial problem. An example of the overlapping sources of power in our observations can be seen in Fig. \ref{fig:foregroundsrcs}.
 
 
 \begin{figure}[H]
@@ -165,37 +165,48 @@ Source: Zaroubi, Saleem. \textit`{The First Galaxies}. Springer Berlin Heidelber
 \end{figure}
 To overcome foreground dominance in our power spectrum analysis we can use a combination of foreground power mitigating techniques as outlined in the following subsections.
 %The issue of foreground emission dominance in our power spectrum can be overcome through the mixed use of the following traditional and novel foreground mitigation techniques. \\
-\subsubsection*{Foreground Subtraction}
-Foreground subtraction is performed in the image domain using an extragalactic source catalog. The source catalog is used to generate a foreground model which can then be fit by an $n^{th}$ order polynomial and subtracted from the observation.
+%\subsubsection*{Foreground Subtraction}
+%Foreground subtraction is performed in the image domain using an extragalactic source catalog. The source catalog is used to generate a foreground model which can then be fit by an $n^{th}$ order polynomial and subtracted from the observation.
 %Baseline visibilities are gridded to form an image which is calibrated to a catalog model. The catalog model contains point sources from 
 %surveys which contain the sources' right ascension, declination, and flux in stokes I. The model built from the catalog of sources is 
 %additionally convolved with the telescope arrays synthesized beam model. The resulting model which has been built can then be subtracted 
 %from the observation leaving behind the EoR signal and diffuse emissions.
+
+\subsubsection*{Hydrid Foreground Removal and Avoidance}
+The need for managing foregrounds in 21cm EoR experiments has led to two distinct techniques: Avoidance and Removal. Avoidance is the practice of filtering out foregrounds in Fourier space. Removal requires an extragalactic point source catalog or Galactic diffuse emission models, that can be precisely subtracted from observations. The hybrid approach attempts to use both techniques to further mitigate foreground contamination for the purpose of an EoR detection in the 21cm power spectrum.
+
 \begin{figure}[H]
 \centering
-\framebox{\includegraphics[width=0.6\linewidth]{figures/foresub.png}}
-\caption{LST binned visibility of a 30m East-West baseline from the PAPER-64 array. The left plots show a baseline visibility pre- and post subtraction. The right plots show the delay transform of the left plots, demonstrating the foreground power being concentrated within the horizon limit (dotted lines).}
-\label{foregroundsrcs1}
+\framebox{\includegraphics[width=0.6\linewidth]{figures/PSPECXMid.png}}
+\caption{Power spectrum demonstrating the effectiveness of filtering, subtraction, and hybrid strategies for foreground removal and avoidance.}
+\label{fig:stages}
 \end{figure}
 
+\begin{figure}[H]
+\centering
+\framebox{\includegraphics[width=0.6\linewidth]{figures/DIFFXMid.png}}
+\caption{The difference power spectrum of Fig. \ref{fig:stages} demonstrating that the hybrid foreground removal and avoidance technique is able to remove 
+additional foreground contamination.}
+\label{fig:diffmid}
+\end{figure}
 
-\subsubsection*{Foreground Avoidance}
-\begin{equation}
-\label{delaytransform}
-V_b(\tau) = \int dl dm d\nu A(l,m,\nu)I(l,m,\nu)e^{-2\pi i\nu(\tau_g -\tau)}
-\end{equation}
+%\subsubsection*{Foreground Avoidance}
+%\begin{equation}
+%\label{delaytransform}
+%V_b(\tau) = \int dl dm d\nu A(l,m,\nu)I(l,m,\nu)e^{-2\pi i\nu(\tau_g -\tau)}
+%\end{equation}
 %Equation \ref{delaytransform} demonstrates the delay transform used to transform a visibility to delay space. By working in delay space it can be seen in both Figs. \ref{foregroundsrcs1} \& \ref{foregroundsrcs2} that power from foreground sources are confined within a delay limit known as the horizon limit. --- this seemed unclear, so I made it a little longe
 
-Equation \ref{delaytransform} demonstrates the \emph{delay transform}: A Fourier transform of frequency to its conjugate \emph{delay}. There is a natural limit in delay, set by the time it takes light from a source at the horizon to travel between the two antennas of a baseline. Power from foreground sources is confined within this \emph{horizon limit}, as shown by Figs. \ref{foregroundsrcs1} \& \ref{foregroundsrcs2}.
+%Equation \ref{delaytransform} demonstrates the \emph{delay transform}: A Fourier transform of frequency to its conjugate \emph{delay}. There is a natural limit in delay, set by the time it takes light from a source at the horizon to travel between the two antennas of a baseline. Power from foreground sources is confined within this \emph{horizon limit}, as shown by Figs. \ref{foregroundsrcs1} \& \ref{foregroundsrcs2}.
 
 %Taking the Fourier transform of a baseline visibility over frequency with the geometric group delay offset (eqn. \ref{delaytransform}) results %in smooth spectrum foregrounds bunching up nearest to the delay of $\tau = 0$. This is because foreground sources have a maximal %geometric delay associated with a baseline length, $|\vec{b}|$, which is also known as the horizon limit. The EoR signal is unsmooth %spectrally, distinguishing it from foreground sources, and pushing it beyond the horizon limit imposed by the baseline length. Using this %information, delays below the horizon limit can be filtered giving significant foreground power removal.
 
-\begin{figure}[H]
-\centering
-\includegraphics[width=0.8\linewidth]{figures/delaytransform.png}
-\caption{Delay transform visibilities of two different baseline types. Smooth spectral sources moving between delays over time can be seen to remain within the horizon limit (dotted), while unsmooth spectral sources (light blue) extend beyond the horizon limit.  \textbf{Source}: Aaron Parsons, \textit{A Per Baseline Delay-Spectrum Technique for Accessing the 21cm Cosmic Reionization Signature, Apj. 2012}}
-\label{foregroundsrcs2}
-\end{figure}
+%\begin{figure}[H]
+%\centering
+%\includegraphics[width=0.8\linewidth]{figures/delaytransform.png}
+%\caption{Delay transform visibilities of two different baseline types. Smooth spectral sources moving between delays over time can be seen to remain within the horizon limit (dotted), while unsmooth spectral sources (light blue) extend beyond the horizon limit.  \textbf{Source}: Aaron Parsons, \textit{A Per Baseline Delay-Spectrum Technique for Accessing the 21cm Cosmic Reionization Signature, Apj. 2012}}
+%\label{foregroundsrcs2}
+%\end{figure}
 
 %----------------------------------------------------------------------------------------
 %	MATERIALS AND METHODS
@@ -223,7 +234,7 @@ Fast Holographic Deconvolution (FHD) is a purpose-built software framework for a
 \begin{figure}[H]
 \centering
 \label{comparison_between_FHD_and_OMNICAL}
-\includegraphics[width=1.0\linewidth]{figures/f299.png}
+\framebox{\includegraphics[width=1.0\linewidth]{figures/f299.png}}
 \caption{2 min averaged complex visibilities of EoR0 observation by MWA II at 191MHz from 8 redundant baseline groups. Each color represents one baseline group. Left column: raw visibilities, with arbitrary units; Middle column: visibilities after \texttt{OMNICAL}, with degeneracy parameters projected (units: Jy); Right column: visibilities after FHD sky calibration (units: Jy). Top row: East-West polarization; Bottom row: North-South polarization.}
 \end{figure}
 
@@ -232,27 +243,29 @@ Fast Holographic Deconvolution (FHD) is a purpose-built software framework for a
 %	RESULTS 
 %----------------------------------------------------------------------------------------
 
-\section*{Radio Telescope Arrays}
-\begin{figure}[H]
-\centering
-\label{fig:PAPER}
-\includegraphics[width=0.85\linewidth]{figures/paper}
-\caption{PAPER - A first-generation array located in the Karoo desert of South Africa. Designed specifically for EoR research, PAPER is designed for maximum redundancy. Several baselines sample each $k_\perp$ modes, which allows for the use of redundant calibration.}
-\end{figure}
+\section*{Hydrogen Epoch of Reionization Array (HERA)}
+%\begin{figure}[H]
+%\centering
+%\label{fig:PAPER}
+%\includegraphics[width=0.85\linewidth]{figures/paper}
+%\caption{PAPER - A first-generation array located in the Karoo desert of South Africa. Designed specifically for EoR research, PAPER is designed for maximum redundancy. Several baselines sample each $k_\perp$ modes, which allows for the use of redundant calibration.}
+%\end{figure}
 
-\begin{figure}[H]
-\centering
-\label{fig:MWA}
-\includegraphics[width=0.85\linewidth]{figures/phaseII_tiles.jpg}
-\caption{MWA - Located in Western Australia at the Murchison Radio Astronomy Observatory. The MWA serves multiple functions, including ionosphere studies and detection of transient radio signals. Phase I consisted of 128 tiles which are each made up of 16 dipole antennae. The Phase I configuration maximized uv coverage, improving imaging capability. It has since been partially reconfigured into Phase II, which includes two hexagonal grids of tiles designed for high-redundancy EoR research. MWA is a pathfinder project for the Square Kilometer Array (SKA).}
-\end{figure}
+%\begin{figure}[H]
+%\centering
+%\label{fig:MWA}
+%\includegraphics[width=0.85\linewidth]{figures/phaseII_tiles.jpg}
+%\caption{MWA - Located in Western Australia at the Murchison Radio Astronomy Observatory. The MWA serves multiple functions, including ionosphere studies and detection of transient radio signals. Phase I consisted of 128 tiles which are each made up of 16 dipole antennae. The Phase I configuration maximized uv coverage, improving imaging capability. It has since been partially reconfigured into Phase II, which includes two hexagonal grids of tiles designed for high-redundancy EoR research. MWA is a pathfinder project for the Square Kilometer Array (SKA).}
+%\end{figure}
 
 \begin{figure}[H]
 \centering
 \label{fig:HERA}
-\includegraphics[width=0.85\linewidth]{figures/HERA19.png}
-\caption{HERA - Located at the same site as PAPER in the Karoo desert. The current phase of HERA consists of 19 14m parabolic dishes. In its final form, HERA will comprise 331 dishes in a closely-packed hexagonal grid. HERA is also a pathfinder project for the SKA.}
+\framebox{\includegraphics[width=0.85\linewidth]{figures/HERA19.png}}
+\caption{HERA - Located in the Karoo desert in South Africa. The current phase of HERA consists of 37 14m parabolic dishes. In its final form, HERA will comprise 331 dishes in a closely-packed hexagonal grid. HERA is also a pathfinder project for the Square Kilometer Array (SKA).}
 \end{figure}
+
+\textbf{NOTE:}Place maybe a list or such here explaining the phased build outs and their goals. This information can be found in the HERA DeBoer 2016 paper.
 
 %----------------------------------------------------------------------------------------
 %	CONCLUSIONS
