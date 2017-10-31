@@ -136,15 +136,17 @@ The Pober lab is part of an international effort to build instruments capable of
 %\delta T_{b} = 28mK(1+\delta)x_{HI}\Big(1-\frac{T_{CMB}}{T_{spin}}\Big)\Big(\frac{\Omega_{b}h^2}{0.0223}\Big)%\sqrt{\Big(\frac{1+z}{10}\Big)\Big(\frac{0.24}{\Omega_m}\Big)}\Big[ \frac{H(z)/(1+z)}{dv_{||}/dr_{||}}\Big]$}%
 %\end{equation}
 
-
+\begin{figure}[H]
+\centering
 \includegraphics[scale=1]{figures/differential_brightness.png}
+\end{figure}
+
 The differential brightness temperature $\delta T_b$ is the contrast between the intensity of 21 cm emissions/absorptions against the Cosmic Microwave Background. Its full expression is related to cosmological (green) and astrophysical (red) parameters. Figure \ref{global} shows the evolution of the spherically-averaged \emph{global} 21 cm brightness temperature.
 
 \begin{figure}[H]
 \centering
 \includegraphics[width=1.0\linewidth]{figures/global_history.png}
-\caption{The global differential brightness temperature, $\delta T_b$, evolution over redshift $6<z<160$. $\delta T_b$ becomes observable when the spin temperature $T_S$ decouples from the CMB temperature, $T_{CMB}$.
-Eqn. \ref{difftemp}. Source: Pritchard \& Loeb. Nature 468.7325 (2010): 772-773. }\label{global}
+\caption{The global differential brightness temperature, $\delta T_b$, evolution over redshift $6<z<160$. $\delta T_b$ becomes observable when the spin temperature $T_S$ decouples from the CMB temperature, $T_{CMB}$. Source: Pritchard \& Loeb. Nature 468.7325 (2010): 772-773. }\label{global}
 \end{figure}
 
 %----------------------------------------------------------------------------------------
@@ -163,7 +165,7 @@ The expected EoR signal is $\sim$ 5 orders of magnitude weaker than known foregr
 \caption{The various cosmological and galactic sources that contribute to the measured sky temperature, and their relative strengths.\\\hspace{\textwidth}
 Source: Zaroubi, Saleem. \textit`{The First Galaxies}. Springer Berlin Heidelberg, 2013. 45-101.}\label{fig:foregroundsrcs}
 \end{figure}
-To overcome foreground dominance in our power spectrum analysis we can use a combination of foreground power mitigating techniques as outlined in the following subsections.
+To overcome foreground dominance in our power spectrum analysis we can use a combination of foreground power mitigating techniques as outlined in the following sections.
 %The issue of foreground emission dominance in our power spectrum can be overcome through the mixed use of the following traditional and novel foreground mitigation techniques. \\
 %\subsubsection*{Foreground Subtraction}
 %Foreground subtraction is performed in the image domain using an extragalactic source catalog. The source catalog is used to generate a foreground model which can then be fit by an $n^{th}$ order polynomial and subtracted from the observation.
@@ -172,21 +174,20 @@ To overcome foreground dominance in our power spectrum analysis we can use a com
 %additionally convolved with the telescope arrays synthesized beam model. The resulting model which has been built can then be subtracted 
 %from the observation leaving behind the EoR signal and diffuse emissions.
 
-\subsubsection*{Hydrid Foreground Removal and Avoidance}
-The need for managing foregrounds in 21cm EoR experiments has led to two distinct techniques: Avoidance and Removal. Avoidance is the practice of filtering out foregrounds in Fourier space. Removal requires an extragalactic point source catalog or Galactic diffuse emission models, that can be precisely subtracted from observations. The hybrid approach attempts to use both techniques to further mitigate foreground contamination for the purpose of an EoR detection in the 21cm power spectrum.
+\subsection*{Hydrid Foreground Removal and Avoidance}
+The need for managing foregrounds in 21cm EoR experiments has led to two distinct techniques: Avoidance and Subtraction. Avoidance is the practice of filtering out foregrounds in Fourier space. Subtraction requires a model of either extragalactic point sources or diffuse emission that can be precisely subtracted from observations. The hybrid approach attempts to use both techniques to further mitigate foreground contamination for the purpose of an EoR detection in the 21cm power spectrum.
 
 \begin{figure}[H]
 \centering
-\frame{\includegraphics[width=0.6\linewidth]{figures/PSPECXMid.png}}
-\caption{Power spectrum demonstrating the effectiveness of filtering, subtraction, and hybrid strategies for foreground removal and avoidance.}
+\frame{\includegraphics[width=0.7\linewidth]{figures/PSPECXMid.png}}
+\caption{Power spectra from PAPER-64 which shows the effectiveness of filtering (blue), subtraction (red), and hybrid (purple) strategies for foreground subtraction and avoidance when compared with a raw (green) power spectrum.}
 \label{fig:stages}
 \end{figure}
 
 \begin{figure}[H]
 \centering
-\frame{\includegraphics[width=0.6\linewidth]{figures/DIFFXMid.png}}
-\caption{The difference power spectrum of Fig. \ref{fig:stages} demonstrating that the hybrid foreground removal and avoidance technique is able to remove 
-additional foreground contamination necessary for placing the tightest constraints on the EoR power spectrum.}
+\frame{\includegraphics[width=0.7\linewidth]{figures/DIFFXMid.png}}
+\caption{The differenced power spectrum of filtering (blue) and filtering + subtraction (purple) from Fig. \ref{fig:stages}. This demonstrates that the hybrid foreground subtraction and avoidance technique is able to remove additional contamination from foregrounds necessary for placing the tightest constraints on the EoR power spectrum.}
 \label{fig:diffmid}
 \end{figure}
 
@@ -256,9 +257,9 @@ Fast Holographic Deconvolution (FHD) is a purpose-built software framework for a
 %\includegraphics[width=0.85\linewidth]{figures/phaseII_tiles.jpg}
 %\caption{MWA - Located in Western Australia at the Murchison Radio Astronomy Observatory. The MWA serves multiple functions, including ionosphere studies and detection of transient radio signals. Phase I consisted of 128 tiles which are each made up of 16 dipole antennae. The Phase I configuration maximized uv coverage, improving imaging capability. It has since been partially reconfigured into Phase II, which includes two hexagonal grids of tiles designed for high-redundancy EoR research. MWA is a pathfinder project for the Square Kilometer Array (SKA).}
 %\end{figure}
-The Hydrogen Epoch of Reionization Array is the next generation telescope observing the 21 cm emission from neutral intergalactic medium (IGM) during the epoch of reionization (z = 6 - 12), and a precursor instrument for Square Kilometer Array (SKA). The HERA instrument will be an interferometer with 350 14-meter parabolic dishes in South Africa. These elements will be divided into 320-element hexagonal shaped core and 30 outriggers. The current stage of HERA has 37 dishes deployed. 
+The Hydrogen Epoch of Reionization Array is a $2^{nd}$ generation radio interferometer observing the 21 cm emission from neutral hydrogen during the Epoch of Reionization (z = 6 - 12). The HERA instrument will eventually be an array with 350 14-meter parabolic dishes in South Africa. These elements will be divided into a 320-element hexagonal shaped core and 30 outriggers. The current stage of HERA has 37 dishes deployed and observing. 
 
-Although increasingly stringent upper limits of 21 cm signal has been placed by the first generation experiments targeting EoR such as Precision Array for Probing the Epoch of Reionization array (PAPER), Murchison Widefield Array (MWA) and LOw Frequency ARray (LOFAR), they are not able to detect it due to their sensitivity limits. HERA is designed to bring both the sensitivity and the precision to directly constrain the topology and evolution of reionization. This will push forward our understanding of the formation of first stars and galaxies. \\
+Although increasingly stringent upper limits of the 21 cm signal have been placed by the first generation experiments targeting the EoR such as the Precision Array for Probing the Epoch of Reionization array (PAPER), Murchison Widefield Array (MWA) and LOw Frequency ARray (LOFAR), they are not able to detect it due to their sensitivity limits (see Fig. \ref{fig:HERAsense}). HERA is designed to bring both the sensitivity and precision required to directly constrain the topology and evolution of reionization. By understanding the evolution of reionization we can better comprehend the formation of the first stars and earliest galaxies.\\
 
 \begin{figure}[H]
 \centering
@@ -269,13 +270,11 @@ Although increasingly stringent upper limits of 21 cm signal has been placed by 
 
 \begin{figure}[H]
 \centering
-\label{fig:HERA}
 \frame{\includegraphics[width=0.9\linewidth]{figures/HERAsensitivity.png}}
 \caption{Projected SNR comparison of the 350 element phase of HERA (with 1080 hrs integration time) to other low frequency arrays. Relative to several reionization models (colored), HERA-350
-should have the sensitivity to measure the 21cm EoR signal across multiple redshifts.}
+should have the sensitivity to measure the 21cm EoR signal across multiple redshifts. Source: DeBoer \& HERA Collaboration. PASP 2017.}
+\label{fig:HERAsense}
 \end{figure}
-
-\textbf{NOTE:}Place maybe a list or such here explaining the phased build outs and their goals. This information can be found in the HERA DeBoer 2016 paper.
 
 %----------------------------------------------------------------------------------------
 %	CONCLUSIONS
