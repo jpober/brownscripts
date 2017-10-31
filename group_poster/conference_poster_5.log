@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.14159265-2.6-1.40.17 (TeX Live 2016) (preloaded format=pdflatex 2016.5.22)  31 OCT 2017 14:35
+This is pdfTeX, Version 3.14159265-2.6-1.40.17 (TeX Live 2016) (preloaded format=pdflatex 2016.5.22)  31 OCT 2017 14:36
 entering extended mode
  restricted \write18 enabled.
  file:line:error style messages enabled.
@@ -963,7 +963,7 @@ File: figures/HERAsensitivity.png Graphic file (type png)
 
 <use figures/HERAsensitivity.png>
 Package pdftex.def Info: figures/HERAsensitivity.png used on input line 273.
-(pdftex.def)             Requested size: 449.5464pt x 334.07515pt.
+(pdftex.def)             Requested size: 674.30818pt x 501.13594pt.
  [1
 
 
@@ -982,10 +982,10 @@ LaTeX Warning: There were multiply-defined labels.
 
  ) 
 Here is how much of TeX's memory you used:
- 14937 strings out of 493014
- 290952 string characters out of 6133351
- 368926 words of memory out of 5000000
- 18132 multiletter control sequences out of 15000+600000
+ 14941 strings out of 493014
+ 291034 string characters out of 6133351
+ 369030 words of memory out of 5000000
+ 18136 multiletter control sequences out of 15000+600000
  39934 words of font info for 107 fonts, out of 8000000 for 9000
  1141 hyphenation exceptions out of 8191
  62i,10n,77p,1008b,1043s stack positions out of 5000i,500n,10000p,200000b,80000s
@@ -996,7 +996,7 @@ al/texlive/2016/texmf-dist/fonts/type1/urw/courier/ucrr8a.pfb></usr/local/texli
 ve/2016/texmf-dist/fonts/type1/urw/times/utmb8a.pfb></usr/local/texlive/2016/te
 xmf-dist/fonts/type1/urw/times/utmr8a.pfb></usr/local/texlive/2016/texmf-dist/f
 onts/type1/urw/times/utmri8a.pfb>
-Output written on conference_poster_5.pdf (1 page, 1866348 bytes).
+Output written on conference_poster_5.pdf (1 page, 1866373 bytes).
 PDF statistics:
  59 PDF objects out of 1000 (max. 8388607)
  28 compressed objects within 1 object stream
