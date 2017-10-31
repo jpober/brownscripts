@@ -177,16 +177,16 @@ The need for managing foregrounds in 21cm EoR experiments has led to two distinc
 
 \begin{figure}[H]
 \centering
-\framebox{\includegraphics[width=0.6\linewidth]{figures/PSPECXMid.png}}
+\frame{\includegraphics[width=0.6\linewidth]{figures/PSPECXMid.png}}
 \caption{Power spectrum demonstrating the effectiveness of filtering, subtraction, and hybrid strategies for foreground removal and avoidance.}
 \label{fig:stages}
 \end{figure}
 
 \begin{figure}[H]
 \centering
-\framebox{\includegraphics[width=0.6\linewidth]{figures/DIFFXMid.png}}
+\frame{\includegraphics[width=0.6\linewidth]{figures/DIFFXMid.png}}
 \caption{The difference power spectrum of Fig. \ref{fig:stages} demonstrating that the hybrid foreground removal and avoidance technique is able to remove 
-additional foreground contamination.}
+additional foreground contamination necessary for placing the tightest constraints on the EoR power spectrum.}
 \label{fig:diffmid}
 \end{figure}
 
@@ -211,7 +211,7 @@ additional foreground contamination.}
 %----------------------------------------------------------------------------------------
 %	MATERIALS AND METHODS
 %----------------------------------------------------------------------------------------
-
+\columnbreak
 \section*{Simulation}
 
 The particular characteristics of an array can introduce unexpected effects into the data. Understanding and mitigating instrumental effects is critical to making a confident detection of the EoR. For this reason, much effort has been put into simulating the full analysis pipeline -- from the point and diffuse sources on the sky, to the raw visibilities that come out of the correlator, to the power spectrum estimations.
@@ -220,10 +220,9 @@ Fast Holographic Deconvolution (FHD) is a purpose-built software framework for a
 
 \begin{figure}[H]
 \centering
-\includegraphics[scale=1]{figures/sim_flowchart.png}
+\includegraphics[scale=.9]{figures/sim_flowchart.png}
 \caption{A sample data file (or generated data file) holds array coordinates over time and the frequency channels of the instrument. Given a beam model for the antenna, FHD calculates the full synthesized beam (or point-spread function) for a particular time and set of frequencies. The synthesized beam can then convert a sky catalog into a set of foreground visibilities for the instrument. External EoR simulations can also be fed in to test EoR sensitivity, or Gaussian noise can be injected to simulate noise.}
 \end{figure}
-
 
 %------------------------------------------------
 \section*{Calibration}
@@ -234,7 +233,7 @@ Fast Holographic Deconvolution (FHD) is a purpose-built software framework for a
 \begin{figure}[H]
 \centering
 \label{comparison_between_FHD_and_OMNICAL}
-\framebox{\includegraphics[width=1.0\linewidth]{figures/f299.png}}
+\frame{\includegraphics[width=1.0\linewidth]{figures/f299.png}}
 \caption{2 min averaged complex visibilities of EoR0 observation by MWA II at 191MHz from 8 redundant baseline groups. Each color represents one baseline group. Left column: raw visibilities, with arbitrary units; Middle column: visibilities after \texttt{OMNICAL}, with degeneracy parameters projected (units: Jy); Right column: visibilities after FHD sky calibration (units: Jy). Top row: East-West polarization; Bottom row: North-South polarization.}
 \end{figure}
 
@@ -261,8 +260,16 @@ Fast Holographic Deconvolution (FHD) is a purpose-built software framework for a
 \begin{figure}[H]
 \centering
 \label{fig:HERA}
-\framebox{\includegraphics[width=0.85\linewidth]{figures/HERA19.png}}
+\frame{\includegraphics[width=0.85\linewidth]{figures/HERA19.png}}
 \caption{HERA - Located in the Karoo desert in South Africa. The current phase of HERA consists of 37 14m parabolic dishes. In its final form, HERA will comprise 331 dishes in a closely-packed hexagonal grid. HERA is also a pathfinder project for the Square Kilometer Array (SKA).}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\label{fig:HERA}
+\frame{\includegraphics[width=0.6\linewidth]{figures/HERAsensitivity.png}}
+\caption{Projected SNR comparison of the 350 element phase of HERA (with 1080 hrs integration time) to other low frequency arrays. Relative to several reionization models (colored), HERA-350
+should have the sensitivity to measure the 21cm EoR signal across multiple redshifts.}
 \end{figure}
 
 \textbf{NOTE:}Place maybe a list or such here explaining the phased build outs and their goals. This information can be found in the HERA DeBoer 2016 paper.
