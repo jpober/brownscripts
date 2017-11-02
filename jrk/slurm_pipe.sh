@@ -110,8 +110,8 @@ echo Output located at ${outdir}/fhd_${version}
 #done < "$obs_file_name"
 #obs_list='zen.2456375.27129.uvcRREcACOcP.uvfits'
 #obs_list='zen.2456242.29213.uvcRREcACOM.uvfits'
-obs_list='Pzen.2456286.18775.uvcRREcACOMTU.uvfits'
-#obs_list='Szen.2456327.34089.uvcRREcACOM.uvfits'
+#obs_list='Pzen.2456286.18775.uvcRREcACOMTU.uvfits'
+obs_list='Plst.2456242.50837.30605.uvHB.uvfits'
 message=$(sbatch --mem=$mem -t ${wallclock_time} -n ${ncores} --export=ncores=$ncores,outdir=$outdir/fhd_${version},version=$version,thresh=$thresh -o ${outdir}/fhd_${version}/grid_out/firstpass-%A_%a.out -e ${outdir}/fhd_${version}/grid_out/firstpass-%A_%a.err ~/brownscripts/jrk/eor_firstpass_slurm_job.sh ${obs_list})
 
 #echo $message

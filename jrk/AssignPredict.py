@@ -13,6 +13,8 @@ import pylab as pl
 import optparse, sys, os
 import aipy as a
 from sklearn.externals import joblib
+from astropy.utils import iers
+iers.conf.auto_download=False
 
 def loadFullDay():
     HERAlist = glob('/Users/josh/Desktop/HERA/data/zen.2457458.*.xx.HH.uvcUA')
@@ -42,7 +44,7 @@ def localStats(data,k,l):
 
 def featArray(data,times):
     sh = n.shape(data)
-    freqs = n.linspace(100,200,sh[1])
+    freqs = n.linspace(0,sh[1],sh[1])
 #   CT1mean = n.zeros_like(data)
     #for j in range(CT1mean.shape[0]):
     #    CT1 = cwt(data[j,:],signal.morlet,n.arange(1,2,1))
@@ -50,20 +52,21 @@ def featArray(data,times):
     NNvar = n.zeros_like(data)
     for i in range(sh[0]):
         for j in range(sh[1]):
-            samples = []
-            for p in range(500):
-                r = n.random.randint(-1,1)
-                q = n.random.randint(-1,1)
-                try:
-                    samples.append(n.abs(data[r+i,q+j]))
-                except:
-                    pass
-            NNvar[i,j] = n.var(samples)
+            #samples = []
+            #for p in range(100):
+            r = n.random.randint(-1,1,size=100)
+            q = n.random.randint(-1,1,size=100)
+            #    try:
+            #        samples.append(n.abs(data[r+i,q+j]))
+            #    except:
+            #        pass
+            NNvar[i,j] = n.var(n.abs(data[r+i,q+j]))
     X1 = n.zeros((sh[0]*sh[1],4))
     X1[:,0] = n.real(data).reshape(sh[0]*sh[1])
     X1[:,1] = n.imag(data).reshape(sh[0]*sh[1])
     #X1[:,2] = (n.log10(n.abs(NNvar)) - n.median(n.log10(n.abs(NNvar)))).reshape(sh[0]*sh[1])
-    X1[:,2] = (n.log10(n.abs(NNvar)) - n.median(n.log10(n.abs(NNvar)))).reshape(sh[0]*sh[1])
+    NNvar = NNvar - n.median(NNvar)
+    X1[:,2] = (n.log10(n.abs(NNvar))).reshape(sh[0]*sh[1])
     X1[:,3] = (n.array([freqs]*sh[0])).reshape(sh[0]*sh[1])
     #X1[:,4] = (n.array([times]*sh[1])).reshape(sh[0]*sh[1])
     X1[n.abs(X1)>10**100] = 0
@@ -71,15 +74,15 @@ def featArray(data,times):
         X1[:,m] = X1[:,m]/n.abs(X1[:,m]).max()
     X1 = n.nan_to_num(X1)
     #X1 = normalize(X1,norm='l2',axis=0)
-    return X1
+    return X1,n.log10(n.abs(NNvar))
 
-def featArrayPredict(data,times,NNarr):
+def featArrayPredict(data,times,NNvar):
     sh = n.shape(data)
     freqs = n.linspace(100,200,sh[1])
     X1 = n.zeros((sh[0]*sh[1],4))
     X1[:,0] = n.real(data).reshape(sh[0]*sh[1])
     X1[:,1] = n.imag(data).reshape(sh[0]*sh[1])
-    X1[:,2] = NNarr #n.log10(n.abs(NNvar)).reshape(sh[0]*sh[1])
+    X1[:,2] = NNvar.reshape(sh[0]*sh[1]) #n.log10(n.abs(NNvar)).reshape(sh[0]*sh[1])
     X1[:,3] = (n.array([freqs]*sh[0])).reshape(sh[0]*sh[1])
     #X1[:,4] = (n.array([times]*sh[1])).reshape(sh[0]*sh[1])
     X1[n.abs(X1)>10**100] = 0
@@ -189,19 +192,26 @@ for o in obs:
     uv.read_miriad(o)
     #except:
     #    pass
+    #idx = uv.baseline_array==uv.antnums_to_baseline(9,10)
+    #data = uv.data_array[idx,0,:,0]
+    #sh = n.shape(data)
+    #times = uv.lst_array[idx] 
+    #X,NNvar = featArray(data,times)
+
     for b in n.unique(uv.baseline_array):
         idx = uv.baseline_array==b
         data = uv.data_array[idx,0,:,0]
         sh = n.shape(data)
         times = uv.lst_array[idx]
-        X = featArray(data,times)
+        #X = featArrayPredict(data,times,NNvar)
+        X,NNvar = featArray(data,times)
         labels = dpgmm.predict(X)
         labels = labels.reshape(sh[0],sh[1])
         for i in RFIlabels:
             labels[labels==i] = -1
         labels[labels!=-1] = 1
         ml = findMaxLabel(labels)
-        print 'Max label:',ml
+        print 'Max label:',ml,'Baseline:',uv.baseline_to_antnums(b)
         mask = n.zeros_like(data).astype(bool)
         mask[labels!=ml] = True
         uv.flag_array[idx,0,:,0] = mask

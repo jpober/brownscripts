@@ -29,14 +29,14 @@ def loadFullDay():
 
 def localStats(data,k,l):
     samples = []
-    for p in range(100):
-        i = n.random.randint(-2,2)
-        j = n.random.randint(-2,2)
+    for p in range(1000):
+        i = n.random.randint(-1,1)
+        j = n.random.randint(-1,1)
         try:
             samples.append(n.abs(data[k+i,l+j]))
         except:
             pass
-    return 1/n.var(samples)
+    return n.var(samples)
 #    if dvar > n.var(samples):
 #        return 1
 #    else:
@@ -54,12 +54,12 @@ def featArray(data,times):
     for i in range(sh[0]):
         for j in range(sh[1]):
             NNvar[i,j] = localStats(data,i,j)
-    X1 = n.zeros((sh[0]*sh[1],5))
+    X1 = n.zeros((sh[0]*sh[1],4))
     X1[:,0] = n.real(data).reshape(sh[0]*sh[1])
     X1[:,1] = n.imag(data).reshape(sh[0]*sh[1])
     X1[:,2] = n.log10(n.abs(NNvar)).reshape(sh[0]*sh[1])
     X1[:,3] = (n.array([freqs]*sh[0])).reshape(sh[0]*sh[1])
-    X1[:,4] = (n.array([times]*sh[1])).reshape(sh[0]*sh[1])
+    #X1[:,4] = (n.array([times]*sh[1])).reshape(sh[0]*sh[1])
     X1[n.abs(X1)>10**100] = 0
     for m in range(X1.shape[1]):
         X1[:,m] = X1[:,m]/n.abs(X1[:,m]).max()
@@ -70,12 +70,12 @@ def featArray(data,times):
 def featArrayPredict(data,times,NNarr):
     sh = n.shape(data)
     freqs = n.linspace(100,200,sh[1])
-    X1 = n.zeros((sh[0]*sh[1],5))
+    X1 = n.zeros((sh[0]*sh[1],4))
     X1[:,0] = n.real(data).reshape(sh[0]*sh[1])
     X1[:,1] = n.imag(data).reshape(sh[0]*sh[1])
     X1[:,2] = NNarr #n.log10(n.abs(NNvar)).reshape(sh[0]*sh[1])
     X1[:,3] = (n.array([freqs]*sh[0])).reshape(sh[0]*sh[1])
-    X1[:,4] = (n.array([times]*sh[1])).reshape(sh[0]*sh[1])
+    #X1[:,4] = (n.array([times]*sh[1])).reshape(sh[0]*sh[1])
     X1[n.abs(X1)>10**100] = 0
     for m in range(X1.shape[1]):
         X1[:,m] = X1[:,m]/n.abs(X1[:,m]).max()
@@ -197,21 +197,29 @@ uv = pyuvdata.miriad.Miriad()
 CL1 = []
 CL2 = []
 CL3 = []
+#uv.read_miriad(obs[0])
+#idx = uv.baseline_array==uv.antnums_to_baseline(9,10)
+#data = uv.data_array[idx,0,:,0]
+#X,NNArr = featArray(data,uv.lst_array[idx])
+#dpgmm = mixture.BayesianGaussianMixture(n_components=3,covariance_type='full',n_init=30,max_iter=10000,init_params='kmeans',weight_concentration_prior_type='dirichlet_process').fit(X)
+#labels = dpgmm.predict(X)
+del(uv)
 for o in obs:
     print o
     #try:
+    uv = pyuvdata.miriad.Miriad()
     uv.read_miriad(o)
     #except:
     #    pass
     idx = uv.baseline_array==uv.antnums_to_baseline(9,10)
     data = uv.data_array[idx,0,:,0]
     X,NNArr = featArray(data,uv.lst_array[idx])
-    dpgmm = mixture.BayesianGaussianMixture(n_components=3,covariance_type='full',n_init=20,max_iter=10000,init_params='kmeans',weight_concentration_prior_type='dirichlet_process').fit(X)
-    labels = dpgmm.predict(X)
+    dpgmm = mixture.BayesianGaussianMixture(n_components=3,covariance_type='full',n_init=30,max_iter=10000,init_params='kmeans',weight_concentration_prior_type='dirichlet_process').fit(X)
+    #labels = dpgmm.predict(X)
     for b in n.unique(uv.baseline_array):
         idx = (b==uv.baseline_array)
-        if uv.baseline_to_antnums(b) == (9,10):
-            continue
+        #if uv.baseline_to_antnums(b) == (9,10):
+        #    continue
         data = uv.data_array[idx,0,:,0]
         #X,NNArr = featArray(data,uv.lst_array[idx])
         sh = data.shape
@@ -258,7 +266,9 @@ for o in obs:
         #uv.data_array[idx,0,:,0] = uv.data_array[idx,0,:,0]*n.logical_not(mask)
 
     uv.write_miriad(o+'r')
-pl.hist(CL1,50)
-pl.hist(CL2,50)
-pl.hist(CL3,50)
-pl.show()
+    del(uv)
+    del(dpgmm)
+#pl.hist(CL1,50)
+#pl.hist(CL2,50)
+#pl.hist(CL3,50)
+#pl.show()

@@ -63,12 +63,12 @@ def featArray(data,times):
                 except:
                     pass
             NNvar[i,j] = n.var(samples)
-    X1 = n.zeros((sh[0]*sh[1],4))
+    X1 = n.zeros((sh[0]*sh[1],3))
     X1[:,0] = n.real(data).reshape(sh[0]*sh[1])
     X1[:,1] = n.imag(data).reshape(sh[0]*sh[1])
     #X1[:,2] = (n.log10(n.abs(NNvar)) - n.median(n.log10(n.abs(NNvar)))).reshape(sh[0]*sh[1])
     X1[:,2] = (n.log10(n.abs(NNvar))).reshape(sh[0]*sh[1])
-    X1[:,3] = (n.array([freqs]*sh[0])).reshape(sh[0]*sh[1])
+    #X1[:,3] = (n.array([freqs]*sh[0])).reshape(sh[0]*sh[1])
     #X1[:,4] = (n.array([times]*sh[1])).reshape(sh[0]*sh[1])
     X1[n.abs(X1)>10**100] = 0
     for m in range(X1.shape[1]):

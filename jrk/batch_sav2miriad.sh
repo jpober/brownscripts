@@ -22,18 +22,13 @@ outdir=/users/jkerriga/data/jkerriga/AnalysisOutput
 
 cd ${outdir}/fhd_${vsname}${version}/vis_data
 python ~/brownscripts/jrk/sav2miriad.py ./*sav ../metadata/*
-#python ~/brownscripts/jrk/mk_stokes.py --stokes='I' Pzen*[SH]
-#python ~/brownscripts/jrk/WideBandFilter.py Pzen*[SH]P
-#~/brownscripts/jrk/reduce_seps.sh
-
-#python ~/capo/pspec_pipeline/pspec_prep.py -C psa6240_FHD --model -a cross --nogain --nophs --clean=1e-7 --horizon=0 --window='none' Pzen*uvcRREcACOTUcMP
 python ~/brownscripts/jrk/ModelDelayFilter.py Pzen*uvcRREcACOTUcMP
 
 #rm -r *SP
 #uv_addsub.py --sub *HP *MPF
-#Turned off reduce seps to do all separation analysis
-#~/brownscripts/jrk/reduce_seps.sh *HP *MPF *MP
-python ~/brownscripts/jrk/uv_sub.py --dirty *HP --model *MPF -s SP
+
+~/brownscripts/jrk/reduce_seps.sh *HP *MPF *MP
+python ~/brownscripts/jrk/uv_sub.py --dirty *HPA --model *MPFA -s SPA
 
 #~/brownscripts/jrk/batch_submodel.sh
 #cp -rf *[HS]P ../../../PaperAnalysis/AllSeps/

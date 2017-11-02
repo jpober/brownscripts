@@ -36,10 +36,13 @@ def StackData(BLS):
     for b in range(len(BLS)):
         b1,b2 = BLS[b].split('_')
         bls = base.baseline_array==base.antnums_to_baseline(b1,b2)
-        if base.data_array[bls,0,:,0].shape[0] == 0:
-            continue
-        else:
-            data[:,:,b] = base.data_array[bls,0,:,0]
+        try:
+            if len(base.data_array[bls,0,:,0]) == 0:
+                continue
+            else:
+                data[:,:,b] = base.data_array[bls,0,:,0]
+        except:
+            pass
     return data
 
 def DefFeat(data):
@@ -91,14 +94,18 @@ def AddFlags(MASK,BLS):
     for b in range(len(BLS)):
         b1,b2 = BLS[b].split('_')
         bls = base.baseline_array==base.antnums_to_baseline(b1,b2)
-        if base.flag_array[bls,0,:,0].shape[0] == 0:
-            continue
-        else:
-            base.flag_array[bls,0,:,0] += MASK.astype(bool)
+        try:
+            if base.flag_array[bls,0,:,0].shape[0] == 0:
+                continue
+            else:
+                base.flag_array[bls,0,:,0] += MASK.astype(bool)
+        except:
+            pass
+
 
 for s in sep:
     print s
-    BLS=os.popen("python /Users/Josh/Desktop/PSA64Noise/capo/pspec_pipeline/getbls.py --sep="+s+" -C psa6240_FHD /Users/Josh/Desktop/PSA64Noise/DATA/zen.2456242.30605.uvcRREcACOTUcA").read()
+    BLS=os.popen("python ~/capo/pspec_pipeline/getbls.py --sep="+s+" -C psa6240_FHD /users/jkerriga/data/jkerriga/PGBH/even/Pzen.2456242.30605.uvcRREcACOTUcHPAB").read()
     print BLS
     BLS = BLS.split(',')
     D = StackData(BLS)

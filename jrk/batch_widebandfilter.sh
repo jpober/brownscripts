@@ -1,46 +1,42 @@
 #! /bin/bash
-#SBATCH -t 0:30:00
-#SBATCH -n 2                                                                                                            
-#SBATCH --mem=10G                                                                                                                                             
-#SBATCH -J WidebandFilter                                                                                                                                     
-###SBATCH -p jpober-test                                                                                                                                    
+#SBATCH -t 3:00:00
+#SBATCH -n 1                                                                  
+                                      
+#SBATCH --mem=10G                                                               
+                                                                              
+#SBATCH -J WidebandFilter                                                       
+                                                                              
+###SBATCH -p jpober-test                                                       
 #SBATCH --output=/users/jkerriga/brownscripts/jrk/SlurmOut/WideBand_%A_%a.out 
-#SBATCH --array=0-999:1
-outdir=/users/jkerriga/data/jkerriga/PGRect/odd
-
-cd ${outdir}
-source activate PAPER
-declare -a dirt_list
-declare -a res_list
-dirt_list=(Pzen*HPA)
-res_list=(Pzen*SPA)
-
-#dirt_list=(lst*uvHB)
-#res_list=(lst*uvSB)
-
-
-num=$(($SLURM_ARRAY_TASK_ID + 1999))
-#version=0
-#vsname=''
-
-
-#obs_list=($(cat obsfits.txt))
-
-#echo ${obs_list[$version]}
-#obs_id=${obs_list[$version]}
-
-#echo ${obs_id%.uvfits}[SH]P
+#SBATCH --array=243-365:2
+outdir=/users/jkerriga/data/jkerriga/PaperData/oddIH
+modeldir=/users/jkerriga/data/jkerriga/PGModels
 #cd ${outdir}
+#SLURM_ARRAY_TASK_ID=242
+source activate PAPER
+declare -a dirty_list
+declare -a res_list
+declare -a model_list
 
-python ~/brownscripts/jrk/pspec_prep.py -C psa6240_FHD -a cross --nogain --nophs --clean=1e-6 --horizon=15 --window='none' "${dirt_list[$num]}" "${res_list[$num]}"
-#python ~/brownscripts/jrk/pspec_prep_jrk.py -C psa6240_FHD --clean=1e-6 --horizon=15 --window='none' "${dirt_list[$num]}" "${res_list[$num]}"
+##Get models and filter
+#cd $modeldir
+#model_list=(Pzen.2456${SLURM_ARRAY_TASK_ID}.*.*MPA)
+#python ~/brownscripts/jrk/model_prep.py -C psa6240_FHD -a cross --nogain --nophs --clean=1e-10 --horizon=0 --model --window='blackman-harris' "${model_list[@]}"
+#python ~/brownscripts/jrk/ModelDelayFilter.py Pzen.2456${SLURM_ARRAY_TASK_ID}.*.*MPAF
 
-python ~/brownscripts/jrk/xrfi_simple_jrk.py -n 3 "${dirt_list[$num]}""B" "${res_list[$num]}""B"
+##Move to work directory and subtract models
+cd ${outdir}
+dirty_list=(Pzen.2456${SLURM_ARRAY_TASK_ID}.*.*HPA)
+#modelF_list=(/users/jkerriga/data/jkerriga/PGModels/Pzen.2456${SLURM_ARRAY_TASK_ID}.*.*MPAFF)
+#python ~/brownscripts/jrk/uv_sub.py --dirty="Pzen.2456${SLURM_ARRAY_TASK_ID}.*.*HPA" --model="/users/jkerriga/data/jkerriga/PGModels/Pzen.2456${SLURM_ARRAY_TASK_ID}.*.*MPAFF" -s 'SPA'
 
-#python ~/brownscripts/jrk/FilterHorizon.py "${dirt_list[$num]}" "${res_list[$num]}"
+##Wideband Filter
+res_list=(Pzen.2456${SLURM_ARRAY_TASK_ID}.*.*SPA)
+#python ~/brownscripts/jrk/pspec_prep.py -C psa6240_FHD -a cross --nogain --nophs --clean=1e-9 --horizon=15 --window='blackman-harris' "${dirty_list[@]}"
 
-#Pzen.2456*${SLURM_ARRAY_TASK_ID}.*.uvcRREcACOTUc[HS]P #${obs_id%.uvfits}[SH]P
+python ~/capo/pspec_pipeline/pspec_prep.py -C psa6240_FHD -a cross --nogain --nophs --clean=1e-9 --horizon=-15  --window='blackman-harris' "${dirty_list[@]}" "${res_list[@]}"
 
-#python ~/capo/zsa/scripts/pspec_prep.py -C psa6240_FHD -a cross --nogain --nophs --clean=1e-9 --horizon=15 --window='blackman-harris' Pzen.2456*${SLURM_ARRAY_TASK_ID}.*.uvcRREcACOTUcSPA
+#python ~/brownscripts/jrk/PostWideBandFilter.py Pzen.2456${SLURM_ARRAY_TASK_ID}.*.*HPAB Pzen.2456${SLURM_ARRAY_TASK_ID}.*.*SPAB
 
-#python ~/capo/zsa/scripts/pspec_prep.py -C psa6240_FHD -a cross --window=blackman-harris --nogain --nophs --clean=1e-9 --horizon=15 Pzen.2456*${SLURM_ARRAY_TASK_ID}.*.uvcRREcACOTUcHPA
+python ~/brownscripts/jrk/xrfi_simple_jrk.py -n 3 Pzen.2456${SLURM_ARRAY_TASK_ID}.*.*HPAB Pzen.2456${SLURM_ARRAY_TASK_ID}.*.*SPAB #"${dirty_list[@]}""B" "${res_list[@]}""B"
+

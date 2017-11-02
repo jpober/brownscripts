@@ -1,11 +1,11 @@
-import uvdata
+import pyuvdata
 import numpy as n
 import optparse, sys, os
 from scipy.io import readsav
 from glob import glob
 
 o = optparse.OptionParser()
-#o.add_option("-s", "--subtract", dest="subtract",help="Return residual observation.", action='store_true') 
+o.add_option("-s", "--subtract", dest="subtract",help="Return residual observation.", action='store_true') 
 opts,args = o.parse_args(sys.argv[1:])
 print args
 caloc=glob('../calibration/*sav')[0]
@@ -13,11 +13,11 @@ calibrations = readsav(caloc)
 gains = calibrations['cal'][0]['GAIN']
 filelist = args
 base = args[0].split('_')[0]
-dirty = uvdata.fhd.FHD()
+dirty = pyuvdata.fhd.FHD()
 dirty.read_fhd(filelist)
 #dirty.unphase_to_drift()
 dirty.antenna_positions = n.zeros((dirty.Nants_data,3))
-model = uvdata.fhd.FHD()
+model = pyuvdata.fhd.FHD()
 model.read_fhd(filelist,use_model=True)
 #model.unphase_to_drift()
 
@@ -51,9 +51,11 @@ dirty.data_array = dirty.data_array[:,:,:,0]+dirty.data_array[:,:,:,1]
 dirty.data_array = dirty.data_array.reshape(n.append(dirty.data_array.shape,1))
 dirty.nsample_array = dirty.nsample_array[:,:,:,0]+dirty.nsample_array[:,:,:,1]
 dirty.nsample_array = dirty.nsample_array.reshape(n.append(dirty.nsample_array.shape,1))
+
+#dirty.freq_array = dirty.freq_array[:,:]
+dirty.freq_array = n.linspace(100.*10**6,200.*10**6,203).reshape(1,203)
 print dirty.freq_array.shape
-dirty.freq_array = dirty.freq_array[:,:]
-print dirty.freq_array.shape
+dirty.channel_width = dirty.freq_array[0,1] - dirty.freq_array[0,0]
 dirty.polarization_array = n.array([1])
 dirty.Npols=1
 
@@ -64,23 +66,28 @@ model.data_array = model.data_array.reshape(n.append(model.data_array.shape,1))
 #dirty.flag_array = dirty.flag_array[:,:,24:165,:]
 #dirty.data_array = dirty.data_array[:,:,24:165,:]
 #dirty.nsample_array = dirty.nsample_array[:,:,24:165,:]
+dirty.antenna_positions = n.zeros((64,3))
 dirty.Nfreqs = len(dirty.data_array[0,0,:,0])
-
-dirty.write_miriad(base+'HP')
+print dirty.data_array.shape
+dirty.write_miriad(base+'HP',run_check=False,no_antnums=True)
 
 print 'Applying subtractions to data and outputting to miriad...'
 model.data_array=model.data_array[:,:,:,:]
 
 
-####CURRENTLY ONLY SAVES THE MODEL NOT THE RESIDUAL!!!!!!!!
-####
 residual = model.data_array #dirty.data_array - model.data_array
 #residual[:,0,:,0] = dirty.data_array[:,0,:,0] - model.data_array[:,0,:,0]
 #residual[:,0,:,1] = dirty.data_array[:,0,:,1]# - model.data_array[:,0,:,0]
 print 'Dirty: ',n.sum(n.abs(dirty.data_array)),'Residual: ',n.sum(n.abs(residual))
+dirtyData = dirty.data_array
 dirty.data_array = residual
-dirty.antenna_positions = n.zeros((dirty.Nants_data,3))
-dirty.write_miriad(base+'MP')
+#dirty.antenna_positions = n.zeros((dirty.Nants_data,3))
+dirty.write_miriad(base+'MP',no_antnums=True)
+
+if opts.subtract:
+    dirty.data_array = dirtyData - residual
+    dirty.write_miriad(base+'SP',no_antnums=True)
+    
 
 
 

@@ -20,7 +20,7 @@ version = args[2]
 ;version = 'nb_decon_Feb2016'
 cmd_args={version:version}
 
-data_directory='/users/jkerriga/data/jkerriga/FGSubOutput/'
+data_directory='/users/jkerriga/data/jkerriga/AliasingOut/'
 vis_file_list=file_search(data_directory,obs_id,count=n_files)
 ;vis_file_list=file_search(data_directory,'Pzen.24563*.*.*COM.uvfits',count=n_files)
 print,vis_file_list
@@ -40,12 +40,13 @@ model_catalog_file_path=filepath('mwa_calibration_source_list_gleam_kgs_fhd_forn
 
 ;ADDED SEP10
 ;model_visibilities=1
-;max_model_sources=20000
+max_model_sources=300000
+;kbinsize=1.
 allow_sidelobe_cal_sources=1
 allow_sidelobe_model_sources=1
 return_cal_visibilites=1
 allow_sidelobe_sources=1
-phase_degree=3
+phase_degree=1
 
 
 
@@ -95,16 +96,17 @@ lat=Ten(-30,42,17.5)
 lon=Ten(21,25,41)
 time_offset=279.1727364063263;5.*60. ;time offset of phase center from start time. PAPER data are phased to 5 minutes after the start time. 
 min_baseline=1.
-min_cal_baseline=20.
+;max_baseline=10000.
+;min_cal_baseline=1.
 calibrate_visibilities=1
-max_calibration_sources=20000
+max_calibration_sources=100
 calibration_polyfit=1 ;says order 1, forced in code to be 0
 ;no_restrict_cal_sources=1
 no_rephase=1
-freq_start=107. ;112
-freq_end=182.  ;182
-psf_resolution=32.
-beam_residual_threshold=0.01
+freq_start=112 ;112
+freq_end=182 ;182
+psf_resolution=16.
+beam_residual_threshold=0.001
 
 
 output_residual_histogram=0

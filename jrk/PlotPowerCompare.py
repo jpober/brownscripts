@@ -5,12 +5,12 @@ import aipy as a
 
 
 folded=True
-dirty = n.load('pspec_PGBH_Vanilla-WideFRF_50_70_I.npz')
-res = n.load('pspec_PGBH_WaveletRFI-WideFRF_50_70_I.npz')
-resW = n.load('pspec_PGBH_WaveletRFI-WideFRF_50_70_I.npz')
+dirty = n.load('pspec_Paper_WF_85_125_I.npz')
+res = n.load('pspec_Paper_FSWF_85_125_I.npz')
+resW = n.load('pspec_Paper_FSWF_85_125_I.npz')
 #resW = n.load('pspec_PGInHorizon_ResidualWideFRF_95_115_I.npz')
 chans=203.
-uv = a.miriad.UV('ZeroDayNoiseInjection.uvB')
+uv = a.miriad.UV('/users/jkerriga/Pzen.2456242.30605.uvcRREcACOTUcHPA')
 aa = a.cal.get_aa('psa6240_FHD', uv['sdf'], uv['sfreq'], uv['nchan'])
 filters = C.dspec.wedge_width_by_bl(aa, uv['sdf'], uv['nchan'], offset=15.0)
 bins = filters[(41,49)]

@@ -8,7 +8,7 @@ from glob import glob
 
 
 folded=True
-dir = 'PG_Ratio'
+dir = 'Paper_Ratio_Rect'
 npz = glob('./'+dir+'/*/I/*.npz')
 print npz
 chanlist = []
@@ -27,39 +27,43 @@ for i in npz:
 chans=203.
 uv = a.miriad.UV('../../Pzen.2456242.30605.uvcRREcACOTUcHPA')
 aa = a.cal.get_aa('psa6240_FHD', uv['sdf'], uv['sfreq'], uv['nchan'])
-filters = C.dspec.wedge_width_by_bl(aa, uv['sdf'], uv['nchan'], offset=15.0)
+filters = C.dspec.wedge_width_by_bl(aa, uv['sdf'], uv['nchan'], offset=0.0)
 bins = filters[(41,49)]
 
 fig = pl.figure()
 ax = fig.add_subplot(111)
 
-tau_h = 100 + 15. #in ns
+tau_h = 100. # + 15. #in ns
 k_h = C.pspec.dk_deta(C.pspec.f2z(pspecs[chanlist[0]+'_freq'])) * tau_h
 
 for c in chanlist:
-    pspecs[c+'_pkfold'] = [pspecs[c+'_pk'][9]]
-    pspecs[c+'_errfold'] = [pspecs[c+'_err'][9]]
-    for i in range(10):
+    #pspecs[c+'_pkfold'] = [pspecs[c+'_pk'][20]]
+    #pspecs[c+'_errfold'] = [pspecs[c+'_err'][20]]
+    pspecs[c+'_pkfold'] = []
+    pspecs[c+'_errfold'] = []
+    for i in range(21):
 
-        pspecs[c+'_pkfold'].append(n.mean((pspecs[c+'_pk'][10-i],pspecs[c+'_pk'][10+i])))
-        pspecs[c+'_errfold'].append(n.mean((pspecs[c+'_err'][10-i],pspecs[c+'_err'][10+i])))
+        pspecs[c+'_pkfold'].append(n.mean((pspecs[c+'_pk'][20-i],pspecs[c+'_pk'][20+i])))
+        pspecs[c+'_errfold'].append(n.mean((pspecs[c+'_err'][20-i],pspecs[c+'_err'][20+i])))
         
 #pl.vlines(k_h, -1e7, 1e13, linestyles='--', linewidth=1.5)
 #pl.vlines(-k_h, -1e7, 1e13, linestyles='--', linewidth=1.5)
-pl.axvspan(-k_h,k_h,color='red',alpha=0.5)
+pl.axvspan(-k_h,k_h,color='red',alpha=0.4)
 ax.set_yscale("linear")
-
+ptype = ['ro','bo','go','ko']
+ct = 0
 for c in chanlist:
     print c
     if folded==True:
-        ax.errorbar(pspecs[c+'_kpl'][10:21],pspecs[c+'_pkfold'],yerr=pspecs[c+'_errfold'],fmt='o',label='z = '+str(round(1.42/pspecs[c+'_freq'] - 1,1)))
+        ax.errorbar(pspecs[c+'_kpl'][20:41],pspecs[c+'_pkfold'],yerr=pspecs[c+'_errfold'],fmt=ptype[ct],label='z = '+str(round(1.42/pspecs[c+'_freq'] - 1,1)),markersize=5,barsabove=True,markerfacecolor='None',markeredgewidth=1)
         ax.set_xlim(-0.05,n.max(pspecs[chanlist[0]+'_kpl'])+0.05)
     else:
-        ax.errorbar(pspecs[c+'_kpl'],pspecs[c+'_pk'],yerr=pspecs[c+'_err'],fmt='o',label='z = '+str(round(1.42/pspecs[c+'_freq'] - 1,1)))
+        ax.errorbar(pspecs[c+'_kpl'],pspecs[c+'_pk'],yerr=pspecs[c+'_err'],fmt=ptype[ct],label='z = '+str(round(1.42/pspecs[c+'_freq'] - 1,1)),markersize=5,barsabove=True,markerfacecolor='None')
         ax.set_xlim(-1*(n.max(pspecs[chanlist[0]+'_kpl'])+0.05),n.max(pspecs[chanlist[0]+'_kpl'])+0.05)
-
+    ct+=1
+ax.set_ylim(0.01,1.05)
 #ax.set_xlim(-0.05,n.max(pspecs[chanlist[0]+'_kpl'])+0.05)
-ax.legend(bbox_to_anchor=(1.1,0.4))#loc=4)
+ax.legend(bbox_to_anchor=(1.1,0.25),numpoints=1)#loc=4)
 pl.hlines(1,-0.6,0.6,linestyles='--')
 #ax.errorbar(k_rW,n.abs(pk_rW),yerr=err_rW,fmt='r.')
 #ax.errorbar(k_r,n.abs(pk_r),yerr=err_r,fmt='b.')

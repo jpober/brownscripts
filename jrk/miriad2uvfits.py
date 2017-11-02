@@ -1,4 +1,4 @@
-import uvdata
+import pyuvdata
 import numpy as n
 import optparse,sys
 import matplotlib.pyplot as mp
@@ -14,7 +14,7 @@ cwd = os.getcwd()
 for filename in args:
     print filename
     #import observation
-    a = uvdata.miriad.Miriad()
+    a = pyuvdata.miriad.Miriad()
     try:
         a.read_miriad(filename)
     except KeyError:
@@ -24,6 +24,7 @@ for filename in args:
     #a.phase_to_time(a.time_array.mean())
     a.data_array = n.nan_to_num(a.data_array)
     a.flag_array[a.data_array==0j] = True
+    #a.flag_array[a.flag_array==True] = False
     ### flag 166:203 and maybe 0:15
     
     #a.flag_array[:,:,0:24,:] = True
@@ -48,7 +49,7 @@ for filename in args:
     #a.flag_array[a.data_array==0j] = True
 
     
-    os.chdir("/users/jkerriga/data/jkerriga/AnalysisOutput")
+    os.chdir("/users/jkerriga/data/jkerriga/AliasingOut")
     a.phase(dec=a.zenith_dec[0],ra=a.zenith_ra[0],epoch=2000.0)
     #save as uvfits
     print 'Saving...'+filename.split('/')[-1:][0]+'--->'+'P'+filename.split('/')[-1:][0]+'.uvfits'

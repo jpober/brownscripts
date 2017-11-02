@@ -1,18 +1,18 @@
 #! /bin/bash
-#SBATCH -t 0:20:00
-#SBATCH -n 2                                                                                                                                      
-#SBATCH --array=0-999:1%25
+#SBATCH -t 5:00:00
+#SBATCH -n 5                                                                                                                                    
+#SBATCH --array=0-0:1%25
 ###SBATCH --ntasks=1                                                                                                                                      
-#SBATCH --mem=10G                                                                                                                                   
-#SBATCH -p jpober-test 
+#SBATCH --mem=60G                                                                                                                                   
+#S#BATCH -p jpober-test 
 #SBATCH --output=/users/jkerriga/brownscripts/jrk/SlurmOut/FGSub_%A_%a.out 
 ###SBATCH --output=/users/jkerriga/data/jkerriga/PFHDOutput/fhd_%a/FGSub_%A_%a.out
 ###SBATCH --error=/users/jkerriga/data/jkerriga/PFHDOutput/fhd_%a/FGSub_%A_%a.err 
 source activate PAPER
-version=$(($SLURM_ARRAY_TASK_ID + 3999))
+version=$(($SLURM_ARRAY_TASK_ID + 160))
 
 vsname=''
-outdir=/users/jkerriga/data/jkerriga/AnalysisOutput
+outdir=/users/jkerriga/data/jkerriga/AliasingOut #AnalysisOutput
 
 module load ghostscript
 module load imagemagick/6.6.4
@@ -30,7 +30,9 @@ obs_list=($(cat Analysis_obsfits.txt))
 
 
 echo ${obs_list[$version]}
-obs_id=${obs_list[$version]}
+#obs_id=${obs_list[$version]}
+obs_id='Pzen.2456242.30605.uvcRREcACOTUc.uvfits'
+#Pzen.2456255.40355.uvcRREcACOTUcBC.uvfits'
 /usr/local/bin/idl -IDL_DEVICE ps -quiet -IDL_CPU_TPOOL_NTHREADS $ncores -e paper_psa64 -args $obs_id $outdir ${vsname}${version}
 
 #cd ${outdir}/fhd_${vsname}${version}/vis_data
