@@ -31,6 +31,7 @@ masky = chiy > 1.2
 flag = {}
 flag['xx'] = np.logical_or(npz_x['flags'], maskx)
 flag['yy'] = np.logical_or(npz_y['flags'], masky)
+mask = {'xx': npz_x['flags'], 'yy': npz_y['flags']}
 for key in npz_x.keys():
     if key.startswith('<'):
         bl,pol = key.split()
@@ -94,7 +95,7 @@ for pp in ['xx','yy']:
         j = a2[ii]
         uv.data_array[:,0][:,:,pid][ii::uv.Nbls] = mdvis[pp][(ant[i],ant[j])]
         uv.flag_array[:,0][:,:,pid][ii::uv.Nbls] = flag[pp]
-        uv.nsample_array[:,0][:,:,pid][ii::uv.Nbls] = sample
+        uv.nsample_array[:,0][:,:,pid][ii::uv.Nbls] = sample*np.logical_not(mask[pp])
 outuvfits = opts.outpath + obsid + '_mvis_unique.uvfits'
 print '     Writing ' + outuvfits
 uv.write_uvfits(outuvfits,spoof_nonessential=True)
