@@ -82,7 +82,10 @@ for ii in range(uv.Nbls):
     j = b1[ii]%128
     ai = ant_dict[i]
     aj = ant_dict[j]
-    ubli,ublj = reds_ind[(ai,aj)]
+    try:
+        ubli,ublj = reds_ind[(ai,aj)]
+    except:
+        ubli,ublj = ai,aj
     try:
         ind = np.where(b0 == 128*ubli + ublj)[0][0]
         uvw[ii::Nbls1] = uv.uvw_array[ind::Nbls0]
