@@ -41,6 +41,7 @@ masky = chiy > 1.2
 flag = {}
 flag['xx'] = np.logical_or(npz_x['flags'], maskx)
 flag['yy'] = np.logical_or(npz_y['flags'], masky)
+mask = {'xx': npz_x['flags'], 'yy': npz_y['flags']}
 for key in npz_x.keys():
     if key.startswith('<'):
         bl,pol = key.split()
@@ -70,7 +71,9 @@ uv.time_array = np.resize(times,(times.size))
 lsts = np.resize(np.unique(uv.lst_array),(uv.Nbls,uv.Ntimes)).T
 uv.lst_array = np.resize(lsts,(lsts.size))
 uvw = np.zeros((uv.Nblts,3))
-nsample = np.zeros((uv.Nblts,uv.Nspws,uv.Nfreqs,uv.Npols))
+sample = np.ones(chix.shape)*16
+for ii in range(384):
+    if ii%16 == 8: sample[:,ii] = 8
 uv.ant_1_array = np.array(a1*uv.Ntimes)
 uv.ant_2_array = np.array(a2*uv.Ntimes)
 b1 = 128*uv.ant_1_array[:Nbls1] + uv.ant_2_array[:Nbls1]
@@ -79,15 +82,15 @@ for ii in range(uv.Nbls):
     j = b1[ii]%128
     ai = ant_dict[i]
     aj = ant_dict[j]
+    ubli,ublj = reds_ind[(ai,aj)]
     try:
-        ind = np.where(b0 == 128*ai + aj)[0][0]
+        ind = np.where(b0 == 128*ubli + ublj)[0][0]
         uvw[ii::Nbls1] = uv.uvw_array[ind::Nbls0]
     except:
-        ind = np.where(b0 == 128*aj + ai)[0][0]
+        ind = np.where(b0 == 128*ublj + ubli)[0][0]
         uvw[ii::Nbls1] = -uv.uvw_array[ind::Nbls0]
-    nsample[ii::Nbls1] = uv.nsample_array[ind::Nbls0]
 uv.uvw_array = uvw
-uv.nsample_array = nsample
+uv.nsample_array = np.zeros((uv.Nblts,uv.Nspws,uv.Nfreqs,uv.Npols))
 uv.data_array = np.zeros((uv.Nblts,uv.Nspws,uv.Nfreqs,uv.Npols),dtype=np.complex64)
 uv.flag_array = np.ones((uv.Nblts,uv.Nspws,uv.Nfreqs,uv.Npols),dtype=bool)
 uv.baseline_array = uv.antnums_to_baseline(uv.ant_1_array,uv.ant_2_array)
@@ -109,6 +112,7 @@ for pp in ['xx','yy']:
         else: continue
         uv.data_array[:,0][:,:,pid][ii::uv.Nbls] = vis
         uv.flag_array[:,0][:,:,pid][ii::uv.Nbls] = flag[pp]
+        uv.nsample_array[:,0][:,:,pid][ii::uv.Nbls] = sample*np.logical_not(mask[pp])
 outuvfits = opts.outpath + obsid + '_mvis.uvfits'
 print '     Writing ' + outuvfits
 uv.write_uvfits(outuvfits,spoof_nonessential=True)
