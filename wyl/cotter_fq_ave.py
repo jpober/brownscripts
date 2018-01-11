@@ -20,5 +20,5 @@ uv.Nfreqs /= 2
 uv.channel_width *= 2
 del data, wgts
 print 'writing...'
-uv.write_uvfits('./uvfitsdata/+'obs+'.uvfits',spoof_nonessential=True)
+uv.write_uvfits('./uvfitsdata/'+obs+'.uvfits',spoof_nonessential=True)
 
