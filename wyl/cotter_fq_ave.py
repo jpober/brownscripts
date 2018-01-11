@@ -3,7 +3,7 @@ import pyuvdata.uvdata as uvd
 obs = sys.argv[1]
 uv = uvd.UVData()
 print 'loading...'
-uv.read_uvfits(obs+'/'+obs+'.uvfits',run_check=False,run_check_acceptability=False)
+uv.read_uvfits(obs+'.uvfits',run_check=False,run_check_acceptability=False)
 print 'averaging..'
 data = (uv.data_array*np.logical_not(uv.flag_array)).reshape(uv.Nblts,uv.Nspws,uv.Nfreqs/2,2,uv.Npols)
 wgts = np.logical_not(uv.flag_array.reshape(uv.Nblts,uv.Nspws,uv.Nfreqs/2,2,uv.Npols))
@@ -20,5 +20,5 @@ uv.Nfreqs /= 2
 uv.channel_width *= 2
 del data, wgts
 print 'writing...'
-uv.write_uvfits(obs+'.uvfits',spoof_nonessential=True)
+uv.write_uvfits('./uvfitsdata/+'obs+'.uvfits',spoof_nonessential=True)
 
