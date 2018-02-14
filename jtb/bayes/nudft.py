@@ -203,5 +203,3 @@ for i,axe in enumerate(fig.axes):
 gs.tight_layout(fig)
 
 show()
-
-sys.exit()
