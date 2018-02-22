@@ -151,37 +151,43 @@ imax.set_ylabel('m', size=16, rotation=0)
 myim = visax.scatter(uvs_unique[:,0],
                                 uvs_unique[:,1],
                                 c = np.abs(Vs_unique),
-                                cmap = opts.cmap)
+                                cmap = opts.cmap,
+                                vmin = np.abs(Vs_unique).min(),
+                                vmax = np.abs(Vs_unique).max())
 visax.set_title('my fft')
 
 
 anim = anax.scatter(uvs_unique[:,0],
                               uvs_unique[:,1],
                               c = np.abs(Vs_analytic),
-                              cmap = opts.cmap)
+                              cmap = opts.cmap,
+                              vmin = np.abs(Vs_analytic).min(),
+                              vmax = np.abs(Vs_analytic).max())
 anax.set_title('analytic solution')
 
-
+diff_abs = np.abs(Vs_unique) - np.abs(Vs_analytic)
 diffim = diffax.scatter(uvs_unique[:,0],
                                 uvs_unique[:,1],
-                                c = np.abs(Vs_unique) - np.abs(Vs_analytic),
-                                cmap = opts.cmap)
+                                c = diff_abs,
+                                cmap = opts.cmap,
+                                vmin = diff_abs.min(),
+                                vmax = diff_abs.max())
 diffax.set_title('my fft - analytic solution')
 
 if opts.plot_phase:
     mypim = vispax.scatter(uvs_unique[:,0],
                                        uvs_unique[:,1],
-                                       c = np.imag(Vs_unique),
+                                       c = np.angle(Vs_unique),
                                        cmap = opts.cmap)
 
     anpim = anpax.scatter(uvs_unique[:,0],
                                      uvs_unique[:,1],
-                                     c = np.imag(Vs_analytic),
+                                     c = np.angle(Vs_analytic),
                                      cmap = opts.cmap)
 
     diffpim = diffpax.scatter(uvs_unique[:,0],
                                         uvs_unique[:,1],
-                                        c = np.imag(Vs_unique) - np.imag(Vs_analytic),
+                                        c = np.angle(Vs_unique) - np.angle(Vs_analytic),
                                         cmap = opts.cmap)
 
     imgs = [ogim, myim, mypim, anim, anpim, diffim, diffpim]

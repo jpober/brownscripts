@@ -12,13 +12,17 @@ o.add_option('--uvdata',
     help = 'Filename for input uvw binary .npy file.')
 o.add_option('--l_offset',
     type = float,
+    default = 0.0,
     help = 'Moves source in l-direction by l_offset*ls.max().  Must be between 0 and 1.')
 o.add_option('--m_offset',
     type = float,
+    default = 0.0,
     help = 'Moves source in m-direction by m_offset*ms.max().  Must be between 0 and 1.')
 opts,args = o.parse_args(sys.argv[1:])
 
 pixel_nums = [25,50,100,150]
+msizes = [13,11,9,7]
+j = 0
 
 for pixel_num in pixel_nums:
     ## ----------------- Construct sky ----------------- ##
@@ -38,14 +42,8 @@ for pixel_num in pixel_nums:
     else:
         mid_m = int(len(ms)/2. - 0.5)
 
-    if opts.l_offset:
-        l_off = int(mid_l*opts.l_offset)
-    else:
-        l_off = 0
-    if opts.m_offset:
-        m_off = int(mid_m*opts.m_offset)
-    else:
-        m_off = 0
+    l_off = int(mid_l*opts.l_offset)
+    m_off = int(mid_m*opts.m_offset)
 
     I[mid_m + m_off, mid_l + l_off] = 1.0
     N_freq = 1
@@ -77,7 +75,7 @@ for pixel_num in pixel_nums:
     DFT = np.exp(-1j*2*np.pi*(np.outer(us,ls_vec) + np.outer(vs, ms_vec)))
 
     # Compute visibilities from DFT
-    Vs = np.dot(DFT, I_vec)*pixel_area
+    Vs = np.dot(DFT, I_vec) #*pixel_area
 
     # Average over redundant baselines
     Vs_unique = np.zeros(0)
@@ -102,26 +100,27 @@ for pixel_num in pixel_nums:
         power_spec[i] = np.mean(np.abs(Vs_unique[inds])**2)
 
     # plot power spectrum
-    plot(rs_unique, power_spec, 'o', label = 'Numerical, %s'%(str(pixel_num)))
+    plot(rs_unique, power_spec, 'o', markersize = msizes[j], label = 'Numerical, %s'%(str(pixel_num)))
+    j += 1
 
 
 ## ----------------- Analytic solution comparison ----------------- ##
 
 # Point source, Flat beam
-Vs_func = lambda u,v: pixel_area*np.exp(-2*np.pi*1j*(u*ls[mid_l + l_off] + v*ms[mid_m + m_off]))
-Vs_analytic = Vs_func(uvs_unique[:,0], uvs_unique[:,1])
+Vs_func = lambda u,v: np.exp(-2*np.pi*1j*(u*ls[mid_l + l_off] + v*ms[mid_m + m_off]))
+Vs_analytic = Vs_func(uvs_unique[:,0], uvs_unique[:,1]) #*pixel_area
 power_spec_analytic = np.zeros_like(rs_unique)*1.0j
 for i,r in enumerate(rs_unique):
     inds = np.where(rs == r)[0]
     power_spec_analytic[i] = np.mean(np.abs(Vs_analytic[inds])**2)
 
-plot(rs_unique, power_spec_analytic, 'o', label = 'Analytic')
+plot(rs_unique, power_spec_analytic, 'o', label = 'Analytic', markersize = 5)
 
 
 ## ----------------- Plotting ----------------- ##
 
 xlabel('\"k\"', size = 16)
 ylabel('Power', size = 16)
-legend(loc='best', fontsize = 16)
+legend(loc='upper left', fontsize = 16, ncol=2, bbox_to_anchor=(1.,1.))
 
 show()

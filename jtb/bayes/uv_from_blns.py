@@ -27,6 +27,9 @@ o.add_option('--snapshot',
 o.add_option('--write',
     action='store_true',
     help='If passed, write uvws array as .npy file.')
+o.add_option('--plot',
+    action='store_true',
+    help = 'If passed, a plot of the generated (u,v) coordinates is generated.')
 opts,args = o.parse_args(sys.argv[1:])
 
 if opts.data is None and opts.positions is None:
@@ -83,32 +86,33 @@ for i, bln in enumerate(blns):
 if opts.write:
     np.save('uvws.npy', uvws)
 
-# Plotting
-fig = figure(figsize=(10,4.5))
-gs = gridspec.GridSpec(1,2)
+if opts.plot:
+    # Plotting
+    fig = figure(figsize=(10,4.5))
+    gs = gridspec.GridSpec(1,2)
 
-# Plot baseline(s) in position space
-ax1 = subplot(gs[0], aspect='equal')
-ax1.plot(ant_pos[:,0],ant_pos[:,1],'o')
-ax1.set_xlabel('x [m]', size=18)
-ax1.set_ylabel('y [m]', size=18)
+    # Plot baseline(s) in position space
+    ax1 = subplot(gs[0], aspect='equal')
+    ax1.plot(ant_pos[:,0],ant_pos[:,1],'o')
+    ax1.set_xlabel('x [m]', size=18)
+    ax1.set_ylabel('y [m]', size=18)
 
-ax2 = subplot(gs[1], aspect='equal')
-for i in range(blns.shape[0]):
-    ax2.plot(uvws[:,0,i], uvws[:,1,i], 'b.')
-    ax2.plot(-uvws[:,0,i], -uvws[:,1,i], 'b.')
-ax2.set_xlabel('u', size=18)
-ax2.set_ylabel('v', size=18)
+    ax2 = subplot(gs[1], aspect='equal')
+    for i in range(blns.shape[0]):
+        ax2.plot(uvws[:,0,i], uvws[:,1,i], 'b.')
+        ax2.plot(-uvws[:,0,i], -uvws[:,1,i], 'b.')
+    ax2.set_xlabel('u', size=18)
+    ax2.set_ylabel('v', size=18)
 
-for ax in fig.axes:
-    ax.tick_params(axis='both',labelsize=16)
+    for ax in fig.axes:
+        ax.tick_params(axis='both',labelsize=16)
 
-if opts.data:
-    suptitle(opts.data + ', ' + str(opts.freq) + ' MHz', size=16)
-else:
-    suptitle(opts.positions + ', ' + str(opts.freq) + ' MHz', size=16)
+    if opts.data:
+        suptitle(opts.data + ', ' + str(opts.freq) + ' MHz', size=16)
+    else:
+        suptitle(opts.positions + ', ' + str(opts.freq) + ' MHz', size=16)
 
-gs.tight_layout(fig, rect=[None, None, None, 0.95])
-# tight_layout()
+    gs.tight_layout(fig, rect=[None, None, None, 0.95])
+    # tight_layout()
 
-show()
+    show()
