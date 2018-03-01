@@ -123,4 +123,6 @@ xlabel('\"k\"', size = 16)
 ylabel('Power', size = 16)
 legend(loc='upper left', fontsize = 16, ncol=2, bbox_to_anchor=(1.,1.))
 
+tight_layout()
+
 show()
