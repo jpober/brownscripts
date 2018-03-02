@@ -17,7 +17,7 @@ o.add_option('--ps_catalog',
 opts,args = o.parse_args(sys.argv[1:])
 
 ## ----------------- Construct sky ----------------- ##
-pixel_num = 50
+pixel_num = 150
 ls = np.cos(np.linspace(-np.pi, np.pi, pixel_num))
 ms = np.sin(np.linspace(-np.pi, np.pi, pixel_num))
 pixel_side_length = np.diff(ls)[0]
@@ -27,7 +27,7 @@ extent_lm = [ls.min(), ls.max(), ms.min(), ms.max()]
 L, M = np.meshgrid(ls, ms)
 
 #Make source catalog
-nsources = 50
+nsources = 150
 grid_pos = np.zeros((nsources,2), dtype = int)
 true_pos = np.zeros((nsources,2))
 for i in range(grid_pos.shape[0]):
@@ -39,7 +39,6 @@ for i in range(grid_pos.shape[0]):
 I = 0*L
 I[grid_pos[:,0], grid_pos[:,1]] = 1.0
 N_freq = 1
-pixel_area = (ls[1]-ls[0])*(ms[1]-ms[0])
 
 # Construct position vectors for N_im pixels
 I_vec = np.reshape(I, (N_im*N_freq,), order='F')
