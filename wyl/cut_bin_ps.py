@@ -22,6 +22,8 @@ def ps_cut(power_2d,power_diff,thresh=1e7,kperp_min_cut=0.003,kperp_max_cut=0.05
     n = np.digitize(k,kperp)
     q[:,np.where(kperp[:-1] > kperp_max_cut)[0]] = False
     q[:,np.where(kperp[1:] < kperp_min_cut)[0]] = False
+    q[np.where(kz > kpara_max_cut)[0]] = False
+    q[np.where(kz < kpara_min_cut)[0]] = False
     for nn in range(kperp.size-1):  
         if kperp[nn] > kperp_max_cut: continue
         if kperp[nn] < kperp_min_cut: continue          
