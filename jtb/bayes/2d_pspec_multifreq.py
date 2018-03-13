@@ -24,6 +24,14 @@ o.add_option('--plot_type',
 o.add_option('--write',
     action='store_true',
     help='If passed, write visibility array as .npy file.')
+o.add_option('--spec_index',
+    type = float,
+    default = '0.0',
+    help = 'Spectral index for amplitude of point sources as a function of frequency,'
+           + 'i.e. n = spectral index and amplitude A(v)=v^n.')
+o.add_option('--zenith_source',
+    action = 'store_true',
+    help = 'If passed, only place one source at zenith.')
 opts,args = o.parse_args(sys.argv[1:])
 
 # Get frequency(ies) or frequency range
@@ -40,27 +48,49 @@ nfreqs = len(freqs)
 
 ## ----------------- Construct sky ----------------- ##
 print 'Constructing sky...'
-pixel_num = 150
-ls = np.cos(np.linspace(-np.pi, np.pi, pixel_num))
-ms = np.sin(np.linspace(-np.pi, np.pi, pixel_num))
+pixel_num = 50
+ls = np.linspace(-1, 1, pixel_num)
+ms = np.linspace(-1, 1, pixel_num)
 pixel_side_length = np.diff(ls)[0]
 npix = ls.size*ms.size
-extent_lm = [ls.min(), ls.max(), ms.min(), ms.max()]
 L, M = np.meshgrid(ls, ms)
 
 #Make source catalog
-nsources = 150
-grid_pos = np.zeros((nsources,2), dtype = int)
-true_pos = np.zeros((nsources,2))
-for i in range(grid_pos.shape[0]):
-    grid_pos[i, 0] = np.random.randint(0, ls.shape[0])
-    grid_pos[i, 1] = np.random.randint(0, ms.shape[0])
-    true_pos[i, 0] = ls[grid_pos[i, 0]] + np.random.uniform(low=-pixel_side_length, high=pixel_side_length)
-    true_pos[i, 1] = ms[grid_pos[i, 1]] + np.random.uniform(low=-pixel_side_length, high=pixel_side_length)
+if opts.zenith_source:
+    nsources = 1
+    if len(ls) % 2 == 0:
+        mid_l = len(ls)/2
+    else:
+        mid_l = int(len(ls)/2. - 0.5)
+    if len(ms) % 2 == 0:
+        mid_m = len(ms)/2
+    else:
+        mid_m = int(len(ms)/2. - 0.5)
+
+    grid_pos = np.zeros((nsources, 2), dtype = int)
+    true_pos = np.zeros((nsources, 2))
+    for i in range(grid_pos.shape[0]):
+        grid_pos[i, 0] = mid_l
+        grid_pos[i, 1] = mid_m
+        true_pos[i, 0] = ls[grid_pos[i, 0]] + np.random.uniform(low=-pixel_side_length, high=pixel_side_length)
+        true_pos[i, 1] = ms[grid_pos[i, 1]] + np.random.uniform(low=-pixel_side_length, high=pixel_side_length)
+else:
+    nsources = 50
+    grid_pos = np.zeros((nsources, 2), dtype = int)
+    true_pos = np.zeros((nsources, 2))
+    for i in range(grid_pos.shape[0]):
+        grid_pos[i, 0] = np.random.randint(0, ls.shape[0])
+        grid_pos[i, 1] = np.random.randint(0, ms.shape[0])
+        true_pos[i, 0] = ls[grid_pos[i, 0]] + np.random.uniform(low=-pixel_side_length, high=pixel_side_length)
+        true_pos[i, 1] = ms[grid_pos[i, 1]] + np.random.uniform(low=-pixel_side_length, high=pixel_side_length)
 
 # Make sky matrix
 I = np.zeros((nfreqs, pixel_num, pixel_num))
-I[:, grid_pos[:,0], grid_pos[:,1]] = 1.0
+for i, freq in enumerate(freqs):
+    if not opts.spec_index == 0.0:
+        I[i, grid_pos[:,0], grid_pos[:,1]] = 1./(1 + (freq - freqs.min())**opts.spec_index)
+    else:
+        I[i, grid_pos[:,0], grid_pos[:,1]] = 1.
 
 # Construct position vectors for npix pixels
 I_vec = I.flatten()
@@ -73,10 +103,9 @@ for l in ls:
 
 ## ----------------- Construct uv-plane ----------------- ##
 print 'Constructing uv grid...'
-us = np.fft.fftshift(np.fft.fftfreq(len(ls), d=np.mean(np.diff(ls))))
-vs = np.fft.fftshift(np.fft.fftfreq(len(ms), d=np.mean(np.diff(ms))))
+us = np.fft.fftshift(np.fft.fftfreq(31, d=np.mean(np.diff(ls))))
+vs = np.fft.fftshift(np.fft.fftfreq(31, d=np.mean(np.diff(ms))))
 nvispix = us.size*vs.size
-extent_uv = [us.min(), us.max(), vs.min(), vs.max()]
 
 # Construct position vectors for nvispix pixels
 us_vec, vs_vec = np.zeros(0), np.zeros(0)
@@ -90,8 +119,10 @@ print 'Constructing DFT matrix...'
 start = time.time()
 # Construct DFT matrix using outer product
 DFT_mat = np.exp(-1j*2*np.pi*(np.outer(us_vec,ls_vec) + np.outer(vs_vec, ms_vec)))
+print 'Size of DFT_mat in GB: ' + str(sys.getsizeof(DFT_mat)/1.e9)
 # DFT_mat = np.zeros((DFT.shape[0]*nfreqs, DFT.shape[1]*nfreqs))
 DFT = np.kron(np.eye(nfreqs), DFT_mat)
+print 'Size of DFT in GB: ' + str(sys.getsizeof(DFT)/1.e9)
 stop = time.time()
 mytime = stop - start
 
@@ -109,13 +140,23 @@ print 'DFT completed in %.1f s' %mytime
 # Reshape visibilities
 Vs = np.reshape(Vs_vec, (nfreqs, us.size, vs.size))
 
-print Vs.shape
+print 'Visibilities array shape: %s' %str(Vs.shape)
 
 if opts.write:
-    filename = 'visdata_%sMHz_%sMHz.npy' %(opts.freq, opts.freq_res)
+    filename = 'visdata_%sMHz_%sMHz' %(opts.freq, opts.freq_res)
+    if not opts.spec_index == 0.0:
+        filename += '_spec-ind_%.1f' %opts.spec_index
+    if opts.zenith_source:
+        filename += '_zenith'
     print 'Writing ' + filename + ' ...\n'
-    np.save(filename, Vs)
-
+    out_dic = {}
+    out_dic['vis'] = Vs
+    out_dic['uv'] = np.stack((us, vs)).T
+    out_dic['sky'] = I
+    out_dic['catalog_grid'] = grid_pos
+    out_dic['catalog_true'] = true_pos
+    np.save(filename + '.npy', out_dic)
+    sys.exit()
 
 
 
@@ -147,13 +188,13 @@ while plot_ind[0] < nrows and freq_ind < nfreqs:
         ax = fig.add_subplot(gs[plot_ind[0], plot_ind[1]])
         if opts.plot_type == 'abs':
             im = ax.imshow(np.abs(Vs[freq_ind]), origin='center',
-                                    aspect='auto', interpolation='nearest')
+                                    aspect='equal', interpolation='nearest')
         elif opts.plot_type == 'phase':
             im = ax.imshow(np.angle(Vs[freq_ind]), origin='center',
-                                    aspect='auto', interpolation='nearest')
+                                    aspect='equal', interpolation='nearest')
         elif opts.plot_type == 'real':
             im = ax.imshow(np.real(Vs[freq_ind]), origin='center',
-                                    aspect='auto', interpolation='nearest')
+                                    aspect='equal', interpolation='nearest')
         ax.set_title(str(freqs[freq_ind]))
         im.set_extent(extent_uv)
         ax.set_xlabel('u', size=fontsize)
