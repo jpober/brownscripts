@@ -73,8 +73,8 @@ for i,r in enumerate(rs_unique):
 
 ## ----------------- Analytic solution comparison ----------------- ##
 # Construct sky parameters
-ls = np.linspace(-1, 1, I.shape[0])
-ms = np.linspace(-1, 1, I.shape[1])
+ls = np.linspace(-1, 1, I.shape[1])
+ms = np.linspace(-1, 1, I.shape[2])
 
 # Point source, Flat beam
 Vs_func = lambda u,l,v,m: np.exp(-2*np.pi*1j*(u*l+ v*m))
@@ -98,22 +98,22 @@ for i,r in enumerate(rs_unique):
 
 ## ----------------- Plotting ----------------- ##
 fig = figure(figsize = (15,6))
-gs = gridspec.GridSpec(1,3)
+gs = gridspec.GridSpec(2,3, height_ratios=[1,10])
 aspect = 'auto'
 
 extent = [rs_unique.min(), rs_unique.max(), ft_freqs.min(), ft_freqs.max()]
 
-# master_ax = fig.add_subplot(gs[:,:])
-# master_ax.set_xticks([])
-# master_ax.set_yticks([])
-# master_ax.spines['top'].set_visible(False)
-# master_ax.spines['right'].set_visible(False)
-# master_ax.spines['bottom'].set_visible(False)
-# master_ax.spines['left'].set_visible(False)
-# ttl = master_ax.set_title(opts.visdata)
-# ttl.set_position([0.5, 1.05])
+master_ax = fig.add_subplot(gs[0,:])
+master_ax.set_xticks([])
+master_ax.set_yticks([])
+master_ax.spines['top'].set_visible(False)
+master_ax.spines['right'].set_visible(False)
+master_ax.spines['bottom'].set_visible(False)
+master_ax.spines['left'].set_visible(False)
+ttl = master_ax.set_title(opts.visdata)
+ttl.set_position([0.5, 0.5])
 
-myax = subplot(gs[0,0])
+myax = subplot(gs[1,0])
 if opts.log_scale:
     vmin = np.log10(np.abs(pspec)).min()
     vmax = np.log10(np.abs(pspec)).max()
@@ -136,7 +136,7 @@ else:
     myax.set_title('Numerical (grid centers)', size=16)
 
 
-anax = subplot(gs[0,1])
+anax = subplot(gs[1,1])
 if opts.log_scale:
     vmin = np.log10(np.abs(pspec_analytic)).min()
     vmax = np.log10(np.abs(pspec_analytic)).max()
@@ -165,7 +165,7 @@ else:
         anax.set_title('Analytic (true pos)', size=16)
 
 
-diffax = subplot(gs[0,2])
+diffax = subplot(gs[1,2])
 diff_data = np.abs(pspec) - np.abs(pspec_analytic)
 if opts.log_scale:
     vmin = np.log10(diff_data).min()
@@ -190,11 +190,12 @@ else:
 
 imgs = [myim, anim, diffim]
 
-for i,ax in enumerate(fig.axes):
+for i,ax in enumerate(fig.axes[1:]):
     cb = fig.colorbar(imgs[i], ax=ax)#, format='%.1f')
     cb.ax.tick_params(labelsize=16)
     ax.set_xlabel(u'\"$k_\perp$\"', size=16)
     ax.set_ylabel(u'$t$ [ns]', size=16)
+
 
 gs.tight_layout(fig)
 

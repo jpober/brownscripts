@@ -32,6 +32,18 @@ o.add_option('--spec_index',
 o.add_option('--zenith_source',
     action = 'store_true',
     help = 'If passed, only place one source at zenith.')
+o.add_option('--long_bl_ew',
+    type = float,
+    default = 84,
+    help = 'Longest East-West baseline for array configuration in meters. '
+               +
+               'Defaults to 84m for HERA-37 compact hex.')
+o.add_option('--long_bl_ns',
+    type = float,
+    default = 72.75,
+    help = 'Longest North-South baseline for array configuration in meters. '
+               +
+               'Defaults to 84m for HERA-37 compact hex.')
 opts,args = o.parse_args(sys.argv[1:])
 
 # Get frequency(ies) or frequency range
@@ -103,8 +115,12 @@ for l in ls:
 
 ## ----------------- Construct uv-plane ----------------- ##
 print 'Constructing uv grid...'
-us = np.fft.fftshift(np.fft.fftfreq(31, d=np.mean(np.diff(ls))))
-vs = np.fft.fftshift(np.fft.fftfreq(31, d=np.mean(np.diff(ms))))
+u_max = opts.long_bl_ew*(freqs.max()*1e6)/3.e8
+v_max = opts.long_bl_ns*(freqs.max()*1e6)/3.e8
+us = np.linspace(-u_max, u_max, 31)
+vs = np.linspace(-v_max, v_max, 31)
+# us = np.fft.fftshift(np.fft.fftfreq(31, d=np.mean(np.diff(ls))))
+# vs = np.fft.fftshift(np.fft.fftfreq(31, d=np.mean(np.diff(ms))))
 nvispix = us.size*vs.size
 
 # Construct position vectors for nvispix pixels
