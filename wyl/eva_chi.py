@@ -39,6 +39,7 @@ for o in obs:
         if not o in bad_obs: bad_obs.append(o)
         print o, 'low', nx, ny
 print 'Number of flagged obs:', len(bad_obs)
+for o in bad_obs: print o
 #print bad_obs
 
 
