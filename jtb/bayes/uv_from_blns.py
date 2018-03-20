@@ -20,6 +20,7 @@ o.add_option('--freq',
     help='Frequency(ies) of observation in MHz.')
 o.add_option('--freq_res',
     type = float,
+    default = 1.0,
     help = 'Channel width in MHz if --freq passed with \'-\'.')
 o.add_option('--width',
     type=float,
@@ -43,9 +44,9 @@ c = 3.e8
 
 # Get frequencies to generate uv sampling for
 if ',' in opts.freq:
-    freqs = sort(map(float, opts.freq.split(',')))
+    freqs = np.sort(map(float, opts.freq.split(',')))
 elif '-' in opts.freq:
-    freqs = sort(map(float, opts.freq.split('-')))
+    freqs = np.sort(map(float, opts.freq.split('-')))
     # freqs = np.linspace(freqs[0], freqs[1], int((freqs[1] - freqs[0])/opts.freq_res) + 1)
     freqs = np.arange(freqs[0], freqs[1] + opts.freq_res, opts.freq_res)
 elif not (',' in opts.freq and '-' in opts.freq):
@@ -76,15 +77,22 @@ if opts.data is not None:
 elif opts.positions is not None:
     # Read in antenna positions from file
     ant_pos = np.load(opts.positions)
-    blns = np.zeros(0)
+    blns = np.zeros(0, dtype=int)
+    # ant_1_array = np.zeros(0, dtype=int)
+    # ant_2_array = np.zeros(0, dtype=int)
     num_ants = ant_pos.shape[0]
     ant_nums = range(1, num_ants+1)
-    for i in range(len(ant_nums)):
-        ant1 = ant_nums[i]
-        for j in range(len(ant_nums)):
-            ant2 = ant_nums[j]
+    # for i in range(len(ant_nums)):
+    for ant1 in ant_nums:
+        # ant1 = ant_nums[i]
+        # for j in range(len(ant_nums)):
+        for ant2 in ant_nums:
+            # ant2 = ant_nums[j]
             if ant1 == ant2:
                 continue
+            # else:
+            #     ant_1_array = np.append(ant_1_array, ant1)
+            #     ant_2_array = np.append(ant_2_array, ant2)
             if (uv.antnums_to_baseline(ant1, ant2) not in blns
                 and uv.antnums_to_baseline(ant2, ant1) not in blns):
                 blns = np.append(blns, uv.antnums_to_baseline(ant1, ant2))
@@ -94,10 +102,11 @@ print ''
 if len(freqs) == 1:
     print 'Frequency (MHz): %f' %freqs[0]
 else:
-    freqs_str = ','.join(map(str, freqs))
+    freqs_str = ','.join(map(str, np.round(freqs, decimals=2)))
     print 'Frequencies (MHz): %s' %freqs_str
 
-uvws = np.zeros((3, hours.shape[0], blns.shape[0], nfreqs))
+# uvws = np.zeros((3, hours.shape[0], blns.shape[0], nfreqs))
+uvws = np.zeros((nfreqs, hours.shape[0], blns.shape[0], 3))
 
 for j,freq in enumerate(freqs):
     # Get baseline
@@ -105,14 +114,27 @@ for j,freq in enumerate(freqs):
     for i, bln in enumerate(blns):
         antpair = uv.baseline_to_antnums(bln)
         bln_vec = (ant_pos[antpair[1]-1,:] - ant_pos[antpair[0]-1,:])/l
-        uvws[0,:,i,j] = np.sin(hours)*bln_vec[0] + np.cos(hours)*bln_vec[1]
-        uvws[1,:,i,j] = -np.sin(decs)*(np.cos(hours)*bln_vec[0] - np.sin(hours)*bln_vec[1]) + np.cos(decs)*bln_vec[2]
-        uvws[2,:,i,j] = np.cos(decs)*(np.cos(hours)*bln_vec[0] - np.sin(hours)*bln_vec[2]) + np.sin(decs)*bln_vec[2]
+        # uvws[0,:,i,j] = np.sin(hours)*bln_vec[0] + np.cos(hours)*bln_vec[1]
+        # uvws[1,:,i,j] = -np.sin(decs)*(np.cos(hours)*bln_vec[0] - np.sin(hours)*bln_vec[1]) + np.cos(decs)*bln_vec[2]
+        # uvws[2,:,i,j] = np.cos(decs)*(np.cos(hours)*bln_vec[0] - np.sin(hours)*bln_vec[2]) + np.sin(decs)*bln_vec[2]
+        uvws[j,:,i,0] = np.sin(hours)*bln_vec[0] + np.cos(hours)*bln_vec[1]
+        uvws[j,:,i,1] = -np.sin(decs)*(np.cos(hours)*bln_vec[0] - np.sin(hours)*bln_vec[1]) + np.cos(decs)*bln_vec[2]
+        uvws[j,:,i,2] = np.cos(decs)*(np.cos(hours)*bln_vec[0] - np.sin(hours)*bln_vec[2]) + np.sin(decs)*bln_vec[2]
+
+# Only save unique (u,v) either in for loop or using np.unique(...)
+
 
 if opts.write:
     filename = 'uvws_%sMHz_%sMHz.npy' %(opts.freq, opts.freq_res)
     print 'Writing ' + filename + ' ...\n'
-    np.save(filename, np.concatenate((-uvws, uvws), axis=2))
+    # output_dic = {}
+    # output_dic['uvw'] = np.concatenate((-uvws, uvws), axis=2)
+    # output_dic['ant_1_array'] = ant_1_array
+    # output_dic['ant_2_array'] = ant_2_array
+    # output_dic['ant_pos'] = ant_pos
+    # np.save(filename, np.concatenate((-uvws, uvws), axis=2))
+    # Only keep unique (u,v), i.e. assume perfect degeneracy
+    np.save(filename, np.unique(np.round(-uvws, decimals=12), axis=2))
 
 if opts.plot:
     # Plotting
