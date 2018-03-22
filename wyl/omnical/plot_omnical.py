@@ -24,22 +24,20 @@ try:
 except:
     dx=np.load(obs+'.xx.npz')
     dy=np.load(obs+'.yy.npz')
-fm=np.zeros((384),dtype=bool)
-badf = [0,15]
-for nn in range(0,384):
-    if nn%16 in badf: fm[nn]=True
-try: freq = dx['freqs']/1e6
-except: freq = np.linspace(167.075,197.715,384)
-SH=fm.shape
+freq = dx['freqs']/1e6
 sol={}
 ampmax=1
 ampmin=1
 count=0
-for ii in range(0,128):
+cx = np.logical_not(np.product(dx['flags'],axis=0))
+cy = np.logical_not(np.product(dy['flags'],axis=0))
+for ii in range(57,128):
     sol[ii]={}
     try: 
-        x=dx[str(ii)+'x']
-        y=dy[str(ii)+'y']
+        x = np.ma.masked_array(dx[str(ii)+'x'],dx['flags'])
+        y = np.ma.masked_array(dy[str(ii)+'y'],dy['flags'])
+        x = np.mean(x,axis=0)
+        y = np.mean(y,axis=0)
         exist=True
     except(KeyError):
         x=np.ones(SH)
@@ -47,17 +45,8 @@ for ii in range(0,128):
         x*=np.nan
         y*=np.nan
         exist=False
-#    mx=np.ma.masked_array(x,mask=fm)
-#    mx=np.mean(mx,axis=0)
-#    my=np.ma.masked_array(y,mask=fm)
-#    my=np.mean(my,axis=0)
     ddx=x
     ddy=y
-    ff=fm
-    for jj in range(0,ff.size):
-        if ff[jj]:
-            ddx[jj]=np.nan
-            ddy[jj]=np.nan
     if exist:
         dxmax=np.nanmax((np.abs(ddx)))
         dymax=np.nanmax((np.abs(ddy)))
@@ -78,43 +67,41 @@ for ii in range(0,128):
 #plot and save amplitude
 ly=[ampmin,(ampmax+ampmin)/2,ampmax]
 lay=['%.2f'%(ampmin),'%.2f'%((ampmax+ampmin)/2),'%.2f'%(ampmax)]
-lx=[37,287]
-lax=[int(round(freq[37])),int(round(freq[287]))]
-fx=np.arange(0,384)
+lx=[37*freq.size/384,287*freq.size/384]
+lax=[int(round(freq[lx[0]])),int(round(freq[lx[1]]))]
 fig=plt.figure()
 plt.suptitle(obs.split('/')[-1],y=0.99,size=15.0)
-for ii in range(0,8):
-    for jj in range(0,16):
-        ind=ii*16+jj
-        p=fig.add_subplot(8,16,ind+1)
-        p.scatter(fx,np.abs(sol[ind]['x']),color='blue',s=0.01)
-        p.scatter(fx,np.abs(sol[ind]['y']),color='red',s=0.01)
+for ii in range(0,6):
+    for jj in range(0,12):
+        ind=ii*12+jj
+        p=fig.add_subplot(6,12,ind+1)
+        p.scatter(cx,np.abs(sol[ind+57]['x'][cx]),color='blue',s=0.01)
+        p.scatter(cy,np.abs(sol[ind+57]['y'][cy]),color='red',s=0.01)
         plt.ylim((ampmin,ampmax))
-        plt.xlim((0,383))
+        plt.xlim((0,freq.size-1))
         p.set_xticks(lx)
         p.set_yticks(ly)
         if jj==0: p.yaxis.set_ticklabels(lay,size=6.5)
         else: p.yaxis.set_ticklabels([])
-        if ii==7: p.xaxis.set_ticklabels(lax,size=6.5)
+        if ii==5: p.xaxis.set_ticklabels(lax,size=6.5)
         else: p.xaxis.set_ticklabels([])
         p.set_title(name[ind],size=6.5,y=0.9)
 plt.subplots_adjust(top=0.93,bottom=0.03,left=0.04,right=0.98)
 fig.savefig(obs+'_amp_omnical.png')
 
 #plot and save phase
-pi=3.14159265358979323846
-ly=[-pi,0,pi]
+ly=[-np.pi,0,np.pi]
 lay=['-3.14','0','3.14']
 fig=plt.figure()
 plt.suptitle(obs.split('/')[-1],y=0.99,size=15.0)
-for ii in range(0,8):
-    for jj in range(0,16):
-        ind=ii*16+jj
-        p=fig.add_subplot(8,16,ind+1)
-        p.scatter(fx,np.angle(sol[ind]['x']),color='blue',s=0.01)
-        p.scatter(fx,np.angle(sol[ind]['y']),color='red',s=0.01)
+for ii in range(0,6):
+    for jj in range(0,12):
+        ind=ii*12+jj
+        p=fig.add_subplot(6,12,ind+1)
+        p.scatter(cx,np.angle(sol[ind+57]['x'][cx]),color='blue',s=0.01)
+        p.scatter(cy,np.angle(sol[ind+57]['y'][cy]),color='red',s=0.01)
         plt.ylim((-pi,pi))
-        plt.xlim((0,383))
+        plt.xlim((0,freq.size-1))
         p.set_xticks(lx)
         p.set_yticks(ly)
         if jj==0: p.yaxis.set_ticklabels(lay,size=6.5)
