@@ -16,7 +16,7 @@ name = { 0: '11', 1: '12', 2: '13', 3: '14', 4: '15', 5: '16', 6: '17', 7: '18',
 100: '1045', 101: '1046', 102: '1047', 103: '1048', 104: '1049', 105: '1050', 106: '1051', 107: '1052',
 108: '1053', 109: '1054', 110: '1055', 111: '1056', 112: '1057', 113: '1058', 114: '1059', 115: '1060',
 116: '1061', 117: '1062', 118: '1063', 119: '1064', 120: '1065', 121: '1066', 122: '1067', 123: '1068',
-124: '1069', 125: '1070', 126: '1071', 127: '1072'}
+124: '1069', 125: '1070', 126: '1071', 127: '1072', 128: '1037'}
 
 try:
     dx=np.load(obs+'.xx.omni.npz')
@@ -31,8 +31,9 @@ ampmin=1
 count=0
 cx = np.logical_not(np.product(dx['flags'],axis=0))
 cy = np.logical_not(np.product(dy['flags'],axis=0))
-for ii in range(57,128):
-    sol[ii]={}
+SH = freq.shape
+for ii in range(57,129):
+    sol[int(name[ii])]={}
     try: 
         x = np.ma.masked_array(dx[str(ii)+'x'],dx['flags'])
         y = np.ma.masked_array(dy[str(ii)+'y'],dy['flags'])
@@ -61,32 +62,32 @@ for ii in range(57,128):
         if dymax>ampmax: ampmax=dymax
         if dxmin<ampmin: ampmin=dxmin
         if dymin<ampmin: ampmin=dymin
-    sol[ii]['x']=ddx
-    sol[ii]['y']=ddy
+    sol[int(name[ii])]['x']=ddx
+    sol[int(name[ii])]['y']=ddy
 
 #plot and save amplitude
 ly=[ampmin,(ampmax+ampmin)/2,ampmax]
 lay=['%.2f'%(ampmin),'%.2f'%((ampmax+ampmin)/2),'%.2f'%(ampmax)]
-lx=[37*freq.size/384,287*freq.size/384]
-lax=[int(round(freq[lx[0]])),int(round(freq[lx[1]]))]
+lx=[freq[37*freq.size/384],freq[287*freq.size/384]]
+lax=np.int32(np.round(lx))
 fig=plt.figure()
 plt.suptitle(obs.split('/')[-1],y=0.99,size=15.0)
 for ii in range(0,6):
     for jj in range(0,12):
         ind=ii*12+jj
         p=fig.add_subplot(6,12,ind+1)
-        p.scatter(cx,np.abs(sol[ind+57]['x'][cx]),color='blue',s=0.01)
-        p.scatter(cy,np.abs(sol[ind+57]['y'][cy]),color='red',s=0.01)
+        p.scatter(freq[cx],np.abs(sol[ind+1001]['x'][cx]),color='blue',s=0.01)
+        p.scatter(freq[cy],np.abs(sol[ind+1001]['y'][cy]),color='red',s=0.01)
         plt.ylim((ampmin,ampmax))
-        plt.xlim((0,freq.size-1))
+        plt.xlim((freq[0],freq[-1]))
         p.set_xticks(lx)
         p.set_yticks(ly)
         if jj==0: p.yaxis.set_ticklabels(lay,size=6.5)
         else: p.yaxis.set_ticklabels([])
         if ii==5: p.xaxis.set_ticklabels(lax,size=6.5)
         else: p.xaxis.set_ticklabels([])
-        p.set_title(name[ind],size=6.5,y=0.9)
-plt.subplots_adjust(top=0.93,bottom=0.03,left=0.04,right=0.98)
+        p.set_title(str(ind+1001),size=6.5,y=0.9)
+plt.subplots_adjust(top=0.93,bottom=0.05,left=0.06,right=0.98)
 fig.savefig(obs+'_amp_omnical.png')
 
 #plot and save phase
@@ -98,18 +99,18 @@ for ii in range(0,6):
     for jj in range(0,12):
         ind=ii*12+jj
         p=fig.add_subplot(6,12,ind+1)
-        p.scatter(cx,np.angle(sol[ind+57]['x'][cx]),color='blue',s=0.01)
-        p.scatter(cy,np.angle(sol[ind+57]['y'][cy]),color='red',s=0.01)
-        plt.ylim((-pi,pi))
-        plt.xlim((0,freq.size-1))
+        p.scatter(freq[cx],np.angle(sol[ind+1001]['x'][cx]),color='blue',s=0.01)
+        p.scatter(freq[cy],np.angle(sol[ind+1001]['y'][cy]),color='red',s=0.01)
+        plt.ylim((-np.pi,np.pi))
+        plt.xlim((freq[0],freq[-1]))
         p.set_xticks(lx)
         p.set_yticks(ly)
         if jj==0: p.yaxis.set_ticklabels(lay,size=6.5)
         else: p.yaxis.set_ticklabels([])
-        if ii==7: p.xaxis.set_ticklabels(lax,size=6.5)
+        if ii==5: p.xaxis.set_ticklabels(lax,size=6.5)
         else: p.xaxis.set_ticklabels([])
-        p.set_title(name[ind],size=6.5,y=0.9)
-plt.subplots_adjust(top=0.93,bottom=0.03,left=0.04,right=0.98)
+        p.set_title(str(ind+1001),size=6.5,y=0.9)
+plt.subplots_adjust(top=0.93,bottom=0.05,left=0.06,right=0.98)
 fig.savefig(obs+'_phs_omnical.png')
  
         
