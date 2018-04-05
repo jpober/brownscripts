@@ -65,17 +65,20 @@ def plot_vis2(data,flag=None,freq=None,title='',log_plot=False):
         p2.set_xlabel('frequency(MHz)')
     plt.show()
 
-def plot_chisq(data,flag=None,freq=np.linspace(167.075,197.715,384),title='',cut=1.2,log_plot=False):
+def plot_chisq(data,flag=None,title='',cut=1.2,log_plot=False):
+    freq = np.linspace(167.075,197.715,data.shape[1])
     if flag is None: flag=np.zeros(data.shape,dtype=bool)
     dd=copy.copy(data)
     ind = np.where(dd>cut)
     dd[ind]=cut
-    for ii in range(0,dd.shape[0]):
-        for jj in range(0,dd.shape[1]):
-            if flag[ii][jj]: dd[ii][jj] = np.nan
-    if not freq is None:
-        x=[0,freq.size/3,freq.size*2/3,freq.size-1]
-        lx=['%.2f'%(freq[0]),'%.2f'%(freq[freq.size/3]),'%.2f'%(freq[freq.size*2/3]),'%.2f'%(freq[-1])]
+#    for ii in range(0,dd.shape[0]):
+#        for jj in range(0,dd.shape[1]):
+#            if flag[ii][jj]: dd[ii][jj] = np.nan
+    indnan = np.where(flag)
+    dd[indnan] = np.nan
+    #if not freq is None:
+    x=[0,freq.size/3,freq.size*2/3,freq.size-1]
+    lx=['%.2f'%(freq[0]),'%.2f'%(freq[freq.size/3]),'%.2f'%(freq[freq.size*2/3]),'%.2f'%(freq[-1])]
     fig=plt.figure()
     p1=fig.add_subplot(1,1,1)
     p1.set_title("chi-square/DOF")
@@ -85,13 +88,14 @@ def plot_chisq(data,flag=None,freq=np.linspace(167.075,197.715,384),title='',cut
         p1.set_xlabel('Frequency(MHz)')
     p1.set_ylabel('Time steps')
     if log_plot:
-        i1=p1.imshow(np.abs(dd), interpolation='nearest',aspect='auto',norm=colors.LogNorm())
+        i1=p1.imshow(np.abs(dd), interpolation='nearest',aspect='auto',cmap='jet',norm=colors.LogNorm())
     else:
-        i1=p1.imshow(np.abs(dd), interpolation='nearest',aspect='auto')
+        i1=p1.imshow(np.abs(dd), interpolation='nearest',aspect='auto',cmap='jet')
     fig.colorbar(i1)
     plt.show()
 
-def plot_phase(data,flag=None,freq=np.linspace(167.075,197.715,384),title='',log_plot=False):
+def plot_phase(data,flag=None,title='',log_plot=False):
+    freq = np.linspace(167.075,197.715,data.shape[1])
     if flag is None: flag=np.zeros(data.shape,dtype=bool)
     dd=copy.copy(data)
 #    ind = np.where(dd>cut)
