@@ -13,7 +13,7 @@ o.add_option('--uvdata',
 o.add_option('--pixel_count',
     type = int,
     help = 'Number of pixels along one axis in sky image.  Total number of pixels is pixel_count**2.',
-    default = 50)
+    default = 31)
 o.add_option('--cmap',
     type = str,
     help = 'Colormap to use for plotting.',
@@ -30,8 +30,10 @@ o.add_option('--m_offset',
 opts,args = o.parse_args(sys.argv[1:])
 
 ## ----------------- Construct sky ----------------- ##
-ls = np.cos(np.linspace(-np.pi, np.pi, opts.pixel_count))
-ms = np.sin(np.linspace(-np.pi, np.pi, opts.pixel_count))
+# ls = np.cos(np.linspace(-np.pi, np.pi, opts.pixel_count))
+# ms = np.sin(np.linspace(-np.pi, np.pi, opts.pixel_count))
+ls = np.linspace(-1, 1, opts.pixel_count)
+ms = np.linspace(-1, 1, opts.pixel_count)
 N_im = ls.size*ms.size
 extent_lm = [ls.min(), ls.max(), ms.min(), ms.max()]
 
@@ -72,9 +74,9 @@ for l in ls:
 ## ----------------- Construct uv ----------------- ##
 
 # Read in u,v sampling points
-uvws = np.load(opts.uvdata)
-us = np.concatenate((-uvws[0,0,:], uvws[0,0,:]))
-vs = np.concatenate((-uvws[0,1,:], uvws[0,1,:]))
+uvs = np.load(opts.uvdata)
+us = uvs[0, 0, :, 0]
+vs = uvs[0, 0, :, 1]
 N_vis = us.size*vs.size
 extent_uv = [us.min(), us.max(), vs.min(), vs.max()]
 
@@ -82,32 +84,29 @@ extent_uv = [us.min(), us.max(), vs.min(), vs.max()]
 ## ----------------- Construct nudft ----------------- ##
 
 # Construct DFT matrix using outer product
-DFT = np.exp(-1j*2*np.pi*(np.outer(us,ls_vec) + np.outer(vs, ms_vec)))
+DFT = np.exp(-1j*2*np.pi*(np.outer(us, ls_vec) + np.outer(vs, ms_vec)))
+Vs = np.dot(DFT, I_vec) #*pixel_area
 
+# Only saving unique (u,v) so this is no longer needed
+#
+# # Need to average over redundant baselines
+# Vs_unique = np.zeros(0)
+# uvs_unique, loc_inds, inverse_inds = np.unique(np.stack((us, vs), axis=1),
+#                                                                       axis = 0,
+#                                                                       return_index = True,
+#                                                                       return_inverse = True)
+# for u,v in uvs_unique:
+#     avg_inds = np.where(np.logical_and(us == u, vs == v))[0]
+#     Vs_unique = np.append(Vs_unique, np.mean(Vs[avg_inds]))
 
-Vs = np.dot(DFT, I_vec)*pixel_area
-
-################# LEFT OFF HERE #################
-
-# Need to average over redundant baselines
-Vs_unique = np.zeros(0)
-uvs_unique, loc_inds, inverse_inds = np.unique(np.stack((us, vs), axis=1),
-                                                                      axis = 0,
-                                                                      return_index = True,
-                                                                      return_inverse = True)
-for u,v in uvs_unique:
-    avg_inds = np.where(np.logical_and(us == u, vs == v))[0]
-    Vs_unique = np.append(Vs_unique, np.mean(Vs[avg_inds]))
-
-################# LEFT OFF HERE #################
 
 
 
 ## ----------------- Analytic solution comparison ----------------- ##
 
 # Point source, Flat beam
-Vs_func = lambda u,v: pixel_area*np.exp(-2*np.pi*1j*(u*ls[mid_l + l_off] + v*ms[mid_m + m_off]))
-Vs_analytic = Vs_func(uvs_unique[:,0],uvs_unique[:,1])
+Vs_func = lambda u,v: np.exp(-2*np.pi*1j*(u*ls[mid_l + l_off] + v*ms[mid_m + m_off]))
+Vs_analytic = Vs_func(us, vs)
 
 
 
@@ -125,6 +124,7 @@ if opts.plot_phase:
     anpax = subplot(gs[1,2])
     diffax = subplot(gs[0,3])
     diffpax = subplot(gs[1,3])
+
 else:
     fig = figure(figsize = (16,4))
     gs = gridspec.GridSpec(1,4)
@@ -148,26 +148,26 @@ imax.set_xlabel('l', size=16)
 imax.set_ylabel('m', size=16, rotation=0)
 
 
-myim = visax.scatter(uvs_unique[:,0],
-                                uvs_unique[:,1],
-                                c = np.abs(Vs_unique),
+myim = visax.scatter(us,
+                                vs,
+                                c = np.abs(Vs),
                                 cmap = opts.cmap,
-                                vmin = np.abs(Vs_unique).min(),
-                                vmax = np.abs(Vs_unique).max())
+                                vmin = np.abs(Vs).min(),
+                                vmax = np.abs(Vs).max())
 visax.set_title('my fft')
 
 
-anim = anax.scatter(uvs_unique[:,0],
-                              uvs_unique[:,1],
+anim = anax.scatter(us,
+                              vs,
                               c = np.abs(Vs_analytic),
                               cmap = opts.cmap,
                               vmin = np.abs(Vs_analytic).min(),
                               vmax = np.abs(Vs_analytic).max())
 anax.set_title('analytic solution')
 
-diff_abs = np.abs(Vs_unique) - np.abs(Vs_analytic)
-diffim = diffax.scatter(uvs_unique[:,0],
-                                uvs_unique[:,1],
+diff_abs = np.abs(Vs) - np.abs(Vs_analytic)
+diffim = diffax.scatter(us,
+                                vs,
                                 c = diff_abs,
                                 cmap = opts.cmap,
                                 vmin = diff_abs.min(),
@@ -175,19 +175,19 @@ diffim = diffax.scatter(uvs_unique[:,0],
 diffax.set_title('my fft - analytic solution')
 
 if opts.plot_phase:
-    mypim = vispax.scatter(uvs_unique[:,0],
-                                       uvs_unique[:,1],
-                                       c = np.angle(Vs_unique),
+    mypim = vispax.scatter(us,
+                                       vs,
+                                       c = np.angle(Vs),
                                        cmap = opts.cmap)
 
-    anpim = anpax.scatter(uvs_unique[:,0],
-                                     uvs_unique[:,1],
+    anpim = anpax.scatter(us,
+                                     vs,
                                      c = np.angle(Vs_analytic),
                                      cmap = opts.cmap)
 
-    diffpim = diffpax.scatter(uvs_unique[:,0],
-                                        uvs_unique[:,1],
-                                        c = np.angle(Vs_unique) - np.angle(Vs_analytic),
+    diffpim = diffpax.scatter(us,
+                                        vs,
+                                        c = np.angle(Vs) - np.angle(Vs_analytic),
                                         cmap = opts.cmap)
 
     imgs = [ogim, myim, mypim, anim, anpim, diffim, diffpim]

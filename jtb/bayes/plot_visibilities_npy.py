@@ -25,14 +25,25 @@ opts,args = o.parse_args(sys.argv[1:])
 data_dic = np.load(opts.visdata).item()
 Vs = data_dic['vis']
 uvs = data_dic['uv']
+us = uvs[:, 0, :, 0]
+vs = uvs[:, 0, :, 1]
 I = data_dic['sky']
+lms = data_dic['lm']
+
+
 nfreqs = Vs.shape[0]
-extent_uv = [uvs[:, 0].min(), uvs[:, 0].max(), uvs[:, 1].min(), uvs[:, 1].max()]
+# extent_uv = [uvs[:, 0].min(), uvs[:, 0].max(), uvs[:, 1].min(), uvs[:, 1].max()]
 print Vs.shape
 
+if '/' in opts.visdata:
+    opts.visdata = opts.visdata.split('/')[-1]
+
 freqs = np.array(map(float, opts.visdata.split('_')[1].strip('MHz').split('-')))
-freq_res = float(opts.visdata.split('_')[2].split('.')[0].strip('MHz'))
-freqs = np.arange(freqs.min(), freqs.max() + freq_res, freq_res)
+if not "zenith" in opts.visdata:
+    freq_res = float(opts.visdata.split('_')[2].split('.')[0].strip('MHz'))
+else:
+    freq_res = float(opts.visdata.split('_')[2].strip('MHz'))
+freqs = np.round(np.arange(freqs.min(), freqs.max() + freq_res, freq_res), decimals=3)
 
 
 
@@ -117,27 +128,52 @@ for fig in figs:
                 im.set_extent([-1, 1, -1, 1])
                 im.set_clim(I.min(), I.max())
             else:
-                if opts.plot_type == 'abs':
-                    if opts.log_scale:
-                        im = ax.imshow(np.log10(np.abs(Vs[freq_ind])), origin='center',
+                if len(Vs.shape) > 2:
+                    # univorm u,v sampling
+                    if opts.plot_type == 'abs':
+                        if opts.log_scale:
+                            im = ax.imshow(np.log10(np.abs(Vs[freq_ind])), origin='center',
+                                                    aspect=aspect, interpolation='nearest')
+                        else:
+                            im = ax.imshow(np.abs(Vs[freq_ind]), origin='center',
+                                                    aspect=aspect, interpolation='nearest')
+                    elif opts.plot_type == 'phase':
+                        im = ax.imshow(np.angle(Vs[freq_ind]), origin='center',
                                                 aspect=aspect, interpolation='nearest')
-                    else:
-                        im = ax.imshow(np.abs(Vs[freq_ind]), origin='center',
-                                                aspect=aspect, interpolation='nearest')
-                elif opts.plot_type == 'phase':
-                    im = ax.imshow(np.angle(Vs[freq_ind]), origin='center',
-                                            aspect=aspect, interpolation='nearest')
-                elif opts.plot_type == 'real':
-                    if opts.log_scale:
-                        im = ax.imshow(np.log10(np.real(Vs[freq_ind])), origin='center',
-                                                aspect=aspect, interpolation='nearest')
-                    else:
-                        im = ax.imshow(np.real(Vs[freq_ind]), origin='center',
-                                                aspect=aspect, interpolation='nearest')
+                    elif opts.plot_type == 'real':
+                        if opts.log_scale:
+                            im = ax.imshow(np.log10(np.real(Vs[freq_ind])), origin='center',
+                                                    aspect=aspect, interpolation='nearest')
+                        else:
+                            im = ax.imshow(np.real(Vs[freq_ind]), origin='center',
+                                                    aspect=aspect, interpolation='nearest')
 
-                # force clim on all subplots
-                im.set_clim(dmin,dmax)
-                im.set_extent(extent_uv)
+                    # force clim on all subplots
+                    im.set_clim(dmin, dmax)
+                    im.set_extent(extent_uv)
+
+                else:
+                    # floating point u,v sampling
+                    if opts.plot_type == 'abs':
+                        if opts.log_scale:
+                            im = ax.scatter(us[freq_ind], vs[freq_ind],
+                                                    c = np.log10(np.abs(Vs[freq_ind])))
+                        else:
+                            im = ax.scatter(us[freq_ind], vs[freq_ind],
+                                                    c = np.abs(Vs[freq_ind]))
+                    elif opts.plot_type == 'phase':
+                        im = ax.scatter(us[freq_ind], vs[freq_ind],
+                                                c = np.angle(Vs[freq_ind]))
+                    elif opts.plot_type == 'real':
+                        if opts.log_scale:
+                            im = ax.scatter(us[freq_ind], vs[freq_ind],
+                                                    c = np.log10(np.real(Vs[freq_ind])))
+                        else:
+                            im = ax.scatter(us[freq_ind], vs[freq_ind],
+                                                    c = np.real(Vs[freq_ind]))
+
+                    # force clim on all subplots
+                    im.set_clim(dmin, dmax)
 
             # remove axis labels from interior plots
             if nrows*ncols == nfreqs:
