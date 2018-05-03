@@ -24,6 +24,9 @@ o.add_option('--grid_pos',
     help = 'If passed, compare with grid centers. '
                +
                'Otherwise compare with true source positions.')
+o.add_option('--multi-freq',
+    action = 'store_true',
+    help = 'If passed, perform analysis over multiple frequencies.')
 opts,args = o.parse_args(sys.argv[1:])
 
 
@@ -53,119 +56,170 @@ C = 3.e8 # meters per second
 
 ## ----------------- Read Data ----------------- ##
 data_dic = np.load(opts.visdata).item()
-Vs = data_dic['vis']
-nfreqs = Vs.shape[0]
-uvs = data_dic['uv']
-us = uvs[:, 0, :, 0]
-vs = uvs[:, 0, :, 1]
+nfreqs = 1
 I = data_dic['sky']
-lms = data_dic['lm']
-ls = lms[:, 0]
-ms = lms[:, 1]
 true_pos = data_dic['catalog_true']
 grid_pos = data_dic['catalog_grid']
 
 
-# # Average over redundant baselines
-# uvs_unique = np.unique(uvs, axis = 0)
-# Vs_unique = np.zeros((nfreqs, uvs_unique.shape[0]))
-#
-# for u,v in uvs_unique:
-#     avg_inds = np.where(np.logical_and(uvs[:, 0] == u, uvs[:, 1] == v))[0]
-#     Vs_unique = np.append(Vs_unique, np.mean(Vs[avg_inds]))
+# Need to consider gridded to gridded case
+npix_side = 31
+npix = npix_side**2
+freq_ind = 0
+wavelength = C/(freqs[freq_ind]*1.e6)
+
+#Use 10 degrees on a side for the sky
+# LOOK UP DEFINITION OF L AND M IN TMS
+
+# Construct l,m grid
+FOV = np.deg2rad(10) # 10 degree FOV
+ls = np.linspace(-FOV/2, FOV/2, npix_side)
+ms = np.copy(ls)
+ls_vec, ms_vec = np.zeros(0), np.zeros(0)
+for l in ls:
+    for m in ms:
+        ls_vec = np.append(ls_vec, l)
+        ms_vec = np.append(ms_vec, m)
+
+# Construct u,v grid
+us_grid = np.fft.fftshift(np.fft.fftfreq(ls.shape[0], d=np.mean(np.diff(ls))))
+vs_grid = np.fft.fftshift(np.fft.fftfreq(ms.shape[0], d=np.mean(np.diff(ms))))
+us_vec, vs_vec = np.zeros(0), np.zeros(0)
+for u in us_grid:
+    for v in vs_grid:
+        us_vec = np.append(us_vec, u)
+        vs_vec = np.append(vs_vec, v)
 
 
-
-
-
-## ----------------- Analytic solution comparison ----------------- ##
-
-
-# Construct analytical solution
-# Assumes best approximation is to move source to nearest pixel center
-Vs_analytic = np.zeros((nfreqs, us.shape[1]), dtype=complex)
+# Use analytical solution to get visibilities using true positions
+Vs = np.zeros((nfreqs, npix), dtype=complex)
 for i in range(nfreqs):
-    for j in range(uvs.shape[2]):
+    wavelength = C/(freqs[i]*1.e6)
+    for j in range(us_vec.size):
         if opts.grid_pos:
-            # Use nearest grid centers
-            Vs_analytic[i, j] = np.sum(Vs_func(uvs[i, 0, j, 0], ls[grid_pos[:, 0]],
-                                                               uvs[i, 0, j, 1], ms[grid_pos[:, 1]]))
+            Vs[i, j] = np.sum(Vs_func(us_vec[j], ls[grid_pos[:, 0]],
+                                                   vs_vec[j], ms[grid_pos[:, 1]]))
         else:
-            # Use true positions
-            Vs_analytic[i, j] = np.sum(Vs_func(uvs[i, 0, j, 0], true_pos[:, 0],
-                                                               uvs[i, 0, j, 1], true_pos[:, 1]))
+            Vs[i, j] = np.sum(Vs_func(us_vec[j], true_pos[:, 0],
+                                                   vs_vec[j], true_pos[:, 1]))
+Vs = Vs.reshape((nfreqs, npix_side, npix_side))
+
+# Construct solution using analytic solution for maximum likelihood
+# Assumes a Gaussian log likelihood function
+# Requires noise injection into data (visibilities above)
+a = np.zeros_like(Vs)
+Vs_analytic = np.zeros_like(a)
+RMS = 1.e-5
+N_inv = np.eye(npix)/RMS**2
+
+# Need to add the SAME noise to V(u,v) and V(-u, -v)
+angles = np.angle(us_vec + 1j*vs_vec)
+center_ind = np.where(np.logical_and(us_vec == 0.0, vs_vec == 0.0))[0]
+top_right_inds = np.where(np.logical_and(angles > -np.pi/4, angles < 3*np.pi/4))[0]
+top_right_inds = top_right_inds[top_right_inds != center_ind]
+bottom_left_inds = np.where(np.logical_or(angles < -np.pi/4, angles > 3*np.pi/4))[0]
+diag_inds = np.where(np.logical_or(angles == -np.pi/4, angles == 3*np.pi/4))[0]
+
+# Create data from visibilities with injected Gaussian noise
+d = np.copy(Vs)
+
+for i in range(nfreqs):
+    # Noise must be added so that d is still Hermitian
+
+    # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    # np.dot(DFT.conj().T, d.flatten()) not yielding a strictly real answer
+    # Currently (4/17/18) noise is NOT being added correctly
+    # Should test on a small subset of this data maybe 10pix on a side
+    # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+    d_flat = d[i].flatten()
+    Vs_flat = Vs[i].flatten()
+    # # Add noise to off diagonals
+    # n = np.random.normal(0, RMS, top_right_inds.size)
+    # d_flat[top_right_inds] += n
+    # d_flat[bottom_left_inds] += n
+    #
+    # # Add noise to diagonal
+    # n = np.random.normal(0, RMS, diag_inds.size)
+    # d_flat[diag_inds] += n
+    #
+    # # Add noise to central pixel
+    # n = np.random.normal(0, RMS, center_ind.size)
+    # d_flat[center_ind] += n
+    #
+    # d[i] = d_flat.reshape((npix_side, npix_side))
+
+    half_ind = int(us_vec.size/2.) + 1
+    for j,[u,v] in enumerate(np.stack((us_vec, vs_vec), axis=1)[:half_ind]):
+        neg_ind = np.where(np.logical_and(us_vec == -u, vs_vec == -v))[0][0]
+        d_flat[[j, neg_ind]] += np.random.normal(0, RMS, 1)
+        # print j, neg_ind, (u, v),
+        # print (Vs_flat[j], Vs_flat[neg_ind]),
+        # print (d_flat[j], d_flat[neg_ind])
+
+    d[i] = d_flat.reshape([npix_side]*2)
 
 
-# ----------------------------------------------------------------------
-
-# Use analytical solution to get delay power spectrum using grid centers
-#
-# Vs = np.zeros((nfreqs, us.shape[1]), dtype=complex)
-# for i in range(nfreqs):
-#     for j in range(uvs.shape[2]):
-#         if opts.grid_pos:
-#             # Use nearest grid centers
-#             Vs[i, j] = np.sum(Vs_func(uvs[i, 0, j, 0], ls[grid_pos[:, 0]],
-#                                                    uvs[i, 0, j, 1], ms[grid_pos[:, 1]]))
-#
-# Vs_ft = np.zeros_like(Vs)
-# for i in range(Vs.shape[1]):
-#     Vs_ft[:, i] = np.fft.fftshift(np.fft.fft(Vs[:, i]))
-# ft_freqs = np.fft.fftshift(np.fft.fftfreq(nfreqs, d=1.e6*np.mean(np.diff(freqs))))
-# ft_freqs /= 1.e-9 # ns
-#
-# rs = np.round(np.sqrt(uvs[0, 0, :, 0]**2 + uvs[0, 0, :, 1]**2), decimals=8)
-# rs_unique = np.unique(rs)
-# blns_unique = rs_unique*3.e8/(freqs[0]*1e6)
-# pspec = np.zeros((nfreqs, rs_unique.size))
-# for i in range(nfreqs):
-#     rs = np.round(np.sqrt(uvs[i, 0, :, 0]**2 + uvs[i, 0, :, 1]**2), decimals=8)
-#     rs_unique = np.unique(rs)
-#     for j,r in enumerate(rs_unique):
-#         r_inds = np.where(rs == r)[0]
-#         pspec[i, j] = np.mean(np.abs(Vs_ft[i, r_inds])**2)
-
-# ------------------------------------------------------------------------------
-
-
-
-## ----------------- Perform FT Along Frequency Axis----------------- ##
-Vs_ft = np.zeros_like(Vs)
-for i in range(Vs.shape[1]):
-    Vs_ft[:, i] = np.fft.fftshift(np.fft.fft(Vs[:, i]))
-ft_freqs = np.fft.fftshift(np.fft.fftfreq(nfreqs, d=1.e6*np.mean(np.diff(freqs))))
-ft_freqs /= 1.e-9 # ns
+# Iterate over frequencies
+print 'Entering for loop...'
+for i in range(nfreqs):
+    DFT = np.exp(-1j*2*np.pi*(np.outer(us_vec, ls_vec)
+                        +
+                        np.outer(vs_vec, ms_vec)))
+    inv_part = np.linalg.inv(np.dot(np.dot(DFT.conj().T, N_inv), DFT))
+    right_part = np.dot(np.dot(DFT.conj().T, N_inv), d[i].flatten())
+    a[i] = np.dot(inv_part, right_part).reshape((npix_side, npix_side))
+    Vs_analytic[i] = np.dot(DFT, a[i].flatten()).reshape((npix_side, npix_side))
+print 'For loop finished...'
 
 
 ## ----------------- Compute Power Spectrum ----------------- ##
 
 # P(k_u,k_v) = sum |Visibilities(u,v)**2| for a given baseline length
-
-rs = np.round(np.sqrt(uvs[0, 0, :, 0]**2 + uvs[0, 0, :, 1]**2), decimals=8)
+U, V = np.meshgrid(us_grid, vs_grid)
+rs = np.round(np.sqrt(U**2 + V**2), decimals=8)
 rs_unique = np.unique(rs)
-blns_unique = rs_unique*3.e8/(freqs[0]*1e6)
+
+
+## ----------------- Perform FT Along Frequency Axis----------------- ##
+Vs_ft = np.zeros_like(Vs)
+for i in range(Vs.shape[1]):
+    for j in range(Vs.shape[2]):
+        Vs_ft[:, i, j] = np.fft.fftshift(np.fft.fft(Vs[:, i, j]))
+ft_freqs = np.fft.fftshift(np.fft.fftfreq(nfreqs, d=1.e6*np.mean(np.diff(freqs))))
+ft_freqs /= 1.e-9 # ns
+
+# blns_unique = rs_unique*3.e8/(freqs[0]*1e6)
 pspec = np.zeros((nfreqs, rs_unique.size))
 for i in range(nfreqs):
-    rs = np.round(np.sqrt(uvs[i, 0, :, 0]**2 + uvs[i, 0, :, 1]**2), decimals=8)
-    rs_unique = np.unique(rs)
+    # rs = np.round(np.sqrt(uvs[i, 0, :, 0]**2 + uvs[i, 0, :, 1]**2), decimals=8)
+    # rs_unique = np.unique(rs)
     for j,r in enumerate(rs_unique):
-        r_inds = np.where(rs == r)[0]
-        pspec[i, j] = np.mean(np.abs(Vs_ft[i, r_inds])**2)
+        r_inds = np.where(rs == r)
+        pspec[i, j] = np.mean(np.abs(Vs_ft[i][r_inds])**2)
 
 # FT analytic visibilities
 Vs_aft = np.zeros_like(Vs_analytic)
 for i in range(Vs_analytic.shape[1]):
-    Vs_aft[:, i] = np.fft.fftshift(np.fft.fft(Vs_analytic[:, i]))
+    for j in range(Vs_analytic.shape[2]):
+        Vs_aft[:, i, j] = np.fft.fftshift(np.fft.fft(Vs_analytic[:, i, j]))
 
 # Compute delay power spectrum of analytic visibilities
 pspec_analytic = np.zeros_like(pspec)
 for i in range(nfreqs):
-    rs = np.round(np.sqrt(uvs[i, 0, :, 0]**2 + uvs[i, 0, :, 1]**2), decimals=8)
-    rs_unique = np.unique(rs)
+    # rs = np.round(np.sqrt(uvs[i, 0, :, 0]**2 + uvs[i, 0, :, 1]**2), decimals=8)
+    # rs_unique = np.unique(rs)
     for j,r in enumerate(rs_unique):
         r_inds = np.where(rs == r)[0]
-        pspec_analytic[i, j] = np.mean(np.abs(Vs_aft[i, r_inds])**2)
+        pspec_analytic[i, j] = np.mean(np.abs(Vs_aft[i][r_inds])**2)
 
+
+
+
+
+sys.exit()
+
+# Old plotting with power spectrum
 
 ## ----------------- Plotting ----------------- ##
 fig = figure(figsize = (15,6))
@@ -175,8 +229,8 @@ gs = gridspec.GridSpec(2,5,
                                    # width_ratios = [w, w, w, w])
 aspect = 'auto'
 
-# extent = [rs_unique.min(), rs_unique.max(), ft_freqs.min(), ft_freqs.max()]
-extent = [blns_unique.min(), blns_unique.max(), ft_freqs.min(), ft_freqs.max()]
+extent = [rs_unique.min(), rs_unique.max(), ft_freqs.min(), ft_freqs.max()]
+# extent = [blns_unique.min(), blns_unique.max(), ft_freqs.min(), ft_freqs.max()]
 
 master_ax = fig.add_subplot(gs[0,:])
 master_ax.set_xticks([])
@@ -236,8 +290,8 @@ else:
 # Plot analytical delay power spectrum
 anax = subplot(gs[1, 2])
 if opts.log_scale:
-    # vmin = np.log10(pspec_analytic).min()
-    # vmax = np.log10(pspec_analytic).max()
+    vmin = np.log10(pspec_analytic).min()
+    vmax = np.log10(pspec_analytic).max()
     anim = anax.imshow(np.log10(pspec_analytic),
                         interpolation='nearest',
                         origin='lower',
@@ -249,8 +303,8 @@ if opts.log_scale:
     else:
         anax.set_title('Log Analytic (true pos)', size=16)
 else:
-    # vmin = pspec_analytic.min()
-    # vmax = pspec_analytic.max()
+    vmin = pspec_analytic.min()
+    vmax = pspec_analytic.max()
     anim = anax.imshow(pspec_analytic,
                         interpolation='nearest',
                         origin='lower',
@@ -322,15 +376,18 @@ fdiffax.set_title('Log[(Grid - True)/True]', size=16)
 fdiffax.set_title('(Grid - True)/True', size=16)
 
 imgs = [myim, anim, diffim, fdiffim]
-tau_max = blns_unique/3.e8*1e9
+tau_max = rs_unique/3.e8*1e9
+# tau_max = blns_unique/3.e8*1e9
 
 for i,ax in enumerate(fig.axes[2:]):
     cb = fig.colorbar(imgs[i], ax=ax)#, format='%.1f')
     cb.ax.tick_params(labelsize=16)
     ax.set_xlabel(r'$\left| \vec{b} \right|$ [m]', size=16)
     ax.set_ylabel(r'$\tau$ [ns]', size=16)
-    ax.plot(blns_unique, tau_max, 'w--', lw=2)
-    ax.plot(blns_unique, -tau_max, 'w--', lw=2)
+    ax.plot(rs_unique, tau_max, 'w--', lw=2)
+    ax.plot(rs_unique, -tau_max, 'w--', lw=2)
+    # ax.plot(blns_unique, tau_max, 'w--', lw=2)
+    # ax.plot(blns_unique, -tau_max, 'w--', lw=2)
 
 
 gs.tight_layout(fig)
