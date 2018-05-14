@@ -9,39 +9,42 @@ from matplotlib.pyplot import *
 
 ## ----------------- Option Parser ----------------- ##
 o = optparse.OptionParser()
-o.add_option('--visdata',
-    type = str,
-    help = 'Filename for input visibility binary .npy file.')
-o.add_option('--plot_type',
-    type = str,
-    default = 'abs',
-    help = 'Plot type, can be abs, phase, or real.')
-o.add_option('--log_scale',
+o.add_option('--freq',
+    type=str,
+    help='Frequency(ies) of observation in MHz.')
+
+o.add_option('--freq_res',
+    type = float,
+    default = 1.0,
+    help = 'Channel width in MHz if --freq passed with \'-\'.')
+
+o.add_option('--rms',
+    type = float,
+    default = 1.e-5,
+    help = 'RMS for noise injection.')
+
+o.add_option('--l_walk',
     action = 'store_true',
-    default = False,
-    help = 'If passed, plot in log10 for visibilities.')
-o.add_option('--grid_pos',
-    action='store_true',
-    help = 'If passed, compare with grid centers. '
-               +
-               'Otherwise compare with true source positions.')
-o.add_option('--multi-freq',
+    default = True,
+    help = 'If passed, walk along pixels with constant m.')
+
+o.add_option('--m_walk',
     action = 'store_true',
-    help = 'If passed, perform analysis over multiple frequencies.')
+    help = 'If passed, walk along pixels with consant l.')
+
+o.add_option('--l_offset',
+    type = float,
+    help = 'Moves source in l-direction by l_offset*ls.max().  Must be between 0 and 1.')
+
+o.add_option('--m_offset',
+    type = float,
+    help = 'Moves source in m-direction by m_offset*ms.max().  Must be between 0 and 1.')
+
 opts,args = o.parse_args(sys.argv[1:])
 
 
-
-# parse frequency information from filename
-filename = opts.visdata
-if '/' in filename:
-    filename = opts.visdata.split('/')[-1]
-freqs = np.array(map(float, filename.split('_')[1].strip('MHz').split('-')))
-if not "zenith" in filename:
-    freq_res = float(filename.split('_')[2].split('.npy')[0].strip('MHz'))
-else:
-    freq_res = float(filename.split('_')[2].strip('MHz'))
-freqs = np.round(np.arange(freqs.min(), freqs.max() + freq_res, freq_res), decimals=3)
+if opts.m_walk:
+    opts.l_walk = False
 
 
 # Visibility function
@@ -55,13 +58,25 @@ def Gaussian(x, a, x0, sigma):
 
 # Constants
 C = 3.e8 # meters per second
-NFREQS = 1
 NPIX_SIDE = 31
 NPIX = NPIX_SIDE**2
 
 # Noise injection params
-RMS = 1.e-6
-N_inv = np.eye(NPIX)/RMS**2
+N_inv = np.eye(NPIX)/opts.rms**2
+
+
+# Get frequency(ies) or frequency range
+if ',' in opts.freq:
+    freqs = np.sort(map(float, opts.freq.split(',')))
+elif '-' in opts.freq:
+    freqs_arr = np.sort(map(float, opts.freq.split('-')))
+    freqs = np.round(np.arange(freqs_arr[0], freqs_arr[1] + opts.freq_res, opts.freq_res),
+                              decimals=3)
+    freqs = freqs[np.where(freqs <= freqs_arr[1])]
+elif not (',' in opts.freq and '-' in opts.freq):
+    freqs = [float(opts.freq)]
+
+nfreqs = len(freqs)
 
 
 # Construct l,m grid
@@ -74,6 +89,26 @@ for l in ls:
         ls_vec = np.append(ls_vec, l)
         ms_vec = np.append(ms_vec, m)
 
+if opts.l_offset or opts.m_offset:
+    if len(ls) % 2 == 0:
+        mid_l = len(ls)/2
+    else:
+        mid_l = int(len(ls)/2. - 0.5)
+    if len(ms) % 2 == 0:
+        mid_m = len(ms)/2
+    else:
+        mid_m = int(len(ms)/2. - 0.5)
+
+    if opts.l_offset:
+        l_off = int(mid_l*opts.l_offset)
+    else:
+        l_off = 0
+
+    if opts.m_offset:
+        m_off = int(mid_m*opts.m_offset)
+    else:
+        m_off = 0
+
 # Construct u,v grid
 us_grid = np.fft.fftshift(np.fft.fftfreq(ls.shape[0], d=np.mean(np.diff(ls))))
 vs_grid = np.fft.fftshift(np.fft.fftfreq(ms.shape[0], d=np.mean(np.diff(ms))))
@@ -84,21 +119,30 @@ for u in us_grid:
         vs_vec = np.append(vs_vec, v)
 
 # Set up angular offsets, arrays to store fitted RMS values
-angular_offsets = np.linspace(0, np.mean(np.diff(ls)), 10)
+angular_offsets = np.copy(ls[ls >= 0.0])
 fitted_RMS = np.zeros_like(angular_offsets)
 fitted_RMS_err = np.zeros_like(angular_offsets)
 
+# Store source positions for reference
+true_pos = np.zeros((angular_offsets.size, 2))
+
 for offset_ind, angular_offset in enumerate(angular_offsets):
-    true_pos = np.zeros((1, 2))
-    true_pos[0, 0] = angular_offset
+    if opts.l_walk:
+        if opts.m_offset:
+            true_pos[offset_ind, 1] = ms[mid_m + m_off]
+        true_pos[offset_ind, 0] = angular_offset
+    elif opts.m_walk:
+        if opts.l_offset:
+            true_pos[offset_ind, 0] = ls[mid_l + l_off]
+        true_pos[offset_ind, 1] = angular_offset
 
     # Use analytical solution to get visibilities using true positions
-    Vs = np.zeros((NFREQS, NPIX), dtype=complex)
-    for i in range(NFREQS):
+    Vs = np.zeros((nfreqs, NPIX), dtype=complex)
+    for i in range(nfreqs):
         for j in range(us_vec.size):
-            Vs[i, j] = np.sum(Vs_func(us_vec[j], true_pos[:, 0],
-                                                   vs_vec[j], true_pos[:, 1]))
-    Vs = Vs.reshape((NFREQS, NPIX_SIDE, NPIX_SIDE))
+            Vs[i, j] = np.sum(Vs_func(us_vec[j], true_pos[offset_ind, 0],
+                                                   vs_vec[j], true_pos[offset_ind, 1]))
+    Vs = Vs.reshape((nfreqs, NPIX_SIDE, NPIX_SIDE))
 
     # Construct solution using analytic solution for maximum likelihood
     # Assumes a Gaussian log likelihood function
@@ -109,36 +153,37 @@ for offset_ind, angular_offset in enumerate(angular_offsets):
     # Create data from visibilities with injected Gaussian noise
     d = np.copy(Vs)
 
-    for i in range(NFREQS):
+    for i in range(nfreqs):
         d_flat = d[i].flatten()
         Vs_flat = Vs[i].flatten()
 
         half_ind = int(us_vec.size/2.) + 1
         for j,[u,v] in enumerate(np.stack((us_vec, vs_vec), axis=1)[:half_ind]):
             neg_ind = np.where(np.logical_and(us_vec == -u, vs_vec == -v))[0][0]
-            d_flat[[j, neg_ind]] += np.random.normal(0, RMS, 1)
+            d_flat[[j, neg_ind]] += (np.random.normal(0, opts.rms, 1)
+                                              +
+                                              1j*np.random.normal(0, opts.rms, 1))
 
         d[i] = d_flat.reshape([NPIX_SIDE]*2)
 
-
-    # Iterate over frequencies
-    print 'Entering for loop...'
-    for i in range(NFREQS):
         DFT = np.exp(-1j*2*np.pi*(np.outer(us_vec, ls_vec)
                             +
                             np.outer(vs_vec, ms_vec)))
         inv_part = np.linalg.inv(np.dot(np.dot(DFT.conj().T, N_inv), DFT))
         right_part = np.dot(np.dot(DFT.conj().T, N_inv), d[i].flatten())
+
+        # Maximum likelihood solution for the sky
         a[i] = np.dot(inv_part, right_part).reshape((NPIX_SIDE, NPIX_SIDE))
+
+        # Generate visibilities from maximum liklihood solution
         Vs_maxL[i] = np.dot(DFT, a[i].flatten()).reshape((NPIX_SIDE, NPIX_SIDE))
-    print 'For loop finished...'
 
     # Compute fitted RMS
     diff_data = np.abs(Vs) - np.abs(Vs_maxL)
-    counts, bins, patches = hist(diff_data[0].flatten(), bins=50)
+    counts, bins = np.histogram(diff_data[0].flatten(), bins=50)
     bin_width = np.mean(np.diff(bins))
     fit_xs = bins[:-1] + bin_width/2
-    guess_params = [np.max(counts), 0.0, RMS]
+    guess_params = [np.max(counts), 0.0, opts.rms]
     # fit_params: 0, amplitude; 1, mean; 2, std dev
     fit_params, fit_cov = curve_fit(Gaussian, fit_xs, counts, p0=guess_params)
 
@@ -147,11 +192,24 @@ for offset_ind, angular_offset in enumerate(angular_offsets):
     fitted_RMS_err[offset_ind] = fit_cov[-1, -1]
 
 # Plotting
-plot_xs = angular_offsets/np.mean(np.diff(ls))
-errorbar(plot_xs, fitted_RMS/RMS, yerr=fitted_RMS_err/RMS)
-xlabel('Pixel Offset', size=16)
-ylabel('Fitted RMS/$10^{-5}$', size=16)
-ylim([(fitted_RMS/RMS).min(), (fitted_RMS/RMS).max()])
-tick_params(which='both', labelsize=16)
-tight_layout()
+fig = figure(figsize=(16,8))
+gs = gridspec.GridSpec(1, 2)
+
+path_ax = fig.add_subplot(gs[0, 0])
+path_ax.scatter(true_pos[:, 0], true_pos[:, 1])
+path_ax.set_xlim([ls.min(), ls.max()])
+path_ax.set_ylim([ms.min(), ms.max()])
+path_ax.set_title('Walk Pattern', size=16)
+
+rms_ax = fig.add_subplot(gs[0, 1])
+plot_xs = np.rad2deg(angular_offsets)
+rms_ax.errorbar(plot_xs, fitted_RMS/opts.rms, yerr=fitted_RMS_err/opts.rms)
+rms_ax.set_xlabel('Angular Offset [deg]', size=16)
+rms_ax.set_ylabel('Fitted RMS/$10^{%.1f}$' %np.log10(opts.rms), size=16)
+rms_ax.set_ylim([0.5, 1.5])
+
+for ax in fig.axes:
+    ax.tick_params(which='both', labelsize=16)
+
+gs.tight_layout(fig)
 show()

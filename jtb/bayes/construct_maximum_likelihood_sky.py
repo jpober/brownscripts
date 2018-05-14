@@ -4,7 +4,7 @@ import time, optparse, sys, os
 
 from mpl_toolkits.axes_grid1.axes_divider import make_axes_locatable
 from matplotlib.pyplot import *
-
+from scipy.optimize import curve_fit
 
 
 ## ----------------- Option Parser ----------------- ##
@@ -33,6 +33,14 @@ o.add_option('--horizon_source',
     action = 'store_true',
     help = 'If passed, only place one source at the horizon.')
 
+o.add_option('--l_offset',
+    type = float,
+    help = 'Moves source in l-direction by l_offset*ls.max().  Must be between 0 and 1.')
+
+o.add_option('--m_offset',
+    type = float,
+    help = 'Moves source in m-direction by m_offset*ms.max().  Must be between 0 and 1.')
+
 o.add_option('--nsources',
     type = int,
     default = 1,
@@ -59,6 +67,10 @@ opts,args = o.parse_args(sys.argv[1:])
 # Visibility function
 def Vs_func(u, l, v, m):
     return np.exp(-2*np.pi*1j*(u*l+ v*m))
+
+# Gaussian fitting function
+def Gaussian(x, a, x0, sigma):
+    return a*np.exp(-(x-x0)**2/(2*sigma**2))
 
 
 # Constants
@@ -88,10 +100,10 @@ npix = npix_side**2
 FOV = np.deg2rad(10) # 10 degree FOV
 ls = np.linspace(-FOV/2, FOV/2, npix_side)
 ms = np.copy(ls)
-pixel_half_length = np.diff(ls)[0]/2.
+lm_pixel_half = np.diff(ls)[0]/2.
 ls_vec, ms_vec = np.zeros(0), np.zeros(0)
-for l in ls:
-    for m in ms:
+for m in ms:
+    for l in ls:
         ls_vec = np.append(ls_vec, l)
         ms_vec = np.append(ms_vec, m)
 
@@ -106,47 +118,68 @@ if len(ms) % 2 == 0:
 else:
     mid_m = int(len(ms)/2. - 0.5)
 
+grid_pos = np.zeros((nsources, 2), dtype = int)
+true_pos = np.zeros((nsources, 2))
+
 if opts.zenith_source:
-    grid_pos = np.zeros((nsources, 2), dtype = int)
-    true_pos = np.zeros((nsources, 2))
     for i in range(grid_pos.shape[0]):
         grid_pos[i, 0] = mid_l
         grid_pos[i, 1] = mid_m
-        true_pos[i, 0] = ls[grid_pos[i, 0]] + np.random.uniform(low=-pixel_half_length,
-                                                                                          high=pixel_half_length)
-        true_pos[i, 1] = ms[grid_pos[i, 1]] + np.random.uniform(low=-pixel_half_length,
-                                                                                            high=pixel_half_length)
+        true_pos[i, 0] = ls[grid_pos[i, 0]] + np.random.uniform(low=-lm_pixel_half,
+                                                                                          high=lm_pixel_half)
+        true_pos[i, 1] = ms[grid_pos[i, 1]] + np.random.uniform(low=-lm_pixel_half,
+                                                                                            high=lm_pixel_half)
 
 elif opts.horizon_source:
-    nsources = 1
-    grid_pos = np.zeros((nsources, 2), dtype = int)
-    true_pos = np.zeros((nsources, 2))
     for i in range(grid_pos.shape[0]):
         grid_pos[i, 0] = mid_l
         grid_pos[i, 1] = 0
-        true_pos[i, 0] = ls[grid_pos[i, 0]] + np.random.uniform(low=-pixel_half_length,
-                                                                                          high=pixel_half_length)
+        true_pos[i, 0] = ls[grid_pos[i, 0]] + np.random.uniform(low=-lm_pixel_half,
+                                                                                          high=lm_pixel_half)
         true_pos[i, 1] = ms[grid_pos[i, 1]] + np.random.uniform(low=0,
-                                                                                            high=pixel_half_length)
+                                                                                            high=lm_pixel_half)
+
+elif opts.l_offset or opts.m_offset:
+    if opts.l_offset:
+        l_off = int(mid_l*opts.l_offset)
+    else:
+        l_off = 0
+
+    if opts.m_offset:
+        m_off = int(mid_m*opts.m_offset)
+    else:
+        m_off = 0
+
+    for i in range(grid_pos.shape[0]):
+        grid_pos[i, 0] = mid_l + l_off
+        grid_pos[i, 1] = mid_m + m_off
+        true_pos[i, 0] = ls[grid_pos[i, 0]] + np.random.uniform(low=-lm_pixel_half,
+                                                                                          high=lm_pixel_half)
+        true_pos[i, 1] = ms[grid_pos[i, 1]] + np.random.uniform(low=-lm_pixel_half,
+                                                                                            high=lm_pixel_half)
 
 else:
-    grid_pos = np.zeros((nsources, 2), dtype = int)
-    true_pos = np.zeros((nsources, 2))
     for i in range(grid_pos.shape[0]):
         grid_pos[i, 0] = np.random.randint(0, ls.shape[0])
         grid_pos[i, 1] = np.random.randint(0, ms.shape[0])
-        true_pos[i, 0] = ls[grid_pos[i, 0]] + np.random.uniform(low=-pixel_half_length,
-                                                                                          high=pixel_half_length)
-        true_pos[i, 1] = ms[grid_pos[i, 1]] + np.random.uniform(low=-pixel_half_length,
-                                                                                            high=pixel_half_length)
+        true_pos[i, 0] = ls[grid_pos[i, 0]] + np.random.uniform(low=-lm_pixel_half,
+                                                                                          high=lm_pixel_half)
+        true_pos[i, 1] = ms[grid_pos[i, 1]] + np.random.uniform(low=-lm_pixel_half,
+                                                                                            high=lm_pixel_half)
 
 # Make sky matrix
 Sky = np.zeros((nfreqs, npix_side, npix_side))
+Sky_counts = np.zeros((npix_side, npix_side))
 for i, freq in enumerate(freqs):
     if not opts.spec_index == 0.0:
-        Sky[i, grid_pos[:, 1], grid_pos[:, 0]] = 1./(1 + (freq - freqs.min())**opts.spec_index)
+        Sky[i, grid_pos[:, 1], grid_pos[:, 0]] += 1./(1 + (freq - freqs.min())**opts.spec_index)
     else:
-        Sky[i, grid_pos[:, 1], grid_pos[:, 0]] = 1.
+        Sky[i, grid_pos[:, 1], grid_pos[:, 0]] += 1.
+
+unique_grid_pos, unique_grid_pos_counts = np.unique(grid_pos,
+                                                                                 axis=0,
+                                                                                 return_counts=True)
+Sky_counts[unique_grid_pos[:, 1], unique_grid_pos[:, 0]] = unique_grid_pos_counts
 
 # Flatten sky for matrix computation
 Sky_vec = Sky.flatten()
@@ -160,19 +193,19 @@ print 'Constructing visibilities...'
 us_grid = np.fft.fftshift(np.fft.fftfreq(ls.shape[0], d=np.mean(np.diff(ls))))
 vs_grid = np.fft.fftshift(np.fft.fftfreq(ms.shape[0], d=np.mean(np.diff(ms))))
 us_vec, vs_vec = np.zeros(0), np.zeros(0)
-for u in us_grid:
-    for v in vs_grid:
+for v in vs_grid:
+    for u in us_grid:
         us_vec = np.append(us_vec, u)
         vs_vec = np.append(vs_vec, v)
-
+uv_pixel_half = np.mean(np.diff(us_grid))/2.
 
 # Use analytical solution to get visibilities using true positions
 Vs = np.zeros((nfreqs, npix), dtype=complex)
 for i in range(nfreqs):
     for j in range(us_vec.size):
         if opts.grid_pos:
-            Vs[i, j] = np.sum(Vs_func(us_vec[j], ls[grid_pos[:, 1]],
-                                                   vs_vec[j], ms[grid_pos[:, 0]]))
+            Vs[i, j] = np.sum(Vs_func(us_vec[j], ls[grid_pos[:, 0]],
+                                                   vs_vec[j], ms[grid_pos[:, 1]]))
         else:
             Vs[i, j] = np.sum(Vs_func(us_vec[j], true_pos[:, 0],
                                                    vs_vec[j], true_pos[:, 1]))
@@ -220,10 +253,24 @@ for i in range(nfreqs):
 
 print 'For loop finished...'
 
+# Fit for RMS of residuals
+diff_data = np.abs(Vs) - np.abs(Vs_maxl)
+counts, bins = np.histogram(diff_data[0].flatten(), bins=50)
+bin_width = np.mean(np.diff(bins))
+fit_xs = bins[:-1] + bin_width/2
+guess_params = [np.max(counts), 0.0, opts.rms]
+fit_params, fit_cov = curve_fit(Gaussian, fit_xs, counts, p0=guess_params)
+# 0: amplitude, 1: mean, 2:std dev
+gauss_fit = Gaussian(fit_xs, fit_params[0], fit_params[1], fit_params[2])
+
+
 ## ---------------------------------- Plotting ---------------------------------- ##
 freq_ind = 0
-extent_uv = [us_grid.min(), us_grid.max(), vs_grid.min(), vs_grid.max()]
-extent_lm = [ls.min(), ls.max(), ms.min(), ms.max()]
+fontsize = 14
+extent_uv = [us_grid.min() - uv_pixel_half, us_grid.max() + uv_pixel_half,
+                    vs_grid.min() - uv_pixel_half, vs_grid.max() + uv_pixel_half]
+extent_lm = [ls.min() - lm_pixel_half, ls.max() + lm_pixel_half,
+                    ms.min() - lm_pixel_half, ms.max() + lm_pixel_half]
 
 fig = figure(figsize=(16,8))
 gs = gridspec.GridSpec(2, 3)
@@ -231,17 +278,17 @@ gs = gridspec.GridSpec(2, 3)
 
 # Plot sky
 skyax = fig.add_subplot(gs[0,0])
+skyax.scatter(true_pos[:, 0], true_pos[:, 1], marker='.', c='r', alpha=0.5, s=25)
 if opts.log_scale:
-    skyim = skyax.imshow(np.log10(Sky[freq_ind]),
+    skyim = skyax.imshow(np.log10(Sky[freq_ind]*Sky_counts),
                                       extent=extent_lm,
                                       origin='lower')
-    skyax.set_title('Log Sky, %.1fMHz' %freqs[freq_ind])
+    skyax.set_title('Log Sky, %.1fMHz' %freqs[freq_ind], fontsize=fontsize)
 else:
-    skyim = skyax.imshow(Sky[freq_ind],
+    skyim = skyax.imshow(Sky[freq_ind]*Sky_counts,
                                       extent=extent_lm,
                                       origin='lower')
-    skyax.set_title('Sky, %.1fMHz' %freqs[freq_ind])
-skyax.scatter(true_pos[:, 0], true_pos[:, 1], marker='.', c='r')
+    skyax.set_title('Sky, %.1fMHz' %freqs[freq_ind], fontsize=fontsize)
 skyax.set_xlabel('l')
 skyax.set_ylabel('m')
 
@@ -261,19 +308,19 @@ else:
         vmax = np.log10(np.abs(Vs[freq_ind]).max())
     else:
         vmin = np.abs(Vs[freq_ind]).min()
-        vmax = np.abs(Vs[freq_ind]).min()
+        vmax = np.abs(Vs[freq_ind]).max()
 if opts.log_scale:
     visim = visax.imshow(np.log10(np.abs(Vs[freq_ind])),
                                     extent=extent_uv,
                                     vmin=vmin, vmax=vmax,
                                     origin='lower')
-    visax.set_title('Log|Vs|, ' + str(freqs[freq_ind]) + 'MHz')
+    visax.set_title('Log |Vs|, %.1fMHz ' %freqs[freq_ind], fontsize=fontsize)
 else:
     visim = visax.imshow(np.abs(Vs[freq_ind]),
                                     extent=extent_uv,
                                     vmin=vmin, vmax=vmax,
                                     origin='lower')
-    visax.set_title('|Vs|, ' + str(freqs[freq_ind]) + 'MHz')
+    visax.set_title('|Vs|, %.1fMHz ' %freqs[freq_ind], fontsize=fontsize)
 visax.set_xlabel('u [m]')
 visax.set_ylabel('v [m]')
 
@@ -284,12 +331,12 @@ if opts.log_scale:
     anskyim = anskyax.imshow(np.log10(np.real(a[freq_ind])),
                                              extent=extent_lm,
                                              origin='lower')
-    anskyax.set_title('Log Max Likelihood Sky, %.1fMHz' %freqs[freq_ind])
+    anskyax.set_title('Log MaxL Sky, %.1fMHz' %freqs[freq_ind], fontsize=fontsize)
 else:
     anskyim = anskyax.imshow(np.real(a[freq_ind]),
                                              extent=extent_lm,
                                              origin='lower')
-    anskyax.set_title('Maximum Likelihood Sky, %.1fMHz' %freqs[freq_ind])
+    anskyax.set_title('MaxL Sky, %.1fMHz' %freqs[freq_ind], fontsize=fontsize)
 anskyax.set_xlabel('l')
 anskyax.set_ylabel('m')
 
@@ -300,29 +347,30 @@ if opts.log_scale:
     anvisim = anvisax.imshow(np.log10(np.abs(Vs_maxl[freq_ind])),
                                            extent=extent_uv,
                                            origin='lower')
-    anvisax.set_title('Log|Max Likelihood Visibilities|, %.1fMHz' %freqs[freq_ind])
+    anvisax.set_title('Log|MaxL Visibilities|, %.1fMHz' %freqs[freq_ind], fontsize=fontsize)
 else:
     anvisim = anvisax.imshow(np.abs(Vs_maxl[freq_ind]),
                                            extent=extent_uv,
                                            origin='lower')
-    anvisax.set_title('|Max Likelihood Visibilities|, %.1fMHz' %freqs[freq_ind])
+    anvisax.set_title('|MaxL Visibilities|, %.1fMHz' %freqs[freq_ind], fontsize=fontsize)
 anvisax.set_xlabel('u [m]')
 anvisax.set_ylabel('v [m]')
 
 
 # Plot |Vs| - |Vs_maxl|
-diff_data = np.abs(Vs) - np.abs(Vs_maxl)
+diffax = fig.add_subplot(gs[:, -1])
 if opts.log_scale:
     diffim = diffax.imshow(np.log10(diff_data[freq_ind]),
                                       extent=extent_uv,
                                       origin='lower')
-    diffax.set_title('Log(|Vs| - |Max Likelihood Vs|), %.1fMHz' %freqs[freq_ind])
+    diffax.set_title('Log(|Vs| - |MaxL Vs|), %.1fMHz\nFitted RMS: %.2e'
+                          %(freqs[freq_ind], fit_params[2]), fontsize=fontsize)
 else:
-    diffax = fig.add_subplot(gs[:, -1])
     diffim = diffax.imshow(diff_data[freq_ind],
                                       extent=extent_uv,
                                       origin='lower')
-diffax.set_title('|Vs| - |Max Likelihood Vs|, %.1fMHz' %freqs[freq_ind])
+    diffax.set_title('|Vs| - |MaxL Vs|, %.1fMHz\nFitted RMS: %.2e'
+                          %(freqs[freq_ind], fit_params[2]), fontsize=fontsize)
 diffax.set_xlabel('u [m]')
 diffax.set_ylabel('v [m]')
 

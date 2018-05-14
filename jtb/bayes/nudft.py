@@ -23,10 +23,10 @@ o.add_option('--plot_phase',
     help = 'If passed, also plot and compare phase.')
 o.add_option('--l_offset',
     type = float,
-    help = 'Moves source in l-direction by l_offset*ls.max().  Must be between 0 and 1.')
+    help = 'Moves source in l-direction by l_offset*|ls|.max().  Must be between -1 and 1.')
 o.add_option('--m_offset',
     type = float,
-    help = 'Moves source in m-direction by m_offset*ms.max().  Must be between 0 and 1.')
+    help = 'Moves source in m-direction by m_offset*|ms|.max().  Must be between -1 and 1.')
 opts,args = o.parse_args(sys.argv[1:])
 
 ## ----------------- Construct sky ----------------- ##
