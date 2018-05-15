@@ -79,16 +79,19 @@ elif not (',' in opts.freq and '-' in opts.freq):
 nfreqs = len(freqs)
 
 
+## -------------------------------------- Construct sky -------------------------------------- ##
+
 # Construct l,m grid
-FOV = np.deg2rad(10) # 10 degree FOV
+FOV = np.deg2rad(10)
 ls = np.linspace(-FOV/2, FOV/2, NPIX_SIDE)
 ms = np.copy(ls)
 ls_vec, ms_vec = np.zeros(0), np.zeros(0)
-for l in ls:
-    for m in ms:
+for m in ms:
+    for l in ls:
         ls_vec = np.append(ls_vec, l)
         ms_vec = np.append(ms_vec, m)
 
+#Make source catalog
 if opts.l_offset or opts.m_offset:
     if len(ls) % 2 == 0:
         mid_l = len(ls)/2
@@ -109,19 +112,22 @@ if opts.l_offset or opts.m_offset:
     else:
         m_off = 0
 
+
+## ----------------------------------- Construct Visibilities ----------------------------------- ##
+
 # Construct u,v grid
 us_grid = np.fft.fftshift(np.fft.fftfreq(ls.shape[0], d=np.mean(np.diff(ls))))
 vs_grid = np.fft.fftshift(np.fft.fftfreq(ms.shape[0], d=np.mean(np.diff(ms))))
 us_vec, vs_vec = np.zeros(0), np.zeros(0)
-for u in us_grid:
-    for v in vs_grid:
+for v in vs_grid:
+    for u in us_grid:
         us_vec = np.append(us_vec, u)
         vs_vec = np.append(vs_vec, v)
 
 # Set up angular offsets, arrays to store fitted RMS values
 angular_offsets = np.copy(ls[ls >= 0.0])
-fitted_RMS = np.zeros_like(angular_offsets)
-fitted_RMS_err = np.zeros_like(angular_offsets)
+fitted_RMS = np.zeros((nfreqs, angular_offsets.size))
+fitted_RMS_err = np.zeros_like(fitted_RMS)
 
 # Store source positions for reference
 true_pos = np.zeros((angular_offsets.size, 2))
@@ -153,9 +159,9 @@ for offset_ind, angular_offset in enumerate(angular_offsets):
     # Create data from visibilities with injected Gaussian noise
     d = np.copy(Vs)
 
-    for i in range(nfreqs):
-        d_flat = d[i].flatten()
-        Vs_flat = Vs[i].flatten()
+    for freq_ind in range(nfreqs):
+        d_flat = d[freq_ind].flatten()
+        Vs_flat = Vs[freq_ind].flatten()
 
         half_ind = int(us_vec.size/2.) + 1
         for j,[u,v] in enumerate(np.stack((us_vec, vs_vec), axis=1)[:half_ind]):
@@ -164,32 +170,32 @@ for offset_ind, angular_offset in enumerate(angular_offsets):
                                               +
                                               1j*np.random.normal(0, opts.rms, 1))
 
-        d[i] = d_flat.reshape([NPIX_SIDE]*2)
+        d[freq_ind] = d_flat.reshape([NPIX_SIDE]*2)
 
         DFT = np.exp(-1j*2*np.pi*(np.outer(us_vec, ls_vec)
                             +
                             np.outer(vs_vec, ms_vec)))
         inv_part = np.linalg.inv(np.dot(np.dot(DFT.conj().T, N_inv), DFT))
-        right_part = np.dot(np.dot(DFT.conj().T, N_inv), d[i].flatten())
+        right_part = np.dot(np.dot(DFT.conj().T, N_inv), d[freq_ind].flatten())
 
         # Maximum likelihood solution for the sky
-        a[i] = np.dot(inv_part, right_part).reshape((NPIX_SIDE, NPIX_SIDE))
+        a[freq_ind] = np.dot(inv_part, right_part).reshape((NPIX_SIDE, NPIX_SIDE))
 
         # Generate visibilities from maximum liklihood solution
-        Vs_maxL[i] = np.dot(DFT, a[i].flatten()).reshape((NPIX_SIDE, NPIX_SIDE))
+        Vs_maxL[freq_ind] = np.dot(DFT, a[freq_ind].flatten()).reshape((NPIX_SIDE, NPIX_SIDE))
 
-    # Compute fitted RMS
-    diff_data = np.abs(Vs) - np.abs(Vs_maxL)
-    counts, bins = np.histogram(diff_data[0].flatten(), bins=50)
-    bin_width = np.mean(np.diff(bins))
-    fit_xs = bins[:-1] + bin_width/2
-    guess_params = [np.max(counts), 0.0, opts.rms]
-    # fit_params: 0, amplitude; 1, mean; 2, std dev
-    fit_params, fit_cov = curve_fit(Gaussian, fit_xs, counts, p0=guess_params)
+        # Compute fitted RMS
+        diff_data = np.abs(Vs[freq_ind]) - np.abs(Vs_maxL[freq_ind])
+        counts, bins = np.histogram(diff_data.flatten(), bins=50)
+        bin_width = np.mean(np.diff(bins))
+        fit_xs = bins[:-1] + bin_width/2
+        guess_params = [np.max(counts), 0.0, opts.rms]
+        # fit_params: 0, amplitude; 1, mean; 2, std dev
+        fit_params, fit_cov = curve_fit(Gaussian, fit_xs, counts, p0=guess_params)
 
-    # Store fitted RMS and fit error
-    fitted_RMS[offset_ind] = fit_params[2]
-    fitted_RMS_err[offset_ind] = fit_cov[-1, -1]
+        # Store fitted RMS and fit error
+        fitted_RMS[freq_ind, offset_ind] = fit_params[2]
+        fitted_RMS_err[freq_ind, offset_ind] = fit_cov[-1, -1]
 
 # Plotting
 fig = figure(figsize=(16,8))
@@ -202,10 +208,12 @@ path_ax.set_ylim([ms.min(), ms.max()])
 path_ax.set_title('Walk Pattern', size=16)
 
 rms_ax = fig.add_subplot(gs[0, 1])
-plot_xs = np.rad2deg(angular_offsets)
-rms_ax.errorbar(plot_xs, fitted_RMS/opts.rms, yerr=fitted_RMS_err/opts.rms)
-rms_ax.set_xlabel('Angular Offset [deg]', size=16)
-rms_ax.set_ylabel('Fitted RMS/$10^{%.1f}$' %np.log10(opts.rms), size=16)
+plot_xs = np.copy(angular_offsets)
+for freq_ind in range(nfreqs):
+    rms_ax.errorbar(plot_xs, fitted_RMS[freq_ind]/opts.rms,
+                             yerr=fitted_RMS_err[freq_ind]/opts.rms)
+rms_ax.set_xlabel('Source Location [l]', size=16)
+rms_ax.set_ylabel('Fitted RMS/$10^{%.0f}$' %np.log10(opts.rms), size=16)
 rms_ax.set_ylim([0.5, 1.5])
 
 for ax in fig.axes:

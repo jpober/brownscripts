@@ -75,7 +75,8 @@ def Gaussian(x, a, x0, sigma):
 
 # Constants
 C = 3.e8 # meters per second
-
+NPIX_SIDE = 31 # 125 for 40deg field of view
+NPIX = NPIX_SIDE**2
 
 # Get frequency(ies) or frequency range
 if ',' in opts.freq:
@@ -93,12 +94,10 @@ nfreqs = len(freqs)
 
 ## -------------------------------------- Construct sky -------------------------------------- ##
 print 'Constructing sky...'
-npix_side = 31
-npix = npix_side**2
 
 # Construct l,m grid
-FOV = np.deg2rad(10) # 10 degree FOV
-ls = np.linspace(-FOV/2, FOV/2, npix_side)
+FOV = np.deg2rad(10)
+ls = np.linspace(-FOV/2, FOV/2, NPIX_SIDE)
 ms = np.copy(ls)
 lm_pixel_half = np.diff(ls)[0]/2.
 ls_vec, ms_vec = np.zeros(0), np.zeros(0)
@@ -168,8 +167,8 @@ else:
                                                                                             high=lm_pixel_half)
 
 # Make sky matrix
-Sky = np.zeros((nfreqs, npix_side, npix_side))
-Sky_counts = np.zeros((npix_side, npix_side))
+Sky = np.zeros((nfreqs, NPIX_SIDE, NPIX_SIDE))
+Sky_counts = np.zeros((NPIX_SIDE, NPIX_SIDE))
 for i, freq in enumerate(freqs):
     if not opts.spec_index == 0.0:
         Sky[i, grid_pos[:, 1], grid_pos[:, 0]] += 1./(1 + (freq - freqs.min())**opts.spec_index)
@@ -200,7 +199,7 @@ for v in vs_grid:
 uv_pixel_half = np.mean(np.diff(us_grid))/2.
 
 # Use analytical solution to get visibilities using true positions
-Vs = np.zeros((nfreqs, npix), dtype=complex)
+Vs = np.zeros((nfreqs, NPIX), dtype=complex)
 for i in range(nfreqs):
     for j in range(us_vec.size):
         if opts.grid_pos:
@@ -209,7 +208,7 @@ for i in range(nfreqs):
         else:
             Vs[i, j] = np.sum(Vs_func(us_vec[j], true_pos[:, 0],
                                                    vs_vec[j], true_pos[:, 1]))
-Vs = Vs.reshape((nfreqs, npix_side, npix_side))
+Vs = Vs.reshape((nfreqs, NPIX_SIDE, NPIX_SIDE))
 
 ## ---------------------------------- Construct MaxL Sky ---------------------------------- ##
 print 'Constructing maximum likelihood sky...'
@@ -218,7 +217,7 @@ print 'Constructing maximum likelihood sky...'
 # Requires noise injection into data (visibilities above)
 a = np.zeros_like(Vs)
 Vs_maxl = np.zeros_like(a)
-N_inv = np.eye(npix)/opts.rms**2
+N_inv = np.eye(NPIX)/opts.rms**2
 
 # Create data from visibilities with injected Gaussian noise
 d = np.copy(Vs)
@@ -237,7 +236,7 @@ for i in range(nfreqs):
                                           +
                                           1j*np.random.normal(0, opts.rms, 1))
 
-    d[i] = d_flat.reshape([npix_side]*2)
+    d[i] = d_flat.reshape([NPIX_SIDE]*2)
 
     DFT = np.exp(-1j*2*np.pi*(np.outer(us_vec, ls_vec)
                         +
@@ -246,10 +245,10 @@ for i in range(nfreqs):
     right_part = np.dot(np.dot(DFT.conj().T, N_inv), d[i].flatten())
 
     # Maximum likelihood solution for the sky
-    a[i] = np.dot(inv_part, right_part).reshape((npix_side, npix_side))
+    a[i] = np.dot(inv_part, right_part).reshape((NPIX_SIDE, NPIX_SIDE))
 
     # Generate visibilities from maximum liklihood solution
-    Vs_maxl[i] = np.dot(DFT, a[i].flatten()).reshape((npix_side, npix_side))
+    Vs_maxl[i] = np.dot(DFT, a[i].flatten()).reshape((NPIX_SIDE, NPIX_SIDE))
 
 print 'For loop finished...'
 
