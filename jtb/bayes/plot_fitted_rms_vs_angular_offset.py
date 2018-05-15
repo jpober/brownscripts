@@ -3,7 +3,6 @@ import matplotlib.gridspec as gridspec
 import time, optparse, sys, os
 
 from scipy.optimize import curve_fit
-from matplotlib.pyplot import *
 
 
 
@@ -227,6 +226,8 @@ if opts.write:
 
 
 # Plotting
+from matplotlib.pyplot import *
+
 fig = figure(figsize=(16,8))
 gs = gridspec.GridSpec(1, 2)
 
