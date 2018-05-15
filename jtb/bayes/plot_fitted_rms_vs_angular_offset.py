@@ -9,6 +9,7 @@ from matplotlib.pyplot import *
 
 ## ----------------- Option Parser ----------------- ##
 o = optparse.OptionParser()
+
 o.add_option('--freq',
     type=str,
     help='Frequency(ies) of observation in MHz.')
@@ -39,6 +40,10 @@ o.add_option('--l_offset',
 o.add_option('--m_offset',
     type = float,
     help = 'Moves source in m-direction by m_offset*ms.max().  Must be between 0 and 1.')
+
+o.add_option('--write',
+    action = 'store_true',
+    help = 'If passed, write fitted RMS and associated errors to a .npy file.')
 
 opts,args = o.parse_args(sys.argv[1:])
 
@@ -196,6 +201,30 @@ for offset_ind, angular_offset in enumerate(angular_offsets):
         # Store fitted RMS and fit error
         fitted_RMS[freq_ind, offset_ind] = fit_params[2]
         fitted_RMS_err[freq_ind, offset_ind] = fit_cov[-1, -1]
+
+
+if opts.write:
+    # Write fitted RMS data
+    if os.path.exists('./sim_vis/'):
+        if nfreqs > 1:
+            filename = 'sim_vis/maxL_fitted_RMS_%sMHz_%sMHz' %(opts.freq, opts.freq_res)
+        else:
+            filename = 'sim_vis/maxL_fitted_RMS_%sMHz' %opts.freq
+    else:
+        if nfreqs > 1:
+            filename = 'maxL_fitted_RMS_%sMHz_%sMHz' %(opts.freq, opts.freq_res)
+        else:
+            filename = 'maxL_fitted_RMS_%sMHz' %opts.freq
+    print 'Writing ' + filename + '.npy ...\n'
+    out_dic = {}
+    out_dic['fit_rms'] = fitted_RMS
+    out_dic['fit_rms_err'] = fitted_RMS_err
+    out_dic['input_rms'] = opts.rms
+    out_dic['angular_offsets'] = angular_offsets
+    np.save(filename + '.npy', out_dic)
+
+    sys.exit()
+
 
 # Plotting
 fig = figure(figsize=(16,8))
