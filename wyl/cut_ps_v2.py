@@ -1,8 +1,9 @@
 import numpy as np, sys
 from scipy.io.idl import readsav
 from plot_vis import *
+import scipy
 
-def rebin(bin_file,kperp_min_cut=0.0,kperp_max_cut=0.1,kpara_min_cut=0.12,kpara_max_cut=1.2,coarse_band_extent=4):
+def rebin(bin_file,kperp_min_cut=0.0,kperp_max_cut=0.1,kpara_min_cut=0.12,kpara_max_cut=1.2,coarse_band_extent=4,cut_vmodes=True):
     fbin = readsav(bin_file)
     q = np.array(fbin['bin_1to2d']).astype(bool)
     kx = fbin['kx_mpc']
@@ -21,9 +22,10 @@ def rebin(bin_file,kperp_min_cut=0.0,kperp_max_cut=0.1,kpara_min_cut=0.12,kpara_
     q[:,np.where(kperp[1:] < kperp_min_cut)[0]] = False
     q[np.where(kz > kpara_max_cut)[0]] = False
     q[np.where(kz < kpara_min_cut)[0]] = False
-    q[:,12] = False
-    q[:,13] = False
-    q[:,21] = False
+    if cut_vmodes:
+        q[:,12] = False
+        q[:,13] = False
+        q[:,21] = False
     for ii in range(coarse_band_extent):
         q[24+ii::24] = False
         q[24-ii::24] = False
@@ -59,6 +61,14 @@ def get_diff_power(dif_fn, bin_dict):
     p_kperp = np.array(p_kperp)
     power_dict = {"p_kpar": p_kpar, "p_kperp":p_kperp, "power": cut, "weight": wgt}
     return power_dict
+
+def bin_3d(kx,ky,kz):
+    k = np.zeros(kz.size,ky.size,kx.size)
+    for ix in range(kx.size):
+        for iy in range(ky.size):
+            for iz in range(kz.size):
+                k[ix][iy][iz] = np.sqrt(kx[ix]**2+ky[iy]**2+kz[iz]**2)
+    return k
 
 def histbin(data,wgts,bins):
     w = wgts/np.sum(wgts)
@@ -100,6 +110,20 @@ def binx(x,y):
     xbool[2::2][ind] = True
     return xbin, xbool
 
+def xtostep(x):
+    x_res = (x[1]-x[0])/2
+    x_bin = np.zeros((2*x.size))
+    x_bin[0::2] = x-x_res
+    x_bin[1::2] = x+x_res
+    return x_bin
+
+def ytostep(y):
+    y_bin = np.zeros((2*y.size))
+    y_bin[0::2] = y
+    y_bin[1::2] = y
+    return y_bin
+
+
 def kpar_plot(k1,k2,k3,kz):
     p1,=plt.step(kz,k1/1e6,where='mid',label='FHD - OF')
     p2,=plt.step(kz,k2/1e6,where='mid',label='FHD - FO')
@@ -139,36 +163,33 @@ def kperp_plot(k1,k2,k3,kperp):
 
 def power1dplot(fn):
     lgd_hand = []
-    for f in fn:
-        fsp = f.split('/')[-1].split('_') 
-        tp = fsp[9]
-        pol = fsp[10]
-        d = readsav(f)
-        p = d['power']
-        n = d['noise']
-        k_edges = d['k_edges']
-        k = k_edges[1:]/2+k_edges[:-1]/2
-        p = p*k**3/2/np.pi**2
-        n = n*k**3/2/np.pi**2
-        k_bin, p_bin, n_bin = [], [], []
-        for ii in range(k.size):
-            k_bin.append(k_edges[ii])
-            k_bin.append(k_edges[ii+1])
-            p_bin.append(p[ii])
-            p_bin.append(p[ii])
-            n_bin.append(n[ii])
-            n_bin.append(n[ii])
-        k_bin = np.array(k_bin)
-        p_bin = np.array(p_bin)
-        n_bin = np.array(n_bin)
-        pi,=plt.plot(k_bin,p_bin,label=tp+'_'+pol)
-        plt.fill_between(k_bin,p_bin-2*n_bin,p_bin+2*n_bin,color='silver',alpha=0.8)
-        lgd_hand.append(pi)
+    fsp = fn.split('/')[-1].split('_') 
+    tp = fsp[9]
+    pol = fsp[10]
+    d = readsav(fn)
+    h = d['hubble_param']
+    p = d['power']*(h**3)
+    n = d['noise']*(h**3)
+    s = (h**3)/np.sqrt(d['weights'])
+    k_edges = d['k_edges']/h
+    k = k_edges[1:]/2+k_edges[:-1]/2
+    p = p*k**3/2/np.pi**2
+    n = n*k**3/2/np.pi**2
+    s = s*k**3/2/np.pi**2
+    plt.step(k,p,where='mid',label='measured power')
+    plt.step(k,s,where='mid',label='1 sigma thermal noise',linestyle='--')
+    k_bin = xtostep(k)
+    p_bin = ytostep(p)
+    s_bin = ytostep(s)
+    #pup = np.sqrt(2)*s_bin*scipy.special.erfinv(0.977-(1-0.977)*scipy.special.erf(p_bin/s_bin/np.sqrt(2)))
+    plt.fill_between(k_bin,p_bin-2*s_bin,p_bin+2*s_bin,color='silver',alpha=0.8)
+    plt.plot(k_bin,p_bin+2*s_bin,label='upper limit')
     plt.ylabel('$\Delta^2(k)$')
     plt.xlabel('$k(hMpc^{-1})$')
     plt.grid(True,axis='y')
-    plt.legend(handles=lgd_hand,loc=1)
-    plt.xlim(1e-1,np.max(k_bin))
+    plt.legend(loc=2)
+    plt.xlim(1e-1,np.max(k))
+    plt.ylim(1e2,1e7)
     plt.xscale('log')
     plt.yscale('log')
     plt.show()
