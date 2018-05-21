@@ -86,7 +86,7 @@ def Gaussian(x, a, x0, sigma):
 
 # Constants
 C = 3.e8 # meters per second
-NPIX_SIDE = 125 # 125 for 40deg FOV, 31 for 10deg FOV
+NPIX_SIDE = 63 # 125 for 40deg FOV, 31 for 10deg FOV
 NPIX = NPIX_SIDE**2
 
 # Get frequency(ies) or frequency range
@@ -107,7 +107,7 @@ nfreqs = len(freqs)
 print 'Constructing sky...'
 
 # Construct l,m grid
-FOV = np.deg2rad(40)
+FOV = np.deg2rad(20)
 ls = np.linspace(-FOV/2, FOV/2, NPIX_SIDE)
 ms = np.copy(ls)
 lm_pixel_half = np.diff(ls)[0]/2.
@@ -287,8 +287,7 @@ for i in range(nfreqs):
                         np.outer(vs_vec, ms_vec)))
 
     if opts.beam:
-        freq_ind = np.where(beam_freqs == freqs[i])
-        P = np.diag(beam_E[:, freq_ind])
+        P = np.diag(beam_grid[i])
         inv_part = np.linalg.inv(np.dot(np.dot(np.dot(np.dot(P, DFT.conj().T), N_inv), DFT), P))
         right_part = np.dot(np.dot(np.dot(P, DFT.conj().T), N_inv), d[i].flatten())
     else:
@@ -299,24 +298,26 @@ for i in range(nfreqs):
     a[i] = np.dot(inv_part, right_part).reshape((NPIX_SIDE, NPIX_SIDE))
 
     # Generate visibilities from maximum liklihood solution
-    Vs_maxL[i] = np.dot(DFT, a[i].flatten()).reshape((NPIX_SIDE, NPIX_SIDE))
-
     if opts.beam:
+        Vs_maxL[i] = np.dot(np.dot(DFT, P),  a[i].flatten()).reshape((NPIX_SIDE, NPIX_SIDE))
+
         del(DFT, inv_part, right_part, P)
     else:
+        Vs_maxL[i] = np.dot(DFT, a[i].flatten()).reshape((NPIX_SIDE, NPIX_SIDE))
+
         del(DFT, inv_part, right_part)
 
 print 'For loop finished...'
 
-# # Fit for RMS of residuals
-# diff_data = np.abs(Vs) - np.abs(Vs_maxL)
-# counts, bins = np.histogram(diff_data[0].flatten(), bins=50)
-# bin_width = np.mean(np.diff(bins))
-# fit_xs = bins[:-1] + bin_width/2
-# guess_params = [np.max(counts), 0.0, opts.rms]
-# fit_params, fit_cov = curve_fit(Gaussian, fit_xs, counts, p0=guess_params)
-# # 0: amplitude, 1: mean, 2:std dev
-# gauss_fit = Gaussian(fit_xs, fit_params[0], fit_params[1], fit_params[2])
+# Fit for RMS of residuals
+diff_data = np.abs(Vs) - np.abs(Vs_maxL)
+counts, bins = np.histogram(diff_data[0].flatten(), bins=50)
+bin_width = np.mean(np.diff(bins))
+fit_xs = bins[:-1] + bin_width/2
+guess_params = [np.max(counts), 0.0, opts.rms]
+fit_params, fit_cov = curve_fit(Gaussian, fit_xs, counts, p0=guess_params)
+# 0: amplitude, 1: mean, 2:std dev
+gauss_fit = Gaussian(fit_xs, fit_params[0], fit_params[1], fit_params[2])
 
 if opts.write:
     # Write fitted RMS data
@@ -336,6 +337,7 @@ if opts.write:
     out_dic['maxL_sky'] = a
     out_dic['maxL_vis'] = Vs_maxL
     out_dic['input_rms'] = opts.rms
+    out_dic['freqs'] = freqs
     np.save(filename + '.npy', out_dic)
 
     sys.exit()
@@ -360,15 +362,29 @@ gs = gridspec.GridSpec(2, 3)
 skyax = fig.add_subplot(gs[0,0])
 skyax.scatter(true_pos[:, 0], true_pos[:, 1], marker='.', c='r', alpha=0.5, s=25)
 if opts.log_scale:
-    skyim = skyax.imshow(np.log10(Sky[freq_ind]*Sky_counts),
-                                      extent=extent_lm,
-                                      origin='lower')
-    skyax.set_title('Log Sky, %.1fMHz' %freqs[freq_ind], fontsize=fontsize)
+    if opts.beam:
+        skyim = skyax.imshow(np.log10(Sky[freq_ind]*Sky_counts*
+                                          beam_grid[freq_ind].reshape((NPIX_SIDE, NPIX_SIDE))),
+                                          extent=extent_lm,
+                                          origin='lower')
+        skyax.set_title('Log Sky*Beam, %.1fMHz' %freqs[freq_ind], fontsize=fontsize)
+    else:
+        skyim = skyax.imshow(np.log10(Sky[freq_ind]*Sky_counts),
+                                          extent=extent_lm,
+                                          origin='lower')
+        skyax.set_title('Log Sky, %.1fMHz' %freqs[freq_ind], fontsize=fontsize)
 else:
-    skyim = skyax.imshow(Sky[freq_ind]*Sky_counts,
-                                      extent=extent_lm,
-                                      origin='lower')
-    skyax.set_title('Sky, %.1fMHz' %freqs[freq_ind], fontsize=fontsize)
+    if opts.beam:
+         skyim = skyax.imshow((Sky[freq_ind]*Sky_counts*
+                                           beam_grid[freq_ind].reshape((NPIX_SIDE, NPIX_SIDE))),
+                                           extent=extent_lm,
+                                           origin='lower')
+         skyax.set_title('Sky, %.1fMHz' %freqs[freq_ind], fontsize=fontsize)
+    else:
+        skyim = skyax.imshow(Sky[freq_ind]*Sky_counts,
+                                          extent=extent_lm,
+                                          origin='lower')
+        skyax.set_title('Sky, %.1fMHz' %freqs[freq_ind], fontsize=fontsize)
 skyax.set_xlabel('l')
 skyax.set_ylabel('m')
 
@@ -408,15 +424,29 @@ visax.set_ylabel('v [m]')
 # Plot sky solution for maximum likelihood
 anskyax = fig.add_subplot(gs[1,0])
 if opts.log_scale:
-    anskyim = anskyax.imshow(np.log10(np.real(a[freq_ind])),
-                                             extent=extent_lm,
-                                             origin='lower')
-    anskyax.set_title('Log MaxL Sky, %.1fMHz' %freqs[freq_ind], fontsize=fontsize)
+    if opts.beam:
+        anskyim = anskyax.imshow(np.log10(np.real(a[freq_ind])*
+                                                 beam_grid[freq_ind].reshape((NPIX_SIDE, NPIX_SIDE))),
+                                                 extent=extent_lm,
+                                                 origin='lower')
+        anskyax.set_title('Log MaxL Sky, %.1fMHz' %freqs[freq_ind], fontsize=fontsize)
+    else:
+        anskyim = anskyax.imshow(np.log10(np.real(a[freq_ind])),
+                                                 extent=extent_lm,
+                                                 origin='lower')
+        anskyax.set_title('Log MaxL Sky, %.1fMHz' %freqs[freq_ind], fontsize=fontsize)
 else:
-    anskyim = anskyax.imshow(np.real(a[freq_ind]),
-                                             extent=extent_lm,
-                                             origin='lower')
-    anskyax.set_title('MaxL Sky, %.1fMHz' %freqs[freq_ind], fontsize=fontsize)
+    if opts.beam:
+        anskyim = anskyax.imshow((np.real(a[freq_ind])*
+                                                 beam_grid[freq_ind].reshape((NPIX_SIDE, NPIX_SIDE))),
+                                                 extent=extent_lm,
+                                                 origin='lower')
+        anskyax.set_title('MaxL Sky, %.1fMHz' %freqs[freq_ind], fontsize=fontsize)
+    else:
+        anskyim = anskyax.imshow(np.real(a[freq_ind]),
+                                                 extent=extent_lm,
+                                                 origin='lower')
+        anskyax.set_title('MaxL Sky, %.1fMHz' %freqs[freq_ind], fontsize=fontsize)
 anskyax.set_xlabel('l')
 anskyax.set_ylabel('m')
 
