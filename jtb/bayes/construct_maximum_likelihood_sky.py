@@ -258,7 +258,7 @@ print 'Constructing maximum likelihood sky...'
 # Assumes a Gaussian log likelihood function
 # Requires noise injection into data (visibilities above)
 a = np.zeros_like(Vs)
-Vs_maxl = np.zeros_like(a)
+Vs_maxL = np.zeros_like(a)
 N_inv = np.eye(NPIX)/opts.rms**2
 
 # Create data from visibilities with injected Gaussian noise
@@ -290,19 +290,41 @@ for i in range(nfreqs):
     a[i] = np.dot(inv_part, right_part).reshape((NPIX_SIDE, NPIX_SIDE))
 
     # Generate visibilities from maximum liklihood solution
-    Vs_maxl[i] = np.dot(DFT, a[i].flatten()).reshape((NPIX_SIDE, NPIX_SIDE))
+    Vs_maxL[i] = np.dot(DFT, a[i].flatten()).reshape((NPIX_SIDE, NPIX_SIDE))
 
 print 'For loop finished...'
 
-# Fit for RMS of residuals
-diff_data = np.abs(Vs) - np.abs(Vs_maxl)
-counts, bins = np.histogram(diff_data[0].flatten(), bins=50)
-bin_width = np.mean(np.diff(bins))
-fit_xs = bins[:-1] + bin_width/2
-guess_params = [np.max(counts), 0.0, opts.rms]
-fit_params, fit_cov = curve_fit(Gaussian, fit_xs, counts, p0=guess_params)
-# 0: amplitude, 1: mean, 2:std dev
-gauss_fit = Gaussian(fit_xs, fit_params[0], fit_params[1], fit_params[2])
+# # Fit for RMS of residuals
+# diff_data = np.abs(Vs) - np.abs(Vs_maxL)
+# counts, bins = np.histogram(diff_data[0].flatten(), bins=50)
+# bin_width = np.mean(np.diff(bins))
+# fit_xs = bins[:-1] + bin_width/2
+# guess_params = [np.max(counts), 0.0, opts.rms]
+# fit_params, fit_cov = curve_fit(Gaussian, fit_xs, counts, p0=guess_params)
+# # 0: amplitude, 1: mean, 2:std dev
+# gauss_fit = Gaussian(fit_xs, fit_params[0], fit_params[1], fit_params[2])
+
+if opts.write:
+    # Write fitted RMS data
+    if os.path.exists('./sim_vis/'):
+        if nfreqs > 1:
+            filename = 'sim_vis/maxL_visdata_%sMHz_%sMHz' %(opts.freq, opts.freq_res)
+        else:
+            filename = 'sim_vis/maxL_visdata_%sMHz' %opts.freq
+    else:
+        if nfreqs > 1:
+            filename = 'maxL_visdata_%sMHz_%sMHz' %(opts.freq, opts.freq_res)
+        else:
+            filename = 'maxL_visdata_%sMHz' %opts.freq
+    print 'Writing ' + filename + '.npy ...\n'
+    out_dic = {}
+    out_dic['vis'] = Vs
+    out_dic['maxL_sky'] = a
+    out_dic['maxL_vis'] = Vs_maxL
+    out_dic['input_rms'] = opts.rms
+    np.save(filename + '.npy', out_dic)
+
+    sys.exit()
 
 
 ## ---------------------------------- Plotting ---------------------------------- ##
@@ -385,12 +407,12 @@ anskyax.set_ylabel('m')
 # Plot visibilities for maximum likelihood solution
 anvisax = fig.add_subplot(gs[1,1])
 if opts.log_scale:
-    anvisim = anvisax.imshow(np.log10(np.abs(Vs_maxl[freq_ind])),
+    anvisim = anvisax.imshow(np.log10(np.abs(Vs_maxL[freq_ind])),
                                            extent=extent_uv,
                                            origin='lower')
     anvisax.set_title('Log|MaxL Visibilities|, %.1fMHz' %freqs[freq_ind], fontsize=fontsize)
 else:
-    anvisim = anvisax.imshow(np.abs(Vs_maxl[freq_ind]),
+    anvisim = anvisax.imshow(np.abs(Vs_maxL[freq_ind]),
                                            extent=extent_uv,
                                            origin='lower')
     anvisax.set_title('|MaxL Visibilities|, %.1fMHz' %freqs[freq_ind], fontsize=fontsize)
@@ -398,7 +420,7 @@ anvisax.set_xlabel('u [m]')
 anvisax.set_ylabel('v [m]')
 
 
-# Plot |Vs| - |Vs_maxl|
+# Plot |Vs| - |Vs_maxL|
 diffax = fig.add_subplot(gs[:, -1])
 if opts.log_scale:
     diffim = diffax.imshow(np.log10(diff_data[freq_ind]),
