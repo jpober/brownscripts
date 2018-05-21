@@ -285,8 +285,15 @@ for i in range(nfreqs):
     DFT = np.exp(-1j*2*np.pi*(np.outer(us_vec, ls_vec)
                         +
                         np.outer(vs_vec, ms_vec)))
-    inv_part = np.linalg.inv(np.dot(np.dot(DFT.conj().T, N_inv), DFT))
-    right_part = np.dot(np.dot(DFT.conj().T, N_inv), d[i].flatten())
+
+    if opts.beam:
+        freq_ind = np.where(beam_freqs == freqs[i])
+        P = np.diag(beam_E[:, freq_ind])
+        inv_part = np.linalg.inv(np.dot(np.dot(np.dot(np.dot(P, DFT.conj().T), N_inv), DFT), P))
+        right_part = np.dot(np.dot(np.dot(P, DFT.conj().T), N_inv), d[i].flatten())
+    else:
+        inv_part = np.linalg.inv(np.dot(np.dot(DFT.conj().T, N_inv), DFT))
+        right_part = np.dot(np.dot(DFT.conj().T, N_inv), d[i].flatten())
 
     # Maximum likelihood solution for the sky
     a[i] = np.dot(inv_part, right_part).reshape((NPIX_SIDE, NPIX_SIDE))
@@ -294,7 +301,10 @@ for i in range(nfreqs):
     # Generate visibilities from maximum liklihood solution
     Vs_maxL[i] = np.dot(DFT, a[i].flatten()).reshape((NPIX_SIDE, NPIX_SIDE))
 
-    del(DFT, inv_part, right_part)
+    if opts.beam:
+        del(DFT, inv_part, right_part, P)
+    else:
+        del(DFT, inv_part, right_part)
 
 print 'For loop finished...'
 
