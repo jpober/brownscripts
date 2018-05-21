@@ -1,7 +1,9 @@
 import numpy as np
+import healpy as hp
 import matplotlib.gridspec as gridspec
 import time, optparse, sys, os
 
+from astropy.io import fits
 from mpl_toolkits.axes_grid1.axes_divider import make_axes_locatable
 from matplotlib.pyplot import *
 from scipy.optimize import curve_fit
@@ -17,7 +19,7 @@ o.add_option('--freq',
 o.add_option('--freq_res',
     type = float,
     default = 1.0,
-    help = 'Channel width in MHz if --freq passed with \'-\'.')
+    help = 'Channel width in MHz if --freq passed with \'-\' (1MHz for Nicolas beams).')
 
 o.add_option('--grid_pos',
     action='store_true',
@@ -61,6 +63,13 @@ o.add_option('--log_scale',
     action = 'store_true',
     help = 'If passed, plot in log scale.')
 
+o.add_option('--beam',
+    type = 'str',
+    # default = ('/Users/jburba/hera_things/hera-team/HERA-Beams/'
+    #                 +
+    #                 'NicolasFagnoniBeams/healpix_beam.fits'),
+    help = 'Healpix compatible fits file containing the primary beam.')
+
 opts,args = o.parse_args(sys.argv[1:])
 
 
@@ -75,7 +84,7 @@ def Gaussian(x, a, x0, sigma):
 
 # Constants
 C = 3.e8 # meters per second
-NPIX_SIDE = 31 # 125 for 40deg field of view
+NPIX_SIDE = 125 # 125 for 40deg FOV, 31 for 10deg FOV
 NPIX = NPIX_SIDE**2
 
 # Get frequency(ies) or frequency range
@@ -96,7 +105,7 @@ nfreqs = len(freqs)
 print 'Constructing sky...'
 
 # Construct l,m grid
-FOV = np.deg2rad(10)
+FOV = np.deg2rad(40)
 ls = np.linspace(-FOV/2, FOV/2, NPIX_SIDE)
 ms = np.copy(ls)
 lm_pixel_half = np.diff(ls)[0]/2.
@@ -183,6 +192,22 @@ Sky_counts[unique_grid_pos[:, 1], unique_grid_pos[:, 0]] = unique_grid_pos_count
 # Flatten sky for matrix computation
 Sky_vec = Sky.flatten()
 
+if opts.beam:
+    # Get beam on sky grid
+    thetas = np.sqrt(ls_vec**2 + ms_vec**2)
+    thetas *= FOV/(2.*thetas.max())
+    phis = np.arctan2(np.copy(ms_vec), np.copy(ls_vec))
+    phis[phis < 0.0] += 2*np.pi
+
+    # Get beam on my (l, m) grid
+    beam_E = fits.getdata(opts.beam, extname='BEAM_E')
+    beam_freqs = fits.getdata(opts.beam, extname='FREQS')
+    beam_grid = np.zeros((nfreqs, thetas.size))
+
+    # Get beam on grid
+    for i, freq in enumerate(freqs):
+        freq_ind = np.where(beam_freqs == freq)[0][0]
+        beam_grid[i] = hp.get_interp_val(beam_E[:, freq_ind], thetas, phis)
 
 
 ## ----------------------------------- Construct Visibilities ----------------------------------- ##
@@ -203,11 +228,28 @@ Vs = np.zeros((nfreqs, NPIX), dtype=complex)
 for i in range(nfreqs):
     for j in range(us_vec.size):
         if opts.grid_pos:
-            Vs[i, j] = np.sum(Vs_func(us_vec[j], ls[grid_pos[:, 0]],
-                                                   vs_vec[j], ms[grid_pos[:, 1]]))
+            if opts.beam:
+                Vs[i, j] = beam_grid[i, j]*np.sum(Vs_func(us_vec[j],
+                                                       ls[grid_pos[:, 0]],
+                                                       vs_vec[j],
+                                                       ms[grid_pos[:, 1]]))
+            else:
+                Vs[i, j] = np.sum(Vs_func(us_vec[j],
+                                                       ls[grid_pos[:, 0]],
+                                                       vs_vec[j],
+                                                       ms[grid_pos[:, 1]]))
         else:
-            Vs[i, j] = np.sum(Vs_func(us_vec[j], true_pos[:, 0],
-                                                   vs_vec[j], true_pos[:, 1]))
+            if opts.beam:
+                Vs[i, j] = beam_grid[i, j]*np.sum(Vs_func(us_vec[j],
+                                                                              true_pos[:, 0],
+                                                                              vs_vec[j],
+                                                                              true_pos[:, 1]))
+            else:
+                Vs[i, j] = np.sum(Vs_func(us_vec[j],
+                                                       true_pos[:, 0],
+                                                       vs_vec[j],
+                                                       true_pos[:, 1]))
+
 Vs = Vs.reshape((nfreqs, NPIX_SIDE, NPIX_SIDE))
 
 ## ---------------------------------- Construct MaxL Sky ---------------------------------- ##
@@ -230,7 +272,7 @@ for i in range(nfreqs):
     Vs_flat = Vs[i].flatten()
 
     half_ind = int(us_vec.size/2.) + 1
-    for j,[u,v] in enumerate(np.stack((us_vec, vs_vec), axis=1)[:half_ind]):
+    for j, [u,v] in enumerate(np.stack((us_vec, vs_vec), axis=1)[:half_ind]):
         neg_ind = np.where(np.logical_and(us_vec == -u, vs_vec == -v))[0][0]
         d_flat[[j, neg_ind]] += (np.random.normal(0, opts.rms, 1)
                                           +
