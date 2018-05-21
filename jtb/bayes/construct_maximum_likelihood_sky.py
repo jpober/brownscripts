@@ -294,6 +294,8 @@ for i in range(nfreqs):
     # Generate visibilities from maximum liklihood solution
     Vs_maxL[i] = np.dot(DFT, a[i].flatten()).reshape((NPIX_SIDE, NPIX_SIDE))
 
+    del(DFT, inv_part, right_part)
+
 print 'For loop finished...'
 
 # # Fit for RMS of residuals
