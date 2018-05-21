@@ -70,6 +70,10 @@ o.add_option('--beam',
     #                 'NicolasFagnoniBeams/healpix_beam.fits'),
     help = 'Healpix compatible fits file containing the primary beam.')
 
+o.add_option('--write',
+    action = 'store_true',
+    help = 'If passed, write fitted RMS and associated errors to a .npy file.')
+
 opts,args = o.parse_args(sys.argv[1:])
 
 
