@@ -4,8 +4,6 @@ import matplotlib.gridspec as gridspec
 import time, optparse, sys, os
 
 from astropy.io import fits
-from mpl_toolkits.axes_grid1.axes_divider import make_axes_locatable
-from matplotlib.pyplot import *
 from scipy.optimize import curve_fit
 
 
@@ -332,6 +330,9 @@ if opts.write:
 
 
 ## ---------------------------------- Plotting ---------------------------------- ##
+from mpl_toolkits.axes_grid1.axes_divider import make_axes_locatable
+from matplotlib.pyplot import *
+
 freq_ind = 0
 fontsize = 14
 extent_uv = [us_grid.min() - uv_pixel_half, us_grid.max() + uv_pixel_half,
