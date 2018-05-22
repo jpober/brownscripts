@@ -344,6 +344,8 @@ if opts.write:
     out_dic['maxL_vis'] = Vs_maxL
     out_dic['input_rms'] = opts.rms
     out_dic['freqs'] = freqs
+    if opts.beam:
+        out_dic['beam_file'] = opts.beam
     np.save(filename + '.npy', out_dic)
 
     sys.exit()
