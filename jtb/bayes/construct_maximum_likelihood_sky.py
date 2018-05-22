@@ -86,7 +86,7 @@ def Gaussian(x, a, x0, sigma):
 
 # Constants
 C = 3.e8 # meters per second
-NPIX_SIDE = 63 # 125 for 40deg FOV, 31 for 10deg FOV
+NPIX_SIDE = 125 # 125 for 40deg FOV, 31 for 10deg FOV, 63 for 20deg FOV
 NPIX = NPIX_SIDE**2
 
 # Get frequency(ies) or frequency range
@@ -107,7 +107,7 @@ nfreqs = len(freqs)
 print 'Constructing sky...'
 
 # Construct l,m grid
-FOV = np.deg2rad(20)
+FOV = np.deg2rad(40)
 ls = np.linspace(-FOV/2, FOV/2, NPIX_SIDE)
 ms = np.copy(ls)
 lm_pixel_half = np.diff(ls)[0]/2.
@@ -323,14 +323,20 @@ if opts.write:
     # Write fitted RMS data
     if os.path.exists('./sim_vis/'):
         if nfreqs > 1:
-            filename = 'sim_vis/maxL_visdata_%sMHz_%sMHz' %(opts.freq, opts.freq_res)
+            filename = 'sim_vis/maxL_visdata_%sMHz_%sMHz_%.0fdfov' %(opts.freq,
+                                                                                                             opts.freq_res,
+                                                                                                             np.rad2deg(FOV))
         else:
-            filename = 'sim_vis/maxL_visdata_%sMHz' %opts.freq
+            filename = 'sim_vis/maxL_visdata_%sMHz_%.0fdfov' %(opts.freq,
+                                                                                                  np.rad2deg(FOV))
     else:
         if nfreqs > 1:
-            filename = 'maxL_visdata_%sMHz_%sMHz' %(opts.freq, opts.freq_res)
+            filename = 'maxL_visdata_%sMHz_%sMHz_%.0fdfov' %(opts.freq,
+                                                                                                  opts.freq_res,
+                                                                                                  np.rad2deg(FOV))
         else:
-            filename = 'maxL_visdata_%sMHz' %opts.freq
+            filename = 'maxL_visdata_%sMHz_%.0fdfov' %(opts.freq,
+                                                                                      np.rad2deg(FOV))
     print 'Writing ' + filename + '.npy ...\n'
     out_dic = {}
     out_dic['vis'] = Vs
