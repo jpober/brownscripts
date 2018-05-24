@@ -1,7 +1,9 @@
 import numpy as np
+import healpy as hp
 import matplotlib.gridspec as gridspec
 import time, optparse, sys, os
 
+from astropy.io import fits
 from scipy.optimize import curve_fit
 
 
@@ -44,14 +46,31 @@ o.add_option('--write',
     action = 'store_true',
     help = 'If passed, write fitted RMS and associated errors to a .npy file.')
 
-o.add_option('--data',
+o.add_option('--rms_data',
     type = str,
     help = 'Path to file with generated fitted RMS data.')
+
+o.add_option('--beam',
+    type = str,
+    # default = ('/Users/jburba/hera_things/hera-team/HERA-Beams/'
+    #                 +
+    #                 'NicolasFagnoniBeams/healpix_beam.fits'),
+    help = 'Healpix compatible fits file containing the primary beam.')
+
+o.add_option('--npix_side',
+    type = int,
+    default = 31,
+    help = 'Number of pixels on a side for the lm and uv grids.')
+
+o.add_option('--fov',
+    type = float,
+    default = 10,
+    help = 'Field of view in degrees.')
 
 opts,args = o.parse_args(sys.argv[1:])
 
 # If no data passed, create fitted RMS data
-if not opts.data:
+if not opts.rms_data:
 
     if opts.m_walk:
         opts.l_walk = False
@@ -68,11 +87,11 @@ if not opts.data:
 
     # Constants
     C = 3.e8 # meters per second
-    NPIX_SIDE = 31
-    NPIX = NPIX_SIDE**2
+    npix_side = opts.npix_side
+    npix = npix_side**2
 
     # Noise injection params
-    N_inv = np.eye(NPIX)/opts.rms**2
+    N_inv = np.eye(npix)/opts.rms**2
 
 
     # Get frequency(ies) or frequency range
@@ -92,8 +111,8 @@ if not opts.data:
     ## -------------------------------------- Construct sky -------------------------------------- ##
 
     # Construct l,m grid
-    FOV = np.deg2rad(10)
-    ls = np.linspace(-FOV/2, FOV/2, NPIX_SIDE)
+    FOV = np.deg2rad(opts.fov)
+    ls = np.linspace(-FOV/2, FOV/2, npix_side)
     ms = np.copy(ls)
     ls_vec, ms_vec = np.zeros(0), np.zeros(0)
     for m in ms:
@@ -121,6 +140,23 @@ if not opts.data:
             m_off = int(mid_m*opts.m_offset)
         else:
             m_off = 0
+
+    if opts.beam:
+        # Get beam on sky grid
+        thetas = np.sqrt(ls_vec**2 + ms_vec**2)
+        thetas *= FOV/(2.*thetas.max())
+        phis = np.arctan2(np.copy(ms_vec), np.copy(ls_vec))
+        phis[phis < 0.0] += 2*np.pi
+
+        # Get beam on my (l, m) grid
+        beam_E = fits.getdata(opts.beam, extname='BEAM_E')
+        beam_freqs = fits.getdata(opts.beam, extname='FREQS')
+        beam_grid = np.zeros((nfreqs, thetas.size))
+
+        # Get beam on grid
+        for i, freq in enumerate(freqs):
+            freq_ind = np.where(beam_freqs == freq)[0][0]
+            beam_grid[i] = hp.get_interp_val(beam_E[:, freq_ind], thetas, phis)
 
 
     ## ----------------------------------- Construct Visibilities ----------------------------------- ##
@@ -153,12 +189,16 @@ if not opts.data:
             true_pos[offset_ind, 1] = angular_offset
 
         # Use analytical solution to get visibilities using true positions
-        Vs = np.zeros((nfreqs, NPIX), dtype=complex)
+        Vs = np.zeros((nfreqs, npix), dtype=complex)
         for i in range(nfreqs):
             for j in range(us_vec.size):
-                Vs[i, j] = np.sum(Vs_func(us_vec[j], true_pos[offset_ind, 0],
-                                                       vs_vec[j], true_pos[offset_ind, 1]))
-        Vs = Vs.reshape((nfreqs, NPIX_SIDE, NPIX_SIDE))
+                if opts.beam:
+                    Vs[i, j] = beam_grid[i, j]*np.sum(Vs_func(us_vec[j], true_pos[offset_ind, 0],
+                                                                                  vs_vec[j], true_pos[offset_ind, 1]))
+                else:
+                    Vs[i, j] = np.sum(Vs_func(us_vec[j], true_pos[offset_ind, 0],
+                                                           vs_vec[j], true_pos[offset_ind, 1]))
+        Vs = Vs.reshape((nfreqs, npix_side, npix_side))
 
         # Construct solution using analytic solution for maximum likelihood
         # Assumes a Gaussian log likelihood function
@@ -180,19 +220,32 @@ if not opts.data:
                                                   +
                                                   1j*np.random.normal(0, opts.rms, 1))
 
-            d[freq_ind] = d_flat.reshape([NPIX_SIDE]*2)
+            d[freq_ind] = d_flat.reshape([npix_side]*2)
 
             DFT = np.exp(-1j*2*np.pi*(np.outer(us_vec, ls_vec)
                                 +
                                 np.outer(vs_vec, ms_vec)))
-            inv_part = np.linalg.inv(np.dot(np.dot(DFT.conj().T, N_inv), DFT))
-            right_part = np.dot(np.dot(DFT.conj().T, N_inv), d[freq_ind].flatten())
+
+            if opts.beam:
+                P = np.diag(beam_grid[i])
+                inv_part = np.linalg.inv(np.dot(np.dot(np.dot(np.dot(P, DFT.conj().T), N_inv), DFT), P))
+                right_part = np.dot(np.dot(np.dot(P, DFT.conj().T), N_inv), d[i].flatten())
+            else:
+                inv_part = np.linalg.inv(np.dot(np.dot(DFT.conj().T, N_inv), DFT))
+                right_part = np.dot(np.dot(DFT.conj().T, N_inv), d[i].flatten())
 
             # Maximum likelihood solution for the sky
-            a[freq_ind] = np.dot(inv_part, right_part).reshape((NPIX_SIDE, NPIX_SIDE))
+            a[freq_ind] = np.dot(inv_part, right_part).reshape((npix_side, npix_side))
 
             # Generate visibilities from maximum liklihood solution
-            Vs_maxL[freq_ind] = np.dot(DFT, a[freq_ind].flatten()).reshape((NPIX_SIDE, NPIX_SIDE))
+            if opts.beam:
+                Vs_maxL[i] = np.dot(np.dot(DFT, P),  a[i].flatten()).reshape((npix_side, npix_side))
+
+                del(DFT, inv_part, right_part, P)
+            else:
+                Vs_maxL[i] = np.dot(DFT, a[i].flatten()).reshape((npix_side, npix_side))
+
+                del(DFT, inv_part, right_part)
 
             # Compute fitted RMS
             diff_data = np.abs(Vs[freq_ind]) - np.abs(Vs_maxL[freq_ind])
@@ -212,32 +265,43 @@ if not opts.data:
         # Write fitted RMS data
         if os.path.exists('./sim_vis/'):
             if nfreqs > 1:
-                filename = 'sim_vis/maxL_fitted_RMS_%sMHz_%sMHz' %(opts.freq, opts.freq_res)
+                filename = 'sim_vis/maxL_fitted_RMS_%sMHz_%sMHz_%.0fdfov' %(opts.freq,
+                                                                                                                    opts.freq_res,
+                                                                                                                    np.rad2deg(FOV))
             else:
-                filename = 'sim_vis/maxL_fitted_RMS_%sMHz' %opts.freq
+                filename = 'sim_vis/maxL_fitted_RMS_%sMHz_%.0fdfov' %(opts.freq,
+                                                                                                        np.rad2deg(FOV))
         else:
             if nfreqs > 1:
-                filename = 'maxL_fitted_RMS_%sMHz_%sMHz' %(opts.freq, opts.freq_res)
+                filename = 'maxL_fitted_RMS_%sMHz_%sMHz_%.0fdfov' %(opts.freq,
+                                                                                                        opts.freq_res,
+                                                                                                        np.rad2deg(FOV))
             else:
-                filename = 'maxL_fitted_RMS_%sMHz' %opts.freq
+                filename = 'maxL_fitted_RMS_%sMHz_%.0fdfov' %(opts.freq,
+                                                                                            np.rad2deg(FOV))
+
         print 'Writing ' + filename + '.npy ...\n'
         out_dic = {}
         out_dic['fit_rms'] = fitted_RMS
         out_dic['fit_rms_err'] = fitted_RMS_err
         out_dic['input_rms'] = opts.rms
         out_dic['angular_offsets'] = angular_offsets
+        if opts.beam:
+            out_dic['beam'] = opts.beam
         np.save(filename + '.npy', out_dic)
 
         sys.exit()
 
+
 # If data already exists, load it in to plot it
 else:
-    data_dic = np.load(opts.data).item()
+    data_dic = np.load(opts.rms_data).item()
     fitted_RMS = data_dic['fit_rms']
     fitted_RMS_err = data_dic['fit_rms_err']
     angular_offsets = data_dic['angular_offsets']
     opts.rms = data_dic['input_rms']
     nfreqs = fitted_RMS.shape[0]
+
 
 # Plotting
 from matplotlib.pyplot import *

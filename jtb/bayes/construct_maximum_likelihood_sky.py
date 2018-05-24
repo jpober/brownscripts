@@ -68,6 +68,16 @@ o.add_option('--beam',
     #                 'NicolasFagnoniBeams/healpix_beam.fits'),
     help = 'Healpix compatible fits file containing the primary beam.')
 
+o.add_option('--npix_side',
+    type = int,
+    default = 31,
+    help = 'Number of pixels on a side for the lm and uv grids.')
+
+o.add_option('--fov',
+    type = float,
+    default = 10,
+    help = 'Field of view in degrees.')
+
 o.add_option('--write',
     action = 'store_true',
     help = 'If passed, write fitted RMS and associated errors to a .npy file.')
@@ -86,8 +96,8 @@ def Gaussian(x, a, x0, sigma):
 
 # Constants
 C = 3.e8 # meters per second
-NPIX_SIDE = 125 # 125 for 40deg FOV, 31 for 10deg FOV, 63 for 20deg FOV
-NPIX = NPIX_SIDE**2
+npix_side = opts.npix_side # 125 for 40deg FOV, 31 for 10deg FOV, 63 for 20deg FOV
+npix = npix_side**2
 
 # Get frequency(ies) or frequency range
 if ',' in opts.freq:
@@ -107,8 +117,8 @@ nfreqs = len(freqs)
 print 'Constructing sky...'
 
 # Construct l,m grid
-FOV = np.deg2rad(40)
-ls = np.linspace(-FOV/2, FOV/2, NPIX_SIDE)
+FOV = np.deg2rad(opts.fov)
+ls = np.linspace(-FOV/2, FOV/2, npix_side)
 ms = np.copy(ls)
 lm_pixel_half = np.diff(ls)[0]/2.
 ls_vec, ms_vec = np.zeros(0), np.zeros(0)
@@ -178,8 +188,8 @@ else:
                                                                                             high=lm_pixel_half)
 
 # Make sky matrix
-Sky = np.zeros((nfreqs, NPIX_SIDE, NPIX_SIDE))
-Sky_counts = np.zeros((NPIX_SIDE, NPIX_SIDE))
+Sky = np.zeros((nfreqs, npix_side, npix_side))
+Sky_counts = np.zeros((npix_side, npix_side))
 for i, freq in enumerate(freqs):
     if not opts.spec_index == 0.0:
         Sky[i, grid_pos[:, 1], grid_pos[:, 0]] += 1./(1 + (freq - freqs.min())**opts.spec_index)
@@ -226,7 +236,7 @@ for v in vs_grid:
 uv_pixel_half = np.mean(np.diff(us_grid))/2.
 
 # Use analytical solution to get visibilities using true positions
-Vs = np.zeros((nfreqs, NPIX), dtype=complex)
+Vs = np.zeros((nfreqs, npix), dtype=complex)
 for i in range(nfreqs):
     for j in range(us_vec.size):
         if opts.grid_pos:
@@ -252,7 +262,7 @@ for i in range(nfreqs):
                                                        vs_vec[j],
                                                        true_pos[:, 1]))
 
-Vs = Vs.reshape((nfreqs, NPIX_SIDE, NPIX_SIDE))
+Vs = Vs.reshape((nfreqs, npix_side, npix_side))
 
 ## ---------------------------------- Construct MaxL Sky ---------------------------------- ##
 print 'Constructing maximum likelihood sky...'
@@ -261,7 +271,7 @@ print 'Constructing maximum likelihood sky...'
 # Requires noise injection into data (visibilities above)
 a = np.zeros_like(Vs)
 Vs_maxL = np.zeros_like(a)
-N_inv = np.eye(NPIX)/opts.rms**2
+N_inv = np.eye(npix)/opts.rms**2
 
 # Create data from visibilities with injected Gaussian noise
 d = np.copy(Vs)
@@ -280,7 +290,7 @@ for i in range(nfreqs):
                                           +
                                           1j*np.random.normal(0, opts.rms, 1))
 
-    d[i] = d_flat.reshape([NPIX_SIDE]*2)
+    d[i] = d_flat.reshape([npix_side]*2)
 
     DFT = np.exp(-1j*2*np.pi*(np.outer(us_vec, ls_vec)
                         +
@@ -295,15 +305,15 @@ for i in range(nfreqs):
         right_part = np.dot(np.dot(DFT.conj().T, N_inv), d[i].flatten())
 
     # Maximum likelihood solution for the sky
-    a[i] = np.dot(inv_part, right_part).reshape((NPIX_SIDE, NPIX_SIDE))
+    a[i] = np.dot(inv_part, right_part).reshape((npix_side, npix_side))
 
     # Generate visibilities from maximum liklihood solution
     if opts.beam:
-        Vs_maxL[i] = np.dot(np.dot(DFT, P),  a[i].flatten()).reshape((NPIX_SIDE, NPIX_SIDE))
+        Vs_maxL[i] = np.dot(np.dot(DFT, P),  a[i].flatten()).reshape((npix_side, npix_side))
 
         del(DFT, inv_part, right_part, P)
     else:
-        Vs_maxL[i] = np.dot(DFT, a[i].flatten()).reshape((NPIX_SIDE, NPIX_SIDE))
+        Vs_maxL[i] = np.dot(DFT, a[i].flatten()).reshape((npix_side, npix_side))
 
         del(DFT, inv_part, right_part)
 
@@ -372,7 +382,7 @@ skyax.scatter(true_pos[:, 0], true_pos[:, 1], marker='.', c='r', alpha=0.5, s=25
 if opts.log_scale:
     if opts.beam:
         skyim = skyax.imshow(np.log10(Sky[freq_ind]*Sky_counts*
-                                          beam_grid[freq_ind].reshape((NPIX_SIDE, NPIX_SIDE))),
+                                          beam_grid[freq_ind].reshape((npix_side, npix_side))),
                                           extent=extent_lm,
                                           origin='lower')
         skyax.set_title('Log Sky*Beam, %.1fMHz' %freqs[freq_ind], fontsize=fontsize)
@@ -384,7 +394,7 @@ if opts.log_scale:
 else:
     if opts.beam:
          skyim = skyax.imshow((Sky[freq_ind]*Sky_counts*
-                                           beam_grid[freq_ind].reshape((NPIX_SIDE, NPIX_SIDE))),
+                                           beam_grid[freq_ind].reshape((npix_side, npix_side))),
                                            extent=extent_lm,
                                            origin='lower')
          skyax.set_title('Sky, %.1fMHz' %freqs[freq_ind], fontsize=fontsize)
@@ -434,7 +444,7 @@ anskyax = fig.add_subplot(gs[1,0])
 if opts.log_scale:
     if opts.beam:
         anskyim = anskyax.imshow(np.log10(np.real(a[freq_ind])*
-                                                 beam_grid[freq_ind].reshape((NPIX_SIDE, NPIX_SIDE))),
+                                                 beam_grid[freq_ind].reshape((npix_side, npix_side))),
                                                  extent=extent_lm,
                                                  origin='lower')
         anskyax.set_title('Log MaxL Sky, %.1fMHz' %freqs[freq_ind], fontsize=fontsize)
@@ -446,7 +456,7 @@ if opts.log_scale:
 else:
     if opts.beam:
         anskyim = anskyax.imshow((np.real(a[freq_ind])*
-                                                 beam_grid[freq_ind].reshape((NPIX_SIDE, NPIX_SIDE))),
+                                                 beam_grid[freq_ind].reshape((npix_side, npix_side))),
                                                  extent=extent_lm,
                                                  origin='lower')
         anskyax.set_title('MaxL Sky, %.1fMHz' %freqs[freq_ind], fontsize=fontsize)
