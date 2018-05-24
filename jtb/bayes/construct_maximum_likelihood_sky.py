@@ -187,6 +187,9 @@ else:
         true_pos[i, 1] = ms[grid_pos[i, 1]] + np.random.uniform(low=-lm_pixel_half,
                                                                                             high=lm_pixel_half)
 
+pos_vec = np.where(np.logical_and(ls_vec == ls[grid_pos[:, 1]],
+                                                    ms_vec == ms[grid_pos[:, 0]]))[0][0]
+
 # Make sky matrix
 Sky = np.zeros((nfreqs, npix_side, npix_side))
 Sky_counts = np.zeros((npix_side, npix_side))
@@ -241,7 +244,7 @@ for i in range(nfreqs):
     for j in range(us_vec.size):
         if opts.grid_pos:
             if opts.beam:
-                Vs[i, j] = beam_grid[i, j]*np.sum(Vs_func(us_vec[j],
+                Vs[i, j] = beam_grid[i, pos_vec]*np.sum(Vs_func(us_vec[j],
                                                        ls[grid_pos[:, 0]],
                                                        vs_vec[j],
                                                        ms[grid_pos[:, 1]]))
@@ -252,7 +255,7 @@ for i in range(nfreqs):
                                                        ms[grid_pos[:, 1]]))
         else:
             if opts.beam:
-                Vs[i, j] = beam_grid[i, j]*np.sum(Vs_func(us_vec[j],
+                Vs[i, j] = beam_grid[i, pos_vec]*np.sum(Vs_func(us_vec[j],
                                                                               true_pos[:, 0],
                                                                               vs_vec[j],
                                                                               true_pos[:, 1]))
@@ -492,14 +495,14 @@ if opts.log_scale:
     diffim = diffax.imshow(np.log10(diff_data[freq_ind]),
                                       extent=extent_uv,
                                       origin='lower')
-    diffax.set_title('Log(|Vs| - |MaxL Vs|), %.1fMHz\nFitted RMS: %.2e'
-                          %(freqs[freq_ind], fit_params[2]), fontsize=fontsize)
+    diffax.set_title('Log(|Vs| - |MaxL Vs|), %.1fMHz\nFitted RMS: %.2e\nMean: %f'
+                          %(freqs[freq_ind], fit_params[2], fit_params[1]), fontsize=fontsize)
 else:
     diffim = diffax.imshow(diff_data[freq_ind],
                                       extent=extent_uv,
                                       origin='lower')
-    diffax.set_title('|Vs| - |MaxL Vs|, %.1fMHz\nFitted RMS: %.2e'
-                          %(freqs[freq_ind], fit_params[2]), fontsize=fontsize)
+    diffax.set_title('|Vs| - |MaxL Vs|, %.1fMHz\nFitted RMS: %.2e\nMean: %f'
+                          %(freqs[freq_ind], fit_params[2], fit_params[1]), fontsize=fontsize)
 diffax.set_xlabel('u [m]')
 diffax.set_ylabel('v [m]')
 
