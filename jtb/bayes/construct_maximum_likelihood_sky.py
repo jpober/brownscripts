@@ -349,6 +349,7 @@ if opts.write:
                                                                                       np.rad2deg(FOV))
     print 'Writing ' + filename + '.npy ...\n'
     out_dic = {}
+    out_dic['sky'] = Sky[freq_ind]*Sky_counts
     out_dic['vis'] = Vs
     out_dic['maxL_sky'] = a
     out_dic['maxL_vis'] = Vs_maxL
