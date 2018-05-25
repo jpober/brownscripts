@@ -143,20 +143,20 @@ true_pos = np.zeros((nsources, 2))
 
 if opts.zenith_source:
     for i in range(grid_pos.shape[0]):
-        grid_pos[i, 0] = mid_l
-        grid_pos[i, 1] = mid_m
-        true_pos[i, 0] = ls[grid_pos[i, 0]] + np.random.uniform(low=-lm_pixel_half,
+        grid_pos[i, 0] = mid_m
+        grid_pos[i, 1] = mid_l
+        true_pos[i, 0] = ls[grid_pos[i, 1]] + np.random.uniform(low=-lm_pixel_half,
                                                                                           high=lm_pixel_half)
-        true_pos[i, 1] = ms[grid_pos[i, 1]] + np.random.uniform(low=-lm_pixel_half,
+        true_pos[i, 1] = ms[grid_pos[i, 0]] + np.random.uniform(low=-lm_pixel_half,
                                                                                             high=lm_pixel_half)
 
 elif opts.horizon_source:
     for i in range(grid_pos.shape[0]):
-        grid_pos[i, 0] = mid_l
-        grid_pos[i, 1] = 0
-        true_pos[i, 0] = ls[grid_pos[i, 0]] + np.random.uniform(low=-lm_pixel_half,
+        grid_pos[i, 0] = 0
+        grid_pos[i, 1] = mid_l
+        true_pos[i, 0] = ls[grid_pos[i, 1]] + np.random.uniform(low=-lm_pixel_half,
                                                                                           high=lm_pixel_half)
-        true_pos[i, 1] = ms[grid_pos[i, 1]] + np.random.uniform(low=0,
+        true_pos[i, 1] = ms[grid_pos[i, 0]] + np.random.uniform(low=0,
                                                                                             high=lm_pixel_half)
 
 elif opts.l_offset or opts.m_offset:
@@ -171,38 +171,45 @@ elif opts.l_offset or opts.m_offset:
         m_off = 0
 
     for i in range(grid_pos.shape[0]):
-        grid_pos[i, 0] = mid_l + l_off
-        grid_pos[i, 1] = mid_m + m_off
-        true_pos[i, 0] = ls[grid_pos[i, 0]] + np.random.uniform(low=-lm_pixel_half,
+        grid_pos[i, 0] = mid_m + m_off
+        grid_pos[i, 1] = mid_l + l_off
+        true_pos[i, 0] = ls[grid_pos[i, 1]] + np.random.uniform(low=-lm_pixel_half,
                                                                                           high=lm_pixel_half)
-        true_pos[i, 1] = ms[grid_pos[i, 1]] + np.random.uniform(low=-lm_pixel_half,
+        true_pos[i, 1] = ms[grid_pos[i, 0]] + np.random.uniform(low=-lm_pixel_half,
                                                                                             high=lm_pixel_half)
 
 else:
     for i in range(grid_pos.shape[0]):
-        grid_pos[i, 0] = np.random.randint(0, ls.shape[0])
-        grid_pos[i, 1] = np.random.randint(0, ms.shape[0])
-        true_pos[i, 0] = ls[grid_pos[i, 0]] + np.random.uniform(low=-lm_pixel_half,
+        grid_pos[i, 0] = np.random.randint(0, ms.shape[0])
+        grid_pos[i, 1] = np.random.randint(0, ls.shape[0])
+        true_pos[i, 0] = ls[grid_pos[i, 1]] + np.random.uniform(low=-lm_pixel_half,
                                                                                           high=lm_pixel_half)
-        true_pos[i, 1] = ms[grid_pos[i, 1]] + np.random.uniform(low=-lm_pixel_half,
+        true_pos[i, 1] = ms[grid_pos[i, 0]] + np.random.uniform(low=-lm_pixel_half,
                                                                                             high=lm_pixel_half)
 
-pos_vec = np.where(np.logical_and(ls_vec == ls[grid_pos[:, 1]],
-                                                    ms_vec == ms[grid_pos[:, 0]]))[0][0]
+if opts.beam:
+    if nsources == 1:
+        pos_vec = np.where(np.logical_and(ls_vec == ls[grid_pos[:, 1]],
+                                                            ms_vec == ms[grid_pos[:, 0]]))[0][0]
+    else:
+        pos_vec = np.zeros(0, dtype=int)
+        for (l, m) in np.stack([ls[grid_pos[:, 1]], ms[grid_pos[:, 0]]], axis=1):
+            pos_vec = np.append(pos_vec, np.where(np.logical_and(ls_vec == l,
+                                                                                              ms_vec == m))[0][0])
 
 # Make sky matrix
 Sky = np.zeros((nfreqs, npix_side, npix_side))
 Sky_counts = np.zeros((npix_side, npix_side))
 for i, freq in enumerate(freqs):
     if not opts.spec_index == 0.0:
-        Sky[i, grid_pos[:, 1], grid_pos[:, 0]] += 1./(1 + (freq - freqs.min())**opts.spec_index)
+        Sky[i, grid_pos[:, 0], grid_pos[:, 1]] += 1./(1 + (freq - freqs.min())**opts.spec_index)
     else:
-        Sky[i, grid_pos[:, 1], grid_pos[:, 0]] += 1.
+        Sky[i, grid_pos[:, 0], grid_pos[:, 1]] += 1.
 
 unique_grid_pos, unique_grid_pos_counts = np.unique(grid_pos,
                                                                                  axis=0,
                                                                                  return_counts=True)
-Sky_counts[unique_grid_pos[:, 1], unique_grid_pos[:, 0]] = unique_grid_pos_counts
+Sky_counts[unique_grid_pos[:, 0], unique_grid_pos[:, 1]] = unique_grid_pos_counts
 
 # Flatten sky for matrix computation
 Sky_vec = Sky.flatten()
@@ -244,18 +251,18 @@ for i in range(nfreqs):
     for j in range(us_vec.size):
         if opts.grid_pos:
             if opts.beam:
-                Vs[i, j] = beam_grid[i, pos_vec]*np.sum(Vs_func(us_vec[j],
-                                                       ls[grid_pos[:, 0]],
+                Vs[i, j] = np.sum(beam_grid[i, pos_vec]*Vs_func(us_vec[j],
+                                                       ls[grid_pos[:, 1]],
                                                        vs_vec[j],
-                                                       ms[grid_pos[:, 1]]))
+                                                       ms[grid_pos[:, 0]]))
             else:
                 Vs[i, j] = np.sum(Vs_func(us_vec[j],
-                                                       ls[grid_pos[:, 0]],
+                                                       ls[grid_pos[:, 1]],
                                                        vs_vec[j],
-                                                       ms[grid_pos[:, 1]]))
+                                                       ms[grid_pos[:, 0]]))
         else:
             if opts.beam:
-                Vs[i, j] = beam_grid[i, pos_vec]*np.sum(Vs_func(us_vec[j],
+                Vs[i, j] = np.sum(beam_grid[i, pos_vec]*Vs_func(us_vec[j],
                                                                               true_pos[:, 0],
                                                                               vs_vec[j],
                                                                               true_pos[:, 1]))
@@ -495,13 +502,13 @@ if opts.log_scale:
     diffim = diffax.imshow(np.log10(diff_data[freq_ind]),
                                       extent=extent_uv,
                                       origin='lower')
-    diffax.set_title('Log(|Vs| - |MaxL Vs|), %.1fMHz\nFitted RMS: %.2e\nMean: %f'
+    diffax.set_title('Log(|Vs| - |MaxL Vs|), %.1fMHz\nFitted RMS: %.2e\nMean: %.2e'
                           %(freqs[freq_ind], fit_params[2], fit_params[1]), fontsize=fontsize)
 else:
     diffim = diffax.imshow(diff_data[freq_ind],
                                       extent=extent_uv,
                                       origin='lower')
-    diffax.set_title('|Vs| - |MaxL Vs|, %.1fMHz\nFitted RMS: %.2e\nMean: %f'
+    diffax.set_title('|Vs| - |MaxL Vs|, %.1fMHz\nFitted RMS: %.2e\nMean: %.2e'
                           %(freqs[freq_ind], fit_params[2], fit_params[1]), fontsize=fontsize)
 diffax.set_xlabel('u [m]')
 diffax.set_ylabel('v [m]')
