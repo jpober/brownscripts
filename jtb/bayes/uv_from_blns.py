@@ -145,7 +145,7 @@ if opts.write:
     print 'Writing ' + filename + ' ...\n'
 
     # Only keep unique (u,v), i.e. assume perfect degeneracy
-    np.save(filename, uvws)
+    np.save(filename, uvws_meters)
 
 if opts.plot:
     # Plotting
