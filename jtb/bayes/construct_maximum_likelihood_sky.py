@@ -102,7 +102,8 @@ def Gaussian(x, a, x0, sigma):
     return a*np.exp(-(x-x0)**2/(2*sigma**2))
 
 def twoD_Gaussian((x, y), amp, x0, y0, sigma_x, sigma_y):
-    # See https://stackoverflow.com/questions/21566379/fitting-a-2d-gaussian-function-using-scipy-optimize-curve-fit-valueerror-and-m
+    # See https://stackoverflow.com/questions/21566379/
+    # fitting-a-2d-gaussian-function-using-scipy-optimize-curve-fit-valueerror-and-m
     # for example of 2d Guassian fitting using scipy.optimize.curve_fit
     return (amp*np.exp(-(x-x0)**2/(2*sigma_x**2) - (y-y0)**2/(2*sigma_y**2))).ravel()
 
@@ -348,12 +349,11 @@ for i in range(nfreqs):
     if opts.beam:
         if opts.fit_beam:
             P = np.diag(fit_beam_grid[i])
-            inv_part = np.linalg.inv(np.dot(np.dot(np.dot(np.dot(P, DFT.conj().T), N_inv), DFT), P))
-            right_part = np.dot(np.dot(np.dot(P, DFT.conj().T), N_inv), d[i].flatten())
         else:
             P = np.diag(beam_grid[i])
-            inv_part = np.linalg.inv(np.dot(np.dot(np.dot(np.dot(P, DFT.conj().T), N_inv), DFT), P))
-            right_part = np.dot(np.dot(np.dot(P, DFT.conj().T), N_inv), d[i].flatten())
+        DftP = np.dot(DFT, P)
+        inv_part = np.linalg.inv(np.dot(np.dot(DftP.conj().T, N_inv), DftP))
+        right_part = np.dot(np.dot(DftP.conj().T, N_inv), d[i].flatten())
     else:
         inv_part = np.linalg.inv(np.dot(np.dot(DFT.conj().T, N_inv), DFT))
         right_part = np.dot(np.dot(DFT.conj().T, N_inv), d[i].flatten())
@@ -411,6 +411,10 @@ if opts.write:
     out_dic['freqs'] = freqs
     if opts.beam:
         out_dic['beam_file'] = opts.beam
+    if opts.fit_beam:
+        out_dic['fitted_beam'] = True
+    else:
+        out_dic['fitted_beam'] = False
     np.save(filename + '.npy', out_dic)
 
     sys.exit()
