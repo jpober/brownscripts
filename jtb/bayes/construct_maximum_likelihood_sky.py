@@ -68,6 +68,10 @@ o.add_option('--beam',
     #                 'NicolasFagnoniBeams/healpix_beam.fits'),
     help = 'Healpix compatible fits file containing the primary beam.')
 
+o.add_option('--fit_beam',
+    action = 'store_true',
+    help = 'If passed, fit a two dimensional Gaussian to the beam for use in the maxL solution.')
+
 o.add_option('--npix_side',
     type = int,
     default = 31,
@@ -82,6 +86,10 @@ o.add_option('--write',
     action = 'store_true',
     help = 'If passed, write fitted RMS and associated errors to a .npy file.')
 
+o.add_option('--uvdata',
+    type = str,
+    help = 'Filename for input uvw binary .npy file.')
+
 opts,args = o.parse_args(sys.argv[1:])
 
 
@@ -92,6 +100,11 @@ def Vs_func(u, l, v, m):
 # Gaussian fitting function
 def Gaussian(x, a, x0, sigma):
     return a*np.exp(-(x-x0)**2/(2*sigma**2))
+
+def twoD_Gaussian((x, y), amp, x0, y0, sigma_x, sigma_y):
+    # See https://stackoverflow.com/questions/21566379/fitting-a-2d-gaussian-function-using-scipy-optimize-curve-fit-valueerror-and-m
+    # for example of 2d Guassian fitting using scipy.optimize.curve_fit
+    return (amp*np.exp(-(x-x0)**2/(2*sigma_x**2) - (y-y0)**2/(2*sigma_y**2))).ravel()
 
 
 # Constants
@@ -226,50 +239,76 @@ if opts.beam:
     beam_freqs = fits.getdata(opts.beam, extname='FREQS')
     beam_grid = np.zeros((nfreqs, thetas.size))
 
+    if opts.fit_beam:
+        L, M = np.meshgrid(ls, ms)
+        fit_beam_grid = np.zeros_like(beam_grid)
+
     # Get beam on grid
     for i, freq in enumerate(freqs):
         freq_ind = np.where(beam_freqs == freq)[0][0]
         beam_grid[i] = hp.get_interp_val(beam_E[:, freq_ind], thetas, phis)
 
+        if opts.fit_beam:
+            initial_guess = (beam_grid[i].max(), 0., 0., 1., 1.)
+            popt, pcov = curve_fit(twoD_Gaussian, (L, M), beam_grid[i], p0=initial_guess)
+            fit_beam_grid[i] = twoD_Gaussian((L, M), *popt)
 
 ## ----------------------------------- Construct Visibilities ----------------------------------- ##
 print 'Constructing visibilities...'
 
-# Construct u,v grid
-us_grid = np.fft.fftshift(np.fft.fftfreq(ls.shape[0], d=np.mean(np.diff(ls))))
-vs_grid = np.fft.fftshift(np.fft.fftfreq(ms.shape[0], d=np.mean(np.diff(ms))))
-us_vec, vs_vec = np.zeros(0), np.zeros(0)
-for v in vs_grid:
-    for u in us_grid:
-        us_vec = np.append(us_vec, u)
-        vs_vec = np.append(vs_vec, v)
-uv_pixel_half = np.mean(np.diff(us_grid))/2.
+if opts.uvdata:
+    # Can we even use a non gridded case for this scenario?
+    # This would produce a maxL sky with shape (nfreqs, nuv)
+    # but what (l, m) do those nuv sky pixels correspond to?
+    print 'Loading uv coverage...'
+    uvws_meters = np.load(opts.uvdata)
+    # uvs only contains unique (u,v) assuming perfect degeneracy
+    # uvs has shape (nfreqs, ntimes, nblns, 3)
+    us_vec = uvws_meters[:, 0]
+    vs_vec = uvws_meters[:, 1]
+    # us_vec and vs_vec have shape (nfreqs, nblns)
+    nvis = us_vec.shape[1]
+else:
+    # Construct u,v grid
+    us_grid = np.fft.fftshift(np.fft.fftfreq(ls.shape[0], d=np.mean(np.diff(ls))))
+    vs_grid = np.fft.fftshift(np.fft.fftfreq(ms.shape[0], d=np.mean(np.diff(ms))))
+    us_vec, vs_vec = np.zeros(0), np.zeros(0)
+    for v in vs_grid:
+        for u in us_grid:
+            us_vec = np.append(us_vec, u)
+            vs_vec = np.append(vs_vec, v)
+    uv_pixel_half = np.mean(np.diff(us_grid))/2.
+    nvis = us_vec.shape[0]
 
 # Use analytical solution to get visibilities using true positions
-Vs = np.zeros((nfreqs, npix), dtype=complex)
+Vs = np.zeros((nfreqs, nvis), dtype=complex)
 for i in range(nfreqs):
     for j in range(us_vec.size):
+        if opts.uvdata:
+            inv_wavelength = freqs[i]*1.e6/C
+        else:
+            inv_wavelength = 1.
         if opts.grid_pos:
             if opts.beam:
-                Vs[i, j] = np.sum(beam_grid[i, pos_vec]*Vs_func(us_vec[j],
+                Vs[i, j] = np.sum(beam_grid[i, pos_vec]*Vs_func(us_vec[j]*inv_wavelength,
                                                        ls[grid_pos[:, 1]],
-                                                       vs_vec[j],
+                                                       vs_vec[j]*inv_wavelength,
                                                        ms[grid_pos[:, 0]]))
             else:
-                Vs[i, j] = np.sum(Vs_func(us_vec[j],
+                Vs[i, j] = np.sum(Vs_func(us_vec[j]*inv_wavelength,
                                                        ls[grid_pos[:, 1]],
-                                                       vs_vec[j],
+                                                       vs_vec[j]*inv_wavelength,
                                                        ms[grid_pos[:, 0]]))
         else:
             if opts.beam:
-                Vs[i, j] = np.sum(beam_grid[i, pos_vec]*Vs_func(us_vec[j],
+                Vs[i, j] = np.sum(beam_grid[i, pos_vec]*Vs_func(us_vec[j]*inv_wavelength,
                                                                               true_pos[:, 0],
-                                                                              vs_vec[j],
+                                                                              vs_vec[j]*inv_wavelength,
                                                                               true_pos[:, 1]))
             else:
-                Vs[i, j] = np.sum(Vs_func(us_vec[j],
+                Vs[i, j] = np.sum(Vs_func(us_vec[j]*inv_wavelength,
                                                        true_pos[:, 0],
-                                                       vs_vec[j],
+                                                       vs_vec[j]*inv_wavelength,
                                                        true_pos[:, 1]))
 
 Vs = Vs.reshape((nfreqs, npix_side, npix_side))
@@ -307,9 +346,14 @@ for i in range(nfreqs):
                         np.outer(vs_vec, ms_vec)))
 
     if opts.beam:
-        P = np.diag(beam_grid[i])
-        inv_part = np.linalg.inv(np.dot(np.dot(np.dot(np.dot(P, DFT.conj().T), N_inv), DFT), P))
-        right_part = np.dot(np.dot(np.dot(P, DFT.conj().T), N_inv), d[i].flatten())
+        if opts.fit_beam:
+            P = np.diag(fit_beam_grid[i])
+            inv_part = np.linalg.inv(np.dot(np.dot(np.dot(np.dot(P, DFT.conj().T), N_inv), DFT), P))
+            right_part = np.dot(np.dot(np.dot(P, DFT.conj().T), N_inv), d[i].flatten())
+        else:
+            P = np.diag(beam_grid[i])
+            inv_part = np.linalg.inv(np.dot(np.dot(np.dot(np.dot(P, DFT.conj().T), N_inv), DFT), P))
+            right_part = np.dot(np.dot(np.dot(P, DFT.conj().T), N_inv), d[i].flatten())
     else:
         inv_part = np.linalg.inv(np.dot(np.dot(DFT.conj().T, N_inv), DFT))
         right_part = np.dot(np.dot(DFT.conj().T, N_inv), d[i].flatten())
@@ -377,9 +421,11 @@ from mpl_toolkits.axes_grid1.axes_divider import make_axes_locatable
 from matplotlib.pyplot import *
 
 freq_ind = 0
+inv_wavelength = 1.e6*freqs[freq_ind]/C
 fontsize = 14
-extent_uv = [us_grid.min() - uv_pixel_half, us_grid.max() + uv_pixel_half,
-                    vs_grid.min() - uv_pixel_half, vs_grid.max() + uv_pixel_half]
+extent_uv = np.array([us_grid.min() - uv_pixel_half, us_grid.max() + uv_pixel_half,
+                    vs_grid.min() - uv_pixel_half, vs_grid.max() + uv_pixel_half])
+extent_uv *= inv_wavelength
 extent_lm = [ls.min() - lm_pixel_half, ls.max() + lm_pixel_half,
                     ms.min() - lm_pixel_half, ms.max() + lm_pixel_half]
 
@@ -446,8 +492,8 @@ else:
                                     vmin=vmin, vmax=vmax,
                                     origin='lower')
     visax.set_title('|Vs|, %.1fMHz ' %freqs[freq_ind], fontsize=fontsize)
-visax.set_xlabel('u [m]')
-visax.set_ylabel('v [m]')
+visax.set_xlabel('u [wavelengths]')
+visax.set_ylabel('v [wavelengths]')
 
 
 # Plot sky solution for maximum likelihood
@@ -492,8 +538,8 @@ else:
                                            extent=extent_uv,
                                            origin='lower')
     anvisax.set_title('|MaxL Visibilities|, %.1fMHz' %freqs[freq_ind], fontsize=fontsize)
-anvisax.set_xlabel('u [m]')
-anvisax.set_ylabel('v [m]')
+anvisax.set_xlabel('u [wavelengths]')
+anvisax.set_ylabel('v [wavelengths]')
 
 
 # Plot |Vs| - |Vs_maxL|
@@ -510,8 +556,8 @@ else:
                                       origin='lower')
     diffax.set_title('|Vs| - |MaxL Vs|, %.1fMHz\nFitted RMS: %.2e\nMean: %.2e'
                           %(freqs[freq_ind], fit_params[2], fit_params[1]), fontsize=fontsize)
-diffax.set_xlabel('u [m]')
-diffax.set_ylabel('v [m]')
+diffax.set_xlabel('u [wavelengths]')
+diffax.set_ylabel('v [wavelengths]')
 
 
 # imgs = [skyim, visim, ftvisim, anskyim, anvisim, anftvisim]
