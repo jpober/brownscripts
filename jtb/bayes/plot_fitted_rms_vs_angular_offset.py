@@ -227,7 +227,6 @@ if not opts.rms_data:
             out_dic['fitted_beam'] = True
         else:
             out_dic['fitted_beam'] = False
-        np.save(filename + '.npy', out_dic)
 
     print 'Angular Offsets [deg]: ',
     for offset_ind, angular_offset in enumerate(angular_offsets):
