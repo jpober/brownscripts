@@ -198,6 +198,37 @@ if not opts.rms_data:
     # Store source positions for reference
     true_pos = np.zeros((angular_offsets.size, 2))
 
+    if opts.write:
+        # Write fitted RMS data
+        if os.path.exists('./sim_vis/'):
+            if nfreqs > 1:
+                filename = 'sim_vis/maxL_fitted_RMS_%sMHz_%sMHz_%.0fdfov' %(opts.freq,
+                                                                                                                    opts.freq_res,
+                                                                                                                    np.rad2deg(FOV))
+            else:
+                filename = 'sim_vis/maxL_fitted_RMS_%sMHz_%.0fdfov' %(opts.freq,
+                                                                                                        np.rad2deg(FOV))
+        else:
+            if nfreqs > 1:
+                filename = 'maxL_fitted_RMS_%sMHz_%sMHz_%.0fdfov' %(opts.freq,
+                                                                                                        opts.freq_res,
+                                                                                                        np.rad2deg(FOV))
+            else:
+                filename = 'maxL_fitted_RMS_%sMHz_%.0fdfov' %(opts.freq,
+                                                                                            np.rad2deg(FOV))
+
+        print 'Writing ' + filename + '.npy ...\n'
+        out_dic = {}
+        out_dic['input_rms'] = opts.rms
+        out_dic['angular_offsets'] = angular_offsets
+        if opts.beam:
+            out_dic['beam'] = opts.beam
+        if opts.fit_beam:
+            out_dic['fitted_beam'] = True
+        else:
+            out_dic['fitted_beam'] = False
+        np.save(filename + '.npy', out_dic)
+
     print 'Angular Offsets [deg]: ',
     for offset_ind, angular_offset in enumerate(angular_offsets):
         print '%.2f, ' %np.rad2deg(angular_offset) ,
@@ -295,41 +326,10 @@ if not opts.rms_data:
             fitted_RMS[freq_ind, offset_ind] = fit_params[2]
             fitted_RMS_err[freq_ind, offset_ind] = fit_cov[-1, -1]
 
-
-    if opts.write:
-        # Write fitted RMS data
-        if os.path.exists('./sim_vis/'):
-            if nfreqs > 1:
-                filename = 'sim_vis/maxL_fitted_RMS_%sMHz_%sMHz_%.0fdfov' %(opts.freq,
-                                                                                                                    opts.freq_res,
-                                                                                                                    np.rad2deg(FOV))
-            else:
-                filename = 'sim_vis/maxL_fitted_RMS_%sMHz_%.0fdfov' %(opts.freq,
-                                                                                                        np.rad2deg(FOV))
-        else:
-            if nfreqs > 1:
-                filename = 'maxL_fitted_RMS_%sMHz_%sMHz_%.0fdfov' %(opts.freq,
-                                                                                                        opts.freq_res,
-                                                                                                        np.rad2deg(FOV))
-            else:
-                filename = 'maxL_fitted_RMS_%sMHz_%.0fdfov' %(opts.freq,
-                                                                                            np.rad2deg(FOV))
-
-        print 'Writing ' + filename + '.npy ...\n'
-        out_dic = {}
-        out_dic['fit_rms'] = fitted_RMS
-        out_dic['fit_rms_err'] = fitted_RMS_err
-        out_dic['input_rms'] = opts.rms
-        out_dic['angular_offsets'] = angular_offsets
-        if opts.beam:
-            out_dic['beam'] = opts.beam
-        if opts.fit_beam:
-            out_dic['fitted_beam'] = True
-        else:
-            out_dic['fitted_beam'] = False
-        np.save(filename + '.npy', out_dic)
-
-        sys.exit()
+            if opts.write:
+                out_dic['fit_rms'] = fitted_RMS
+                out_dic['fit_rms_err'] = fitted_RMS_err
+                np.save(filename + '.npy', out_dic)
 
 
 # If data already exists, load it in to plot it
