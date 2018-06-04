@@ -250,7 +250,10 @@ if not opts.rms_data:
 
     print 'Frequency [MHz]: ',
     for freq_ind in range(nfreqs):
-        print '%.0f, ' %freqs[freq_ind] ,
+        if freq_ind == nfreqs - 1:
+            print '%.0f' %freqs[freq_ind]
+        else:
+            print '%.0f, ' %freqs[freq_ind] ,
 
         # Compute components of maxL solution
         if opts.beam:
