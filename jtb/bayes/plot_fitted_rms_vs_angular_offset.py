@@ -71,6 +71,13 @@ o.add_option('--fov',
     default = 10,
     help = 'Field of view in degrees.')
 
+o.add_option('--npix_centers',
+    type = int,
+    default = 10,
+    help = ('Number of pixel centers to use as source is moved from zenith to horizon. '
+              +
+              'Cannot exceed opts.npix_side/2 + 1 (i.e. <= 16 for opts.npix_side = 31).'))
+
 opts,args = o.parse_args(sys.argv[1:])
 
 # If no data passed, create fitted RMS data
@@ -193,13 +200,11 @@ if not opts.rms_data:
     # Set up angular offsets, arrays to store fitted RMS values
     ls_pos = np.copy(ls[ls >= 0])
     if len(ls_pos) < 10:
-        noffsets = len(ls_pos)
-    else:
-        noffsets = 10
-    angular_offsets = np.zeros(noffsets)
+        opts.npix_centers = len(ls_pos)
+    angular_offsets = np.zeros(opts.npix_centers)
     angular_offsets[0] = ls_pos[0]
     angular_offsets[-1] = ls_pos[-1]
-    angular_offsets[1:-1] = np.sort(np.random.choice(ls_pos[1:-1], noffsets - 2, replace=False))
+    angular_offsets[1:-1] = np.sort(np.random.choice(ls_pos[1:-1], opts.npix_centers - 2, replace=False))
     fitted_RMS = np.zeros((nfreqs, angular_offsets.size))
     fitted_RMS_err = np.zeros_like(fitted_RMS)
 
@@ -234,93 +239,84 @@ if not opts.rms_data:
         if opts.fit_beam:
             filename += '_fitbeam'
 
-    print 'Angular Offsets [deg]: ',
-    for offset_ind, angular_offset in enumerate(angular_offsets):
-        print '%.2f, ' %np.rad2deg(angular_offset) ,
-        if opts.l_walk:
-            if opts.m_offset:
-                true_pos[offset_ind, 1] = ms[mid_m + m_off]
-            true_pos[offset_ind, 0] = angular_offset
-        elif opts.m_walk:
-            if opts.l_offset:
-                true_pos[offset_ind, 0] = ls[mid_l + l_off]
-            true_pos[offset_ind, 1] = angular_offset
+    # Precompute DFT matrix
+    DFT = np.exp(-1j*2*np.pi*(np.outer(us_vec, ls_vec) + np.outer(vs_vec, ms_vec)))
 
-        # Get location of source in flattened image array
-        pos_vec = np.where(np.logical_and(ls_vec == true_pos[offset_ind, 0],
-                                                            ms_vec == true_pos[offset_ind, 1]))[0][0]
+    # Create arrays to store visibilities and maxL solutions
+    Vs = np.zeros((nfreqs, npix), dtype=complex)
+    d = np.copy(Vs) # copy of visibilties for noise injection
+    a = np.zeros_like(Vs)
+    Vs_maxL = np.zeros_like(a)
 
-        # Use analytical solution to get visibilities using true positions
-        Vs = np.zeros((nfreqs, npix), dtype=complex)
-        for i in range(nfreqs):
+    print 'Frequency [MHz]: ',
+    for freq_ind in range(nfreqs):
+        print '%.0f, ' %freqs[freq_ind] ,
+
+        # Compute components of maxL solution
+        if opts.beam:
+            if opts.fit_beam:
+                P = np.diag(fit_beam_grid[freq_ind])
+            else:
+                P = np.diag(beam_grid[freq_ind])
+            DFTP = np.dot(DFT, P)
+            inv_part = np.linalg.inv(np.dot(np.dot(DFTP.conj().T, N_inv), DFTP))
+        else:
+            inv_part = np.linalg.inv(np.dot(np.dot(DFT.conj().T, N_inv), DFT))
+
+        # Loop over sky positions
+        for offset_ind, angular_offset in enumerate(angular_offsets):
+            if opts.l_walk:
+                if opts.m_offset:
+                    true_pos[offset_ind, 1] = ms[mid_m + m_off]
+                true_pos[offset_ind, 0] = angular_offset
+            elif opts.m_walk:
+                if opts.l_offset:
+                    true_pos[offset_ind, 0] = ls[mid_l + l_off]
+                true_pos[offset_ind, 1] = angular_offset
+
+            # Get location of source in flattened image array
+            pos_vec = np.where(np.logical_and(ls_vec == true_pos[offset_ind, 0],
+                                                                ms_vec == true_pos[offset_ind, 1]))[0][0]
+
             for j in range(us_vec.size):
                 if opts.beam:
-                    Vs[i, j] = np.sum(beam_grid[i, pos_vec]*Vs_func(us_vec[j],
-                                                                                             true_pos[offset_ind, 0],
-                                                                                             vs_vec[j],
-                                                                                             true_pos[offset_ind, 1]))
+                    Vs[freq_ind, j] = np.sum(beam_grid[freq_ind, pos_vec]*Vs_func(us_vec[j],
+                                                                                                        true_pos[offset_ind, 0],
+                                                                                                        vs_vec[j],
+                                                                                                        true_pos[offset_ind, 1]))
                 else:
-                    Vs[i, j] = np.sum(Vs_func(us_vec[j],
-                                                           true_pos[offset_ind, 0],
-                                                           vs_vec[j],
-                                                           true_pos[offset_ind, 1]))
+                    Vs[freq_ind, j] = np.sum(Vs_func(us_vec[j],
+                                                                      true_pos[offset_ind, 0],
+                                                                      vs_vec[j],
+                                                                      true_pos[offset_ind, 1]))
 
-        Vs = Vs.reshape((nfreqs, npix_side, npix_side))
-
-        # Construct solution using analytic solution for maximum likelihood
-        # Assumes a Gaussian log likelihood function
-        # Requires noise injection into data (visibilities above)
-        a = np.zeros_like(Vs)
-        Vs_maxL = np.zeros_like(a)
-
-        # Create data from visibilities with injected Gaussian noise
-        d = np.copy(Vs)
-
-        for freq_ind in range(nfreqs):
-            d_flat = d[freq_ind].flatten()
-            Vs_flat = Vs[freq_ind].flatten()
+            # Vs = Vs.reshape((nfreqs, npix_side, npix_side))
+            d[freq_ind] = np.copy(Vs[freq_ind])
 
             half_ind = int(us_vec.size/2.) + 1
             for j,[u,v] in enumerate(np.stack((us_vec, vs_vec), axis=1)[:half_ind]):
                 neg_ind = np.where(np.logical_and(us_vec == -u, vs_vec == -v))[0][0]
-                d_flat[[j, neg_ind]] += (np.random.normal(0, opts.rms, 1)
-                                                  +
-                                                  1j*np.random.normal(0, opts.rms, 1))
-
-            d[freq_ind] = d_flat.reshape([npix_side]*2)
-
-            DFT = np.exp(-1j*2*np.pi*(np.outer(us_vec, ls_vec)
-                                +
-                                np.outer(vs_vec, ms_vec)))
+                d[freq_ind, [j, neg_ind]] += (np.random.normal(0, opts.rms, 1)
+                                                          +
+                                                          1j*np.random.normal(0, opts.rms, 1))
 
             if opts.beam:
-                if opts.fit_beam:
-                    P = np.diag(fit_beam_grid[freq_ind])
-                else:
-                    P = np.diag(beam_grid[freq_ind])
-                DftP = np.dot(DFT, P)
-                inv_part = np.linalg.inv(np.dot(np.dot(DftP.conj().T, N_inv), DftP))
-                right_part = np.dot(np.dot(DftP.conj().T, N_inv), d[freq_ind].flatten())
+                right_part = np.dot(np.dot(DFTP.conj().T, N_inv), d[freq_ind])
             else:
-                inv_part = np.linalg.inv(np.dot(np.dot(DFT.conj().T, N_inv), DFT))
-                right_part = np.dot(np.dot(DFT.conj().T, N_inv), d[freq_ind].flatten())
+                right_part = np.dot(np.dot(DFT.conj().T, N_inv), d[freq_ind])
 
             # Maximum likelihood solution for the sky
-            a[freq_ind] = np.dot(inv_part, right_part).reshape((npix_side, npix_side))
+            a[freq_ind] = np.dot(inv_part, right_part)
 
             # Generate visibilities from maximum liklihood solution
             if opts.beam:
-                Vs_maxL[freq_ind] = np.dot(DftP,  a[freq_ind].flatten()).reshape((npix_side, npix_side))
-
-                del(DFT, DftP, inv_part, right_part, P)
+                Vs_maxL[freq_ind] = np.dot(DFTP,  a[freq_ind])
             else:
-                Vs_maxL[freq_ind] = np.dot(DFT, a[freq_ind].flatten()).reshape((npix_side, npix_side))
-
-                del(DFT, inv_part, right_part)
+                Vs_maxL[freq_ind] = np.dot(DFT, a[freq_ind])
 
             # Compute fitted RMS
             diff_data = np.abs(Vs[freq_ind]) - np.abs(Vs_maxL[freq_ind])
-            counts, bins = np.histogram(diff_data.flatten(), bins=50)
+            counts, bins = np.histogram(diff_data, bins=50)
             bin_width = np.mean(np.diff(bins))
             fit_xs = bins[:-1] + bin_width/2
             guess_params = [np.max(counts), 0.0, opts.rms]
