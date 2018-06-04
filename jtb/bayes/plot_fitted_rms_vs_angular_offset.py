@@ -224,9 +224,7 @@ if not opts.rms_data:
         if opts.beam:
             out_dic['beam'] = opts.beam
         if opts.fit_beam:
-            out_dic['fitted_beam'] = True
-        else:
-            out_dic['fitted_beam'] = False
+            filename += '_fitbeam'
 
     print 'Angular Offsets [deg]: ',
     for offset_ind, angular_offset in enumerate(angular_offsets):
@@ -339,6 +337,13 @@ else:
     angular_offsets = data_dic['angular_offsets']
     opts.rms = data_dic['input_rms']
     nfreqs = fitted_RMS.shape[0]
+
+    freq_range = map(float, opts.rms_data.split('_')[4].strip('MHz').split('-'))
+    if len(freq_range) > 1:
+        freq_res = float(opts.rms_data.split('_')[5].strip('MHz'))
+        freqs = np.arange(freq_range[0], freq_range[1] + freq_res, freq_res)
+    else:
+        freqs = freq_range[0]
 
 
 # Plotting
