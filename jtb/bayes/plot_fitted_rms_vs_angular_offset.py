@@ -191,7 +191,15 @@ if not opts.rms_data:
             vs_vec = np.append(vs_vec, v)
 
     # Set up angular offsets, arrays to store fitted RMS values
-    angular_offsets = np.copy(ls[ls >= 0.0])
+    ls_pos = np.copy(ls[ls >= 0])
+    if len(ls_pos) < 10:
+        noffsets = len(ls_pos)
+    else:
+        noffsets = 10
+    angular_offsets = np.zeros(noffsets)
+    angular_offsets[0] = ls_pos[0]
+    angular_offsets[-1] = ls_pos[-1]
+    angular_offsets[1:-1] = np.sort(np.random.choice(ls_pos[1:-1], noffsets - 2, replace=False))
     fitted_RMS = np.zeros((nfreqs, angular_offsets.size))
     fitted_RMS_err = np.zeros_like(fitted_RMS)
 
