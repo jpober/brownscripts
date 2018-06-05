@@ -78,6 +78,10 @@ o.add_option('--npix_centers',
               +
               'Cannot exceed opts.npix_side/2 + 1 (i.e. <= 16 for opts.npix_side = 31).'))
 
+o.add_option('--noplot',
+    action = 'store_true',
+    help = 'If passed, suppress plotting.')
+
 opts,args = o.parse_args(sys.argv[1:])
 
 # If no data passed, create fitted RMS data
@@ -352,40 +356,40 @@ else:
     else:
         freqs = freq_range[0]
 
+if not opts.noplot:
+    # Plotting
+    from matplotlib.pyplot import *
+    from mpl_toolkits.axes_grid1.axes_divider import make_axes_locatable
 
-# Plotting
-from matplotlib.pyplot import *
-from mpl_toolkits.axes_grid1.axes_divider import make_axes_locatable
+    fig = figure(figsize=(16,8))
+    gs = gridspec.GridSpec(1, 1)
+    # gs = gridspec.GridSpec(1, 2)
 
-fig = figure(figsize=(16,8))
-gs = gridspec.GridSpec(1, 1)
-# gs = gridspec.GridSpec(1, 2)
+    # path_ax = fig.add_subplot(gs[0, 0])
+    # path_ax.scatter(true_pos[:, 0], true_pos[:, 1])
+    # path_ax.set_xlim([ls.min(), ls.max()])
+    # path_ax.set_ylim([ms.min(), ms.max()])
+    # path_ax.set_title('Walk Pattern', size=16)
 
-# path_ax = fig.add_subplot(gs[0, 0])
-# path_ax.scatter(true_pos[:, 0], true_pos[:, 1])
-# path_ax.set_xlim([ls.min(), ls.max()])
-# path_ax.set_ylim([ms.min(), ms.max()])
-# path_ax.set_title('Walk Pattern', size=16)
+    # rms_ax = fig.add_subplot(gs[0, 1])
+    rms_ax = fig.add_subplot(gs[0])
+    plot_xs = np.rad2deg(np.copy(angular_offsets))
+    colors = np.copy(cm.jet(np.linspace(0, 1, nfreqs)))
+    for freq_ind in range(nfreqs):
+        im = rms_ax.errorbar(plot_xs, fitted_RMS[freq_ind]/opts.rms,
+                                        yerr=fitted_RMS_err[freq_ind]/opts.rms,
+                                        label='%.0f MHz' %freqs[freq_ind],
+                                        color=colors[freq_ind])
+    rms_ax.set_xlabel('Source Location [deg]', size=16)
+    rms_ax.set_ylabel('Fitted RMS/$10^{%.0f}$' %np.log10(opts.rms), size=16)
+    rms_ax.set_ylim([0.5, 1.5])
+    rms_ax.set_xlim([plot_xs.min(), plot_xs.max()])
+    # rms_ax.set_title(' '.join(sys.argv))
+    # rms_ax.set_title(sys.argv)
 
-# rms_ax = fig.add_subplot(gs[0, 1])
-rms_ax = fig.add_subplot(gs[0])
-plot_xs = np.copy(angular_offsets)
-colors = np.copy(cm.jet(np.linspace(0, 1, nfreqs)))
-for freq_ind in range(nfreqs):
-    im = rms_ax.errorbar(plot_xs, fitted_RMS[freq_ind]/opts.rms,
-                                    yerr=fitted_RMS_err[freq_ind]/opts.rms,
-                                    label='%.0f MHz' %freqs[freq_ind],
-                                    color=colors[freq_ind])
-rms_ax.set_xlabel('Source Location [l]', size=16)
-rms_ax.set_ylabel('Fitted RMS/$10^{%.0f}$' %np.log10(opts.rms), size=16)
-rms_ax.set_ylim([0.5, 1.5])
-rms_ax.set_xlim([plot_xs.min(), plot_xs.max()])
-# rms_ax.set_title(' '.join(sys.argv))
-# rms_ax.set_title(sys.argv)
+    for ax in fig.axes:
+        ax.tick_params(which='both', labelsize=16)
+        ax.legend(loc='best')
 
-for ax in fig.axes:
-    ax.tick_params(which='both', labelsize=16)
-    ax.legend(loc='best')
-
-gs.tight_layout(fig)
-show()
+    gs.tight_layout(fig)
+    show()
