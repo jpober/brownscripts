@@ -219,8 +219,6 @@ if not opts.rms_data:
     angular_offsets[-1] = ls_pos[-1]
     angular_offsets[1:-1] = np.sort(np.random.choice(ls_pos[1:-1], npix_centers - 2, replace=False))
 
-    sys.exit()
-
     fitted_RMS = np.zeros((nfreqs, angular_offsets.size))
     fitted_RMS_err = np.zeros_like(fitted_RMS)
 
