@@ -203,16 +203,16 @@ if not opts.rms_data:
 
     # Set up angular offsets, arrays to store fitted RMS values
     ls_pos = np.copy(ls[ls >= 0])
+
     if opts.npix_centers.isdigit() and int(opts.npix_centers) > len(ls_pos):
         print 'npix_centers cannot exceed npix_side/2 + 1'
-        sys.exit()
-
-    if len(ls_pos) < 10:
+        print 'Setting to %d' %len(ls_pos)
         npix_centers = len(ls_pos)
     elif opts.npix_centers.isdigit():
         npix_centers = int(opts.npix_centers)
     else:
         npix_centers = len(ls_pos)
+
 
     angular_offsets = np.zeros(npix_centers)
     angular_offsets[0] = ls_pos[0]
