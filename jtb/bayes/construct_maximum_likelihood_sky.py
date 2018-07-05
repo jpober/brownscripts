@@ -336,9 +336,9 @@ for i in range(nfreqs):
     half_ind = int(us_vec.size/2.) + 1
     for j, [u,v] in enumerate(np.stack((us_vec, vs_vec), axis=1)[:half_ind]):
         neg_ind = np.where(np.logical_and(us_vec == -u, vs_vec == -v))[0][0]
-        d_flat[[j, neg_ind]] += (np.random.normal(0, opts.rms, 1)
-                                          +
-                                          1j*np.random.normal(0, opts.rms, 1))
+        complex_noise = np.random.normal(0, opts.rms, 1) + 1j*np.random.normal(0, opts.rms, 1)
+        d_flat[j] += complex_noise
+        d_flat[neg_ind] += complex_noise.conjugate()
 
     d[i] = d_flat.reshape([npix_side]*2)
 
@@ -359,6 +359,7 @@ for i in range(nfreqs):
         right_part = np.dot(np.dot(DFT.conj().T, N_inv), d[i].flatten())
 
     # Maximum likelihood solution for the sky
+    # imaginary part is like six orders of magnitude away from machine precision zero???
     a[i] = np.dot(inv_part, right_part).reshape((npix_side, npix_side))
 
     # Generate visibilities from maximum liklihood solution

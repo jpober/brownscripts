@@ -336,9 +336,9 @@ for freq_ind in range(nfreqs):
     half_ind = int(us_vec.size/2.) + 1
     for j, [u,v] in enumerate(np.stack((us_vec, vs_vec), axis=1)[:half_ind]):
         neg_ind = np.where(np.logical_and(us_vec == -u, vs_vec == -v))[0][0]
-        d[freq_ind, [j, neg_ind]] += (np.random.normal(0, opts.rms, 1)
-                                                  +
-                                                  1j*np.random.normal(0, opts.rms, 1))
+        complex_noise = np.random.normal(0, opts.rms, 1) + 1j*np.random.normal(0, opts.rms, 1)
+        d[freq_ind, j] += complex_noise
+        d[freq_ind, neg_ind] += complex_noise.conjugate()
 
     # Construct DFT matrix
     DFT = np.exp(-1j*2*np.pi*(np.outer(us_vec, ls_vec)
@@ -395,7 +395,7 @@ if opts.write:
             filename = 'maxL_rms_freq_fit_%sMHz_%.0fdfov' %(opts.freq,
                                                                                           np.rad2deg(FOV))
     print 'Writing ' + filename + '.npy ...\n'
-    
+
     out_dic = {}
     out_dic['sky'] = Sky[freq_ind]*Sky_counts
     out_dic['vis'] = Vs

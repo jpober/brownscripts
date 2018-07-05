@@ -313,9 +313,9 @@ if not opts.rms_data:
             half_ind = int(us_vec.size/2.) + 1
             for j,[u,v] in enumerate(np.stack((us_vec, vs_vec), axis=1)[:half_ind]):
                 neg_ind = np.where(np.logical_and(us_vec == -u, vs_vec == -v))[0][0]
-                d[freq_ind, [j, neg_ind]] += (np.random.normal(0, opts.rms, 1)
-                                                          +
-                                                          1j*np.random.normal(0, opts.rms, 1))
+                complex_noise = np.random.normal(0, opts.rms, 1) + 1j*np.random.normal(0, opts.rms, 1)
+                d[freq_ind, j] += complex_noise
+                d[freq_ind, neg_ind] += complex_noise.conjugate()
 
             if opts.beam:
                 right_part = np.dot(np.dot(DFTP.conj().T, N_inv), d[freq_ind])
