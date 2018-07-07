@@ -74,11 +74,12 @@ if opts.fit_beam:
     fit_beam_grid = twoD_Gaussian((L, M), *popt)
 
 # Plotting
-fig = figure(figsize=(16, 4))
 if opts.fit_beam:
     gs = gridspec.GridSpec(1, 3)
+    fig = figure(figsize=(16, 4))
 else:
-    gs = gridspec.GridSpec(1, 2)
+    gs = gridspec.GridSpec(1, 1)
+    fig = figure(figsize=(8, 8))
 
 # thax = fig.add_subplot(gs[0])
 # thim = imshow(np.rad2deg(thetas).reshape((NPIX_SIDE, NPIX_SIDE)),
@@ -95,7 +96,7 @@ if opts.dB:
     beamim = imshow(10*np.log10(beam_grid).reshape((NPIX_SIDE, NPIX_SIDE)),
                                 origin='lower',
                                 extent=extent_lm)
-    beamax.set_title('Log10 Beam')
+    beamax.set_title('Beam [dBi]')
 else:
     beamim = imshow(beam_grid.reshape((NPIX_SIDE, NPIX_SIDE)),
                                 origin='lower',
@@ -108,7 +109,7 @@ if opts.fit_beam:
         fitim = imshow(10*np.log10(fit_beam_grid).reshape([NPIX_SIDE]*2),
                                origin='lower',
                                extent=extent_lm)
-        fitax.set_title('Log10 Fitted Beam')
+        fitax.set_title('Fitted Beam [dBi]')
     else:
         fitim = imshow(fit_beam_grid.reshape([NPIX_SIDE]*2),
                                origin='lower',
@@ -121,7 +122,7 @@ if opts.fit_beam:
         diffim = imshow(10*np.log10(diff_data).reshape([NPIX_SIDE]*2),
                                  origin='lower',
                                  extent=extent_lm)
-        diffax.set_title('Log10(Beam - Fitted Beam)')
+        diffax.set_title('Beam - Fitted Beam [dBi]')
     else:
         diffim = imshow(diff_data.reshape([NPIX_SIDE]*2),
                                  origin='lower',
@@ -138,8 +139,9 @@ for i, ax in enumerate(fig.axes):
     ax_divider = make_axes_locatable(ax)
     cax = ax_divider.append_axes("right", size="5%", pad="2%")
     cb = fig.colorbar(imgs[i], cax=cax)
-    if not imgs[i] == diffim:
-        cb.set_label('dB', size=16)
+    if opts.fit_beam:
+        if not imgs[i] == diffim:
+            cb.set_label('dB', size=16)
     ax.set_xlabel('l')
     ax.set_ylabel('m')
 
