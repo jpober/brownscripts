@@ -1,7 +1,7 @@
 import numpy as np
 import healpy as hp
 import matplotlib.gridspec as gridspec
-import time, optparse, sys, os
+import time, optparse, sys, os, glob
 
 from astropy.io import fits
 from scipy.optimize import curve_fit
@@ -46,7 +46,7 @@ o.add_option('--write',
     action = 'store_true',
     help = 'If passed, write fitted RMS and associated errors to a .npy file.')
 
-o.add_option('--rms_data',
+o.add_option('--rms_file_glob',
     type = str,
     help = 'Path to file with generated fitted RMS data.')
 
@@ -84,8 +84,9 @@ o.add_option('--noplot',
 
 opts,args = o.parse_args(sys.argv[1:])
 
+## ------------------------------------ Make Data ------------------------------------ ##
 # If no data passed, create fitted RMS data
-if not opts.rms_data:
+if not opts.rms_file_glob:
 
     if opts.m_walk:
         opts.l_walk = False
@@ -350,22 +351,34 @@ if not opts.rms_data:
                 np.save(filename + '.npy', out_dic)
 
 
+## ------------------------------------ Load Data ------------------------------------ ##
 # If data already exists, load it in to plot it
 else:
-    data_dic = np.load(opts.rms_data).item()
-    fitted_RMS = data_dic['fit_rms']
-    fitted_RMS_err = data_dic['fit_rms_err']
-    angular_offsets = data_dic['angular_offsets']
-    opts.rms = data_dic['input_rms']
-    nfreqs = fitted_RMS.shape[0]
+    print 'Loading files:'
+    file_glob = sorted(glob.glob(opts.rms_file_glob))
+    nfreqs = len(file_glob)
+    freqs = np.zeros(nfreqs)
+    create_array_containers = True
 
-    freq_range = map(float, opts.rms_data.split('_')[4].strip('MHz').split('-'))
-    if len(freq_range) > 1:
-        freq_res = float(opts.rms_data.split('_')[5].strip('MHz'))
-        freqs = np.arange(freq_range[0], freq_range[1] + freq_res, freq_res)
-    else:
-        freqs = freq_range[0]
+    for i,filename in enumerate(file_glob):
+        print '\t %s' %filename
+        freqs[i] = float(filename.split('/')[-1].split('_')[3].strip('MHz'))
+        data_dic = np.load(filename).item()
+        if create_array_containers:
+            angular_offsets = np.copy(data_dic['angular_offsets'])
+            fitted_RMS = np.zeros((nfreqs, angular_offsets.size))
+            fitted_RMS[i] = np.copy(data_dic['fit_rms'])
+            fitted_RMS_err = np.zeros_like(fitted_RMS)
+            fitted_RMS_err[i] = np.copy(data_dic['fit_rms_err'])
+            opts.rms = data_dic['input_rms']
+            create_array_containers = False
+        else:
+            fitted_RMS[i] = np.copy(data_dic['fit_rms'])
+            fitted_RMS_err[i] = np.copy(data_dic['fit_rms_err'])
 
+
+
+## ------------------------------------ Plotting ------------------------------------ ##
 if not opts.noplot:
     # Plotting
     from matplotlib.pyplot import *
