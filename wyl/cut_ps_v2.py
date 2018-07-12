@@ -1,7 +1,11 @@
 import numpy as np, sys
 from scipy.io.idl import readsav
 from plot_vis import *
-import scipy
+import scipy.special as sp
+
+def erf(x): return sp.erf(x)
+
+def erfinv(y): return sp.erfinv(y)
 
 def rebin(bin_file,kperp_min_cut=0.0,kperp_max_cut=0.1,kpara_min_cut=0.12,kpara_max_cut=1.2,coarse_band_extent=4,cut_vmodes=True):
     fbin = readsav(bin_file)
@@ -176,15 +180,18 @@ def power1dplot(fn):
     p = p*k**3/2/np.pi**2
     n = n*k**3/2/np.pi**2
     s = s*k**3/2/np.pi**2
-    plt.step(k,p,where='mid',label='measured power')
-    plt.step(k,s,where='mid',label='1 sigma thermal noise',linestyle='--')
+    plt.step(k,p,where='mid',label='measured power',c='black')
+    plt.step(k,s,where='mid',label='1 sigma thermal noise',linestyle='--',c='black')
     k_bin = xtostep(k)
     p_bin = ytostep(p)
     s_bin = ytostep(s)
+    pkup = np.sqrt(2)*s_bin*erfinv(0.977-(1-0.977)*erf(p_bin/s_bin/np.sqrt(2))) + p_bin
+    #ind0 = np.where(pkup<0)
+    #pkup[ind0] = 2*s_bin[ind0]
     #pup = np.sqrt(2)*s_bin*scipy.special.erfinv(0.977-(1-0.977)*scipy.special.erf(p_bin/s_bin/np.sqrt(2)))
-    plt.fill_between(k_bin,p_bin-2*s_bin,p_bin+2*s_bin,color='silver',alpha=0.8)
-    plt.plot(k_bin,p_bin+2*s_bin,label='upper limit')
-    plt.ylabel('$\Delta^2(k)$')
+    plt.fill_between(k_bin,p_bin-2*s_bin,pkup,color='silver',alpha=0.8)
+    plt.plot(k_bin,pkup,label='2 sigma upper limit',c='indigo')
+    plt.ylabel('$\Delta^2(mK^2)$')
     plt.xlabel('$k(hMpc^{-1})$')
     plt.grid(True,axis='y')
     plt.legend(loc=2)
