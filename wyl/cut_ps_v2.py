@@ -1,4 +1,4 @@
-import numpy as np, sys
+import numpy as np, sys, glob
 from scipy.io.idl import readsav
 from plot_vis import *
 import scipy.special as sp
@@ -199,5 +199,66 @@ def power1dplot(fn):
     plt.ylim(1e2,1e7)
     plt.xscale('log')
     plt.yscale('log')
+    plt.show()
+
+def exratio(fi):
+    #fi=obs+'_cubeXX__even_odd_joint_bh_res_'+pol+'_averemove_swbh_dencorr_no_horizon_wedge_kperplambda5-50_1dkpower.idlsave'
+    d=readsav(fi)
+    p=d['power']
+    n=d['noise']
+    k=d['k_edges']
+    k=0.5*(k[1:]+k[:-1])
+    h=d['hubble_param']
+    k /= h
+    sec=np.logical_and(k>0.2,k<0.3)
+    return np.mean(p[sec])/np.mean(n[sec])*np.sqrt(np.sum(sec)-1)
+
+def flagr(s):
+    sc=np.ma.masked_array(s,np.zeros((len(s)),dtype=bool))
+    for ii in range(500):
+        m=np.mean(sc)
+        q=np.std(sc)
+        ind=np.argmax(sc)
+        if sc[ind]<m+3*q: break
+        else: sc.mask[ind]=True
+    print str(ii)+" observations flagged."
+    return sc
+
+def metric_wrap(fpath='/users/wl42/data/wl42/FHD_out/fhd_int_PhaseII/ps/data/1d_binning/'):
+    fx = glob.glob(fpath+'116*xx*_averemove_swbh_dencorr_no_horizon_wedge_kperplambda5-50_1dkpower.idlsave')
+    fy = glob.glob(fpath+'116*yy*_averemove_swbh_dencorr_no_horizon_wedge_kperplambda5-50_1dkpower.idlsave')
+    fx.sort()
+    fy.sort()
+    obs, rx, ry = [], [], []
+    for fi in fx: obs.append(int(fi.split('/')[-1].split('_')[0]))
+    obs = np.array(obs)
+    day = np.int32(obs/86164.1)
+    sid = obs%86164.1
+    for fi in fx:
+        r = exratio(fi)
+        rx.append(r)
+    for fi in fy:
+        r = exratio(fi)
+        ry.append(r)
+    rx = flagr(rx)
+    ry = flagr(ry)
+    return { 'obs': obs, 'day': day, 'sid': sid, 'rx': rx, 'ry': ry }
+
+def scatter_snr(day,sid,r,flag=False):
+    for d in np.unique(day):
+        ind = np.where(day==d)[0]
+        if flag: plt.scatter(sid[ind],r[ind])
+        else: plt.scatter(sid[ind],r.data[ind])
+    plt.axvline(x=24214.35,color='black',linewidth=0.8,linestyle='-.')
+    plt.axvline(x=26292.00,color='black',linewidth=0.8,linestyle='-.')
+    plt.axvline(x=28392.95,color='black',linewidth=0.8,linestyle='-.')
+    plt.axvline(x=30322.70,color='black',linewidth=0.8,linestyle='-.')
+    plt.axvline(x=32141.35,color='black',linewidth=0.8,linestyle='-.')
+    plt.axvline(x=33951.70,color='black',linewidth=0.8,linestyle='-.')
+    plt.axvline(x=35810.80,color='black',linewidth=0.8,linestyle='-.')
+    plt.grid(True,axis='y')
+    plt.xlim(np.min(sid)-56,np.max(sid)+56)
+    plt.xlabel('lst(s)')
+    plt.ylabel('power/noise')
     plt.show()
 
