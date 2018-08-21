@@ -1,5 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
+from scipy.special import erf
 
 def downsample(masked_arr,dt=4,df=16):
     nt,nf,npol = masked_arr.shape
@@ -90,11 +91,78 @@ def get_auto(uv):
 def flag_over_bls(uv):
     return np.sum(np.logical_not(uv.flag_array.reshape(uv.Ntimes,uv.Nbls,uv.Nspws,uv.Nfreqs,uv.Npols)),axis=1)==0
 
-def time_flagging(INS,noise_thresh=0.005):
+def smooth_over_t(INS,fc=1):
     frac_diff = INS / INS.mean(axis=0) - 1
-    dt_slice = np.mean(frac_diff,axis=(1,2,3))
-    dt_ind = np.where(np.abs(dt_slice)>noise_thresh)
-    INS.mask[dt_ind] = True
+    #time_ave = np.mean(frac_diff,axis=(1,2))
+    #for i1 in range(INS.shape[1]):
+    #    for i2 in range(INS.shape[2]):
+    #        frac_diff[:,i1,i2,:] -= time_ave.data
+    SH = INS.shape
+    nc = SH[2]/24
+    cf = int(fc*nc)
+    m2 = np.zeros(SH)
+    x = np.linspace(-cf,cf,2*cf+1)
+    window = np.zeros((SH[0],SH[1],2*cf+1,SH[3]))
+    for ii in range(2*cf+1): window[:,:,ii,:]=np.exp(-(x[ii]/float(cf))**2)
+    for ff in range(SH[2]):
+        min_ind = max(0,ff-cf)
+        max_ind = min(SH[2],ff+cf+1)
+        dm = np.sum(frac_diff[:,:,min_ind:max_ind,:]*window[:,:,cf-(ff-min_ind):cf+(max_ind-ff),:],axis=2)
+        dn = np.sum(np.logical_not(frac_diff.mask[:,:,min_ind:max_ind,:])*window[:,:,cf-(ff-min_ind):cf+(max_ind-ff),:],axis=2)+1e-10
+        m2[:,:,ff,:] = dm.data/dn
+    return m2
+
+def smooth_plotter(INS,fc=1):
+    frac_diff = INS / INS.mean(axis=0) - 1
+    fracsig = np.std(frac_diff)
+    lims = (-5*fracsig, 5*fracsig)
+    fig = plt.figure(figsize=(30,15))
+    p1 = fig.add_subplot(4,2,1)
+    i1 = p1.imshow(frac_diff[:,0,:,0],aspect='auto',cmap='coolwarm',clim=lims)
+    plt.colorbar(i1)
+    p1.set_title('XX masked')
+    p2 = fig.add_subplot(4,2,2)
+    i2 = p2.imshow(frac_diff[:,0,:,1],aspect='auto',cmap='coolwarm',clim=lims)
+    plt.colorbar(i2)
+    p2.set_title('YY masked')
+    p3 = fig.add_subplot(4,2,3)
+    i3 = p3.imshow(frac_diff[:,0,:,2],aspect='auto',cmap='coolwarm',clim=lims)
+    plt.colorbar(i3)
+    p3.set_title('XY masked')
+    p4 = fig.add_subplot(4,2,4)
+    i4 = p4.imshow(frac_diff[:,0,:,3],aspect='auto',cmap='coolwarm',clim=lims)
+    plt.colorbar(i4)
+    p4.set_title('YX masked')
+    frac_diff = smooth_over_t(INS,fc=fc)
+    fracsig = np.std(frac_diff)
+    lims = (-5*fracsig, 5*fracsig)
+    p5 = fig.add_subplot(4,2,5)
+    i5 = p5.imshow(frac_diff[:,0,:,0],aspect='auto',cmap='coolwarm',clim=lims)
+    plt.colorbar(i5)
+    p5.set_title('XX smoothed')
+    p6 = fig.add_subplot(4,2,6)
+    i6 = p6.imshow(frac_diff[:,0,:,1],aspect='auto',cmap='coolwarm',clim=lims)
+    plt.colorbar(i6)
+    p6.set_title('YY smoothed')
+    p7 = fig.add_subplot(4,2,7)
+    i7 = p7.imshow(frac_diff[:,0,:,2],aspect='auto',cmap='coolwarm',clim=lims)
+    plt.colorbar(i7)
+    p7.set_title('XY smoothed')
+    p8 = fig.add_subplot(4,2,8)
+    i8 = p8.imshow(frac_diff[:,0,:,3],aspect='auto',cmap='coolwarm',clim=lims)
+    plt.colorbar(i8)
+    p8.set_title('YX post flagging')
+    plt.tight_layout()
+
+def time_flagging(INS,nthresh=1e-5):
+    maxiter = INS.shape[0]
+    for niter in range(maxiter):
+        frac_smt = smooth_over_t(INS,fc=1)
+        frac_co = frac_smt[:,:,1:,:]*frac_smt[:,:,:-1,:]
+        dt_slice = np.max(np.mean(frac_co,axis=(1,2)),axis=1)
+        dt_ind = np.argmax(np.abs(dt_slice))
+        if np.abs(dt_slice[dt_ind]) > nthresh: INS.mask[dt_ind] = True
+        else: break
 
 def freq_flagging(INS,nsig=6):
     frac_diff = INS / INS.mean(axis=0) - 1
@@ -104,7 +172,7 @@ def freq_flagging(INS,nsig=6):
     df_ind = np.where(df_slice>nsig*np.std(df_slice))[0]
     INS.mask[:,:,df_ind,:] = True
 
-def coherence_flagging(INS,fc=0.25,nsig=6,maxiter=10):
+def coherence_flagging(INS,fc=0.25,nsig=5,maxiter=10):
     SH = INS.shape
     nc = SH[2]/24
     cf = int(fc*nc)
@@ -114,6 +182,10 @@ def coherence_flagging(INS,fc=0.25,nsig=6,maxiter=10):
     for ii in range(2*cf+1): window[:,:,ii,:]=np.exp(-(x[ii]/float(cf))**2)
     for niter in range(maxiter):
         frac_diff = INS / INS.mean(axis=0) - 1
+        #time_ave = np.mean(frac_diff,axis=(1,2))
+        #for i1 in range(INS.shape[1]):
+        #    for i2 in range(INS.shape[2]):
+        #        frac_diff[:,i1,i2,:] -= time_ave.data
         for ff in range(SH[2]): 
             min_ind = max(0,ff-cf)
             max_ind = min(SH[2],ff+cf+1)
@@ -125,7 +197,7 @@ def coherence_flagging(INS,fc=0.25,nsig=6,maxiter=10):
         if indf[0].size == 0: break
         INS.mask[indf] = True
 
-def extend_flagging(INS, f_thresh=0.25, t_thresh=0.25):
+def extend_flagging(INS, f_thresh=0.5, t_thresh=0.5):
     mt = np.max(np.mean(INS.mask, axis=(1,2)),axis=1)
     indt = np.where(mt>t_thresh)[0]
     mf = np.max(np.mean(INS.mask, axis=(0,1)),axis=1)
@@ -135,7 +207,7 @@ def extend_flagging(INS, f_thresh=0.25, t_thresh=0.25):
 
 def frac_diff_plotter(INS,tf=True,ff=True,cf=True,ef=True):
     frac_diff = INS / INS.mean(axis=0) - 1
-    fig = plt.figure(figsize=(10,15))
+    fig = plt.figure(figsize=(30,15))
     p1 = fig.add_subplot(4,2,1)
     i1 = p1.imshow(frac_diff[:,0,:,0],aspect='auto',cmap='coolwarm')
     plt.colorbar(i1)
@@ -174,7 +246,7 @@ def frac_diff_plotter(INS,tf=True,ff=True,cf=True,ef=True):
     plt.colorbar(i8)
     p8.set_title('YX post flagging')
     plt.tight_layout()
-    plt.show()
+    #plt.show()
 
 def further_flagging(UV, INS):
     mask1 = np.zeros((UV.Ntimes,UV.Nspws,UV.Nfreqs,UV.Npols),dtype=bool)
