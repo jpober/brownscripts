@@ -33,6 +33,10 @@ o.add_option('--horizon_source',
     action = 'store_true',
     help = 'If passed, only place one source at the horizon.')
 
+o.add_option('--uniform_sky',
+    action = 'store_true',
+    help = 'If passed, make sky uniform with amplitude 1.')
+
 o.add_option('--l_offset',
     type = float,
     help = 'Moves source in l-direction by l_offset*ls.max().  Must be between 0 and 1.')
@@ -90,6 +94,11 @@ o.add_option('--uvdata',
     type = str,
     help = 'Filename for input uvw binary .npy file.')
 
+o.add_option('--poly_order',
+    type = str,
+    default = '2',
+    help = 'If n, fit beam variation as a function of frequency with an n-th order polynomial.')
+
 opts,args = o.parse_args(sys.argv[1:])
 
 
@@ -126,6 +135,19 @@ elif not (',' in opts.freq and '-' in opts.freq):
 
 nfreqs = len(freqs)
 
+# Get polynomal order(s)
+if ',' in opts.poly_order:
+    poly_orders = np.sort(map(int, opts.poly_order.split(',')))
+elif '-' in opts.poly_order:
+    poly_array = np.sort(map(int, opts.poly_order.split('-')))
+    poly_orders = np.arange(poly_array[0], poly_array[1] + 1, 1)
+    poly_orders = poly_orders[np.where(poly_orders <= poly_array[1])]
+elif not (',' in opts.poly_order and '-' in opts.poly_order):
+    poly_orders = [int(opts.poly_order)]
+
+npolys = len(poly_orders)
+
+
 
 ## -------------------------------------- Construct sky -------------------------------------- ##
 print 'Constructing sky...'
@@ -136,6 +158,7 @@ ls = np.linspace(-FOV/2, FOV/2, npix_side)
 ms = np.copy(ls)
 lm_pixel_half = np.diff(ls)[0]/2.
 ls_vec, ms_vec = np.zeros(0), np.zeros(0)
+nlm = ls.size*ms.size
 for m in ms:
     for l in ls:
         ls_vec = np.append(ls_vec, l)
@@ -172,7 +195,6 @@ elif opts.horizon_source:
                                                                                           high=lm_pixel_half)
         true_pos[i, 1] = ms[grid_pos[i, 0]] + np.random.uniform(low=0,
                                                                                             high=lm_pixel_half)
-
 elif opts.l_offset or opts.m_offset:
     if opts.l_offset:
         l_off = int(mid_l*opts.l_offset)
@@ -191,6 +213,15 @@ elif opts.l_offset or opts.m_offset:
                                                                                           high=lm_pixel_half)
         true_pos[i, 1] = ms[grid_pos[i, 0]] + np.random.uniform(low=-lm_pixel_half,
                                                                                             high=lm_pixel_half)
+
+elif opts.uniform_sky:
+    # np.append(test_arr, np.array([[2, 2]]), axis=0)
+    grid_pos = np.array([[0, 0]])
+    for i in range(0, opts.npix_side):
+        for j in range(0, opts.npix_side):
+            grid_pos = np.append(grid_pos, np.array([[i, j]]), axis=0)
+    grid_pos = grid_pos[1:]
+    true_pos = np.stack([ms_vec, ls_vec]).T
 
 else:
     for i in range(grid_pos.shape[0]):
@@ -216,14 +247,17 @@ Sky = np.zeros((nfreqs, npix_side, npix_side))
 Sky_counts = np.zeros((npix_side, npix_side))
 for i, freq in enumerate(freqs):
     if not opts.spec_index == 0.0:
-        Sky[i, grid_pos[:, 0], grid_pos[:, 1]] += 1./(1 + (freq - freqs.min())**opts.spec_index)
+        Sky[i, grid_pos[:, 0], grid_pos[:, 1]] = 1./(1 + (freq - freqs.min())**opts.spec_index)
     else:
-        Sky[i, grid_pos[:, 0], grid_pos[:, 1]] += 1.
+        Sky[i, grid_pos[:, 0], grid_pos[:, 1]] = 1.
 
 unique_grid_pos, unique_grid_pos_counts = np.unique(grid_pos,
                                                                                  axis=0,
                                                                                  return_counts=True)
 Sky_counts[unique_grid_pos[:, 0], unique_grid_pos[:, 1]] = unique_grid_pos_counts
+
+for i in range(freqs.size):
+    Sky[i] *= Sky_counts
 
 # Flatten sky for matrix computation
 Sky_vec = Sky.flatten()
@@ -360,21 +394,29 @@ for freq_ind in range(nfreqs):
     # Maximum likelihood solution for the sky
     a[freq_ind] = np.dot(inv_part, right_part)
 
+# Create data containers for storing polynomial fit data
+rms_data = np.zeros([npolys, nlm])
+poly_fits = np.zeros([npolys, nfreqs, nlm])
+# rms_data = np.zeros_like(a[0])
+# poly_fits = np.zeros_like(a)
 
-# Fit quadratics in frequency along frequency axis if a
-fit_coeffs = np.polyfit(freqs, np.abs(a), 2) # shape (3, npix), i.e. 3 coefficients for each pixel
-rms_data = np.zeros_like(a[0])
-quad_fits = np.zeros_like(a)
+print 'Performing polynomial fit...'
+print 'Polynomial order: ',
+for poly_ind, poly_order in enumerate(poly_orders):
+    if not poly_order == poly_orders[-1]:
+        print '%d, ' %poly_order ,
+    else:
+        print '%d' %poly_order
+    # Fit quadratics in frequency along frequency axis if a
+    fit_coeffs = np.polyfit(freqs, np.abs(a), poly_order)
+    # shape (poly_order + 1, npix), i.e. (poly_order + 1) coefficients for each pixel
 
-for pix_ind in range(npix):
-    quad_fits[:, pix_ind] = (fit_coeffs[0, pix_ind]*freqs**2
-                                       +
-                                       fit_coeffs[1, pix_ind]*freqs
-                                       +
-                                       fit_coeffs[2, pix_ind])
+    for pix_ind in range(npix):
+        for j in range(poly_order + 1):
+            poly_fits[poly_ind, :, pix_ind] += fit_coeffs[j, pix_ind]*freqs**(poly_order - j)
 
-residuals = np.abs(a) - np.abs(quad_fits)
-rms_data = np.std(residuals, axis=0)
+    residuals = np.abs(a) - np.abs(poly_fits[poly_ind])
+    rms_data[poly_ind] = np.std(residuals, axis=0)
 
 if opts.write:
     # Write fitted RMS data
@@ -410,6 +452,7 @@ if opts.write:
     else:
         out_dic['fitted_beam'] = False
     out_dic['rms_data'] = rms_data
+    out_dic['poly_order'] = opts.poly_order
     np.save(filename + '.npy', out_dic)
 
     sys.exit()
@@ -419,7 +462,6 @@ if opts.write:
 from mpl_toolkits.axes_grid1.axes_divider import make_axes_locatable
 from matplotlib.pyplot import *
 
-freq_ind = 0
 fontsize = 14
 extent_lm = [ls.min() - lm_pixel_half, ls.max() + lm_pixel_half,
                     ms.min() - lm_pixel_half, ms.max() + lm_pixel_half]
@@ -428,20 +470,39 @@ extent_lm = np.rad2deg(extent_lm)
 fig = figure()
 gs = gridspec.GridSpec(1, 1)
 
+if len(poly_orders) == 1:
+    rms_ax = fig.add_subplot(gs[0])
+    rms_im = rms_ax.imshow(rms_data.reshape([npix_side]*2))
+    rms_ax.set_xlabel('l')
+    rms_ax.set_ylabel('m')
+    rms_ax.set_title('Polynomial Order: %d' %poly_orders[0])
 
-# Plot sky
-rms_ax = fig.add_subplot(gs[0])
-rms_im = imshow(rms_data.reshape([npix_side]*2))
-rms_ax.set_xlabel('l')
-rms_ax.set_ylabel('m')
+    imgs = [rms_im]
 
-imgs = [rms_im]
+    for i,ax in enumerate(fig.axes):
+        ax_divider = make_axes_locatable(ax)
+        cax = ax_divider.append_axes("right", size="5%", pad="2%")
+        cb = fig.colorbar(imgs[i], cax=cax)
+        cb.set_label('Fitted RMS' %np.log10(opts.rms), size=16)
 
-for i,ax in enumerate(fig.axes):
-    ax_divider = make_axes_locatable(ax)
-    cax = ax_divider.append_axes("right", size="5%", pad="2%")
-    cb = fig.colorbar(imgs[i], cax=cax)
-    cb.set_label('Fitted RMS/$10^{%.0f}$' %np.log10(opts.rms), size=16)
+else:
+    # Colorscale stuff
+    norm = Normalize()
+    s_m = cm.ScalarMappable(cmap=cm.jet_r)
+    s_m.set_array([])
+    colors = s_m.to_rgba(np.linspace(0, 1, nlm))[::-1]
+
+    rms_ax = fig.add_subplot(gs[0])
+    for pix_ind in range(nlm):
+        rms_ax.plot(poly_orders, rms_data[:, pix_ind], marker='o', linestyle='', c=colors[pix_ind])
+
+    rms_ax.set_xticks(poly_orders)
+    rms_ax.set_xlabel('Polynomial Order', size=fontsize)
+    rms_ax.set_ylabel('RMS (maxL Sky Solution - Polynomial Fit)', size=fontsize)
+    if not opts.uniform_sky:
+        rms_ax.set_title('Nsources: %d, FOV: %d' %(opts.nsources, opts.fov))
+    else:
+        rms_ax.set_title(r'Uniform Sky, FOV: %d$\,^o$' %opts.fov)
 
 gs.tight_layout(fig)
 show()

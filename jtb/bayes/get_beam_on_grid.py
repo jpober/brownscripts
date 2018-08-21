@@ -26,7 +26,7 @@ o.add_option('--fit_beam',
     action = 'store_true',
     help = 'If passed, fit beam with a 2d Gaussian and plot beam - fit.')
 
-o.add_option('--dB',
+o.add_option('--log_scale',
     action = 'store_true',
     help = 'If passed, plot in dB.')
 
@@ -92,11 +92,11 @@ else:
 #                         extent=extent_lm)
 
 beamax = fig.add_subplot(gs[0])
-if opts.dB:
+if opts.log_scale:
     beamim = imshow(10*np.log10(beam_grid).reshape((NPIX_SIDE, NPIX_SIDE)),
                                 origin='lower',
                                 extent=extent_lm)
-    beamax.set_title('Beam [dBi]')
+    beamax.set_title('Beam')
 else:
     beamim = imshow(beam_grid.reshape((NPIX_SIDE, NPIX_SIDE)),
                                 origin='lower',
@@ -105,11 +105,11 @@ else:
 
 if opts.fit_beam:
     fitax = fig.add_subplot(gs[1])
-    if opts.dB:
+    if opts.log_scale:
         fitim = imshow(10*np.log10(fit_beam_grid).reshape([NPIX_SIDE]*2),
                                origin='lower',
                                extent=extent_lm)
-        fitax.set_title('Fitted Beam [dBi]')
+        fitax.set_title('Fitted Beam')
     else:
         fitim = imshow(fit_beam_grid.reshape([NPIX_SIDE]*2),
                                origin='lower',
@@ -118,11 +118,11 @@ if opts.fit_beam:
 
     diff_data = beam_grid - fit_beam_grid
     diffax = fig.add_subplot(gs[2])
-    if opts.dB:
+    if opts.log_scale:
         diffim = imshow(10*np.log10(diff_data).reshape([NPIX_SIDE]*2),
                                  origin='lower',
                                  extent=extent_lm)
-        diffax.set_title('Beam - Fitted Beam [dBi]')
+        diffax.set_title('Beam - Fitted Beam')
     else:
         diffim = imshow(diff_data.reshape([NPIX_SIDE]*2),
                                  origin='lower',
@@ -141,7 +141,7 @@ for i, ax in enumerate(fig.axes):
     cb = fig.colorbar(imgs[i], cax=cax)
     if opts.fit_beam:
         if not imgs[i] == diffim:
-            cb.set_label('dB', size=16)
+            cb.set_label('dBi', size=16)
     ax.set_xlabel('l')
     ax.set_ylabel('m')
 

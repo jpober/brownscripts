@@ -405,7 +405,7 @@ if not opts.noplot:
                                         color=colors[freq_ind])
     rms_ax.set_xlabel('Source Location [deg]', size=16)
     rms_ax.set_ylabel('Fitted RMS/$10^{%.0f}$' %np.log10(opts.rms), size=16)
-    rms_ax.set_ylim([0.5, 1.5])
+    rms_ax.set_ylim([0.8, 1.2])
     rms_ax.set_xlim([plot_xs.min(), plot_xs.max()])
     # rms_ax.set_title(' '.join(sys.argv))
     # rms_ax.set_title(sys.argv)
