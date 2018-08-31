@@ -21,6 +21,7 @@ o.add_option('--freq_res',
 
 o.add_option('--grid_pos',
     action='store_true',
+    default = 'True',
     help = 'If passed, compare with grid centers. '
                +
                'Otherwise compare with true source positions.')
@@ -65,6 +66,10 @@ o.add_option('--log_scale',
     action = 'store_true',
     help = 'If passed, plot in log scale.')
 
+o.add_option('--force_lim',
+    action = 'store_true',
+    help = 'If passed, force colorbars to same limits on all plots.')
+
 o.add_option('--beam',
     type = 'str',
     # default = ('/Users/jburba/hera_things/hera-team/HERA-Beams/'
@@ -75,6 +80,10 @@ o.add_option('--beam',
 o.add_option('--fit_beam',
     action = 'store_true',
     help = 'If passed, fit a two dimensional Gaussian to the beam for use in the maxL solution.')
+
+o.add_option('--fractional_fit',
+    action = 'store_true',
+    help = 'If passed, normalize the beam at each frequency to have a peak at 1.')
 
 o.add_option('--npix_side',
     type = int,
@@ -115,12 +124,15 @@ if not opts.rms_data:
     def Gaussian(x, a, x0, sigma):
         return a*np.exp(-(x-x0)**2/(2*sigma**2))
 
-    def twoD_Gaussian((x, y), amp, x0, y0, sigma_x, sigma_y):
+    def twoD_Gaussian((x, y), x0, y0, sigma_x, sigma_y):
         # See https://stackoverflow.com/questions/21566379/
         # fitting-a-2d-gaussian-function-using-scipy-optimize-curve-fit-valueerror-and-m
         # for example of 2d Guassian fitting using scipy.optimize.curve_fit
-        return (amp*np.exp(-(x-x0)**2/(2*sigma_x**2) - (y-y0)**2/(2*sigma_y**2))).ravel()
+        return (np.exp(-(x-x0)**2/(2*sigma_x**2) - (y-y0)**2/(2*sigma_y**2))).ravel()
 
+    if opts.fractional_fit:
+        # Force fit_beam = False to use the raw beam
+        opts.fit_beam = False
 
     # Constants
     C = 3.e8 # meters per second
@@ -136,7 +148,7 @@ if not opts.rms_data:
                                   decimals=3)
         freqs = freqs[np.where(freqs <= freqs_arr[1])]
     elif not (',' in opts.freq and '-' in opts.freq):
-        freqs = [float(opts.freq)]
+        freqs = np.array([float(opts.freq)])
 
     nfreqs = len(freqs)
 
@@ -158,7 +170,6 @@ if not opts.rms_data:
     print 'Constructing sky...'
 
     # Construct l,m grid
-    # Get l, m coordinates
     FOV = np.deg2rad(opts.fov)
     ls = np.linspace(-FOV/2, FOV/2, npix_side)
     ms = np.copy(ls)
@@ -201,6 +212,7 @@ if not opts.rms_data:
                                                                                               high=lm_pixel_half)
             true_pos[i, 1] = ms[grid_pos[i, 0]] + np.random.uniform(low=0,
                                                                                                 high=lm_pixel_half)
+
     elif opts.l_offset or opts.m_offset:
         if opts.l_offset:
             l_off = int(mid_l*opts.l_offset)
@@ -221,7 +233,7 @@ if not opts.rms_data:
                                                                                                 high=lm_pixel_half)
 
     elif opts.uniform_sky:
-        # np.append(test_arr, np.array([[2, 2]]), axis=0)
+        nsources = nlm
         grid_pos = np.array([[0, 0]])
         for i in range(0, opts.npix_side):
             for j in range(0, opts.npix_side):
@@ -268,6 +280,7 @@ if not opts.rms_data:
     # Flatten sky for matrix computation
     Sky_vec = Sky.flatten()
 
+    # Beam stuff
     if opts.beam:
         # Get beam on sky grid
         thetas = np.sqrt(ls_vec**2 + ms_vec**2)
@@ -285,12 +298,21 @@ if not opts.rms_data:
             fit_beam_grid = np.zeros_like(beam_grid)
 
         # Get beam on grid
+        ref_beam = None
         for i, freq in enumerate(freqs):
             freq_ind = np.where(beam_freqs == freq)[0][0]
             beam_grid[i] = hp.get_interp_val(beam_E[:, freq_ind], thetas, phis)
+            beam_grid[i] /= beam_grid[i].max()
+
+            if opts.fractional_fit:
+                if ref_beam is None:
+                    print 'Setting reference beam at %.3fMHz' %freq
+                    ref_beam = np.copy(beam_grid[i])
+                beam_grid[i] /= ref_beam
 
             if opts.fit_beam:
-                initial_guess = (beam_grid[i].max(), 0., 0., 1., 1.)
+                initial_guess = (0., 0., 1., 1.)
+                # popt, pcov = curve_fit(lambda (l, m), l0, m0, sl, sm: twoD_Gaussian((l, m), l0, m0, sl, sm), (L, M), beam_grid[i], p0=initial_guess)
                 popt, pcov = curve_fit(twoD_Gaussian, (L, M), beam_grid[i], p0=initial_guess)
                 fit_beam_grid[i] = twoD_Gaussian((L, M), *popt)
 
@@ -463,6 +485,10 @@ if not opts.rms_data:
             else:
                 filename += '_%dsources' %opts.nsources
 
+        if opts.fractional_fit:
+            filename += '_fractional-fit'
+        else:
+            filename += '_absolute-fit'
         print 'Writing ' + filename + '.npy ...\n'
 
         out_dic = {}
@@ -522,55 +548,132 @@ print 'Polynomial orders: ',
 print map(str, poly_orders)
 print 'Plotting...'
 
+nplots = len(poly_orders)
+plot_size = 5
+nrows = 1
+ncols = nplots
+fig = figure(figsize=(plot_size*nplots, plot_size))
+
 fontsize = 14
 extent_lm = [ls.min() - lm_pixel_half, ls.max() + lm_pixel_half,
                     ms.min() - lm_pixel_half, ms.max() + lm_pixel_half]
 extent_lm = np.rad2deg(extent_lm)
 
-fig = figure()
-gs = gridspec.GridSpec(1, 1)
-print '1'
-if len(poly_orders) == 1:
-    print '2'
+gs = gridspec.GridSpec(nrows, nplots)
+imgs = []
+if nplots == 1:
     rms_ax = fig.add_subplot(gs[0])
-    rms_im = rms_ax.imshow(rms_data.reshape([npix_side]*2))
+    if opts.log_scale:
+        rms_im = rms_ax.imshow(10*np.log10(rms_data).reshape([npix_side]*2))
+    else:
+        rms_im = rms_ax.imshow(rms_data.reshape([npix_side]*2))
     rms_ax.set_xlabel('l')
     rms_ax.set_ylabel('m')
     rms_ax.set_title('Polynomial Order: %d' %poly_orders[0])
 
-    imgs = [rms_im]
+    imgs .append(rms_im)
 
+else:
+    if opts.force_lim:
+        # Add master labels for all x and y axes
+        master_ax = fig.add_subplot(gs[:,:])
+        master_ax.set_xticks([])
+        master_ax.set_yticks([])
+        master_ax.spines['top'].set_visible(False)
+        master_ax.spines['right'].set_visible(False)
+        master_ax.spines['bottom'].set_visible(False)
+        master_ax.spines['left'].set_visible(False)
+
+    for plot_ind in range(nplots):
+        rms_ax = fig.add_subplot(gs[plot_ind])
+
+        if plot_ind == 0:
+            if opts.force_lim:
+                if opts.log_scale:
+                    vmin = np.log10(rms_data).min()
+                    vmax = np.log10(rms_data).max()
+                else:
+                    vmin = rms_data.min()
+                    vmax = rms_data.max()
+
+        if opts.force_lim:
+            if opts.log_scale:
+                rms_im = rms_ax.imshow(np.log10(rms_data)[plot_ind].reshape([npix_side]*2),
+                                                       origin='lower',
+                                                       extent=extent_lm,
+                                                       vmin=vmin,
+                                                       vmax=vmax)
+            else:
+                rms_im = rms_ax.imshow(rms_data[plot_ind].reshape([npix_side]*2),
+                                                       origin='lower',
+                                                       extent=extent_lm,
+                                                       vmin=vmin,
+                                                       vmax=vmax)
+
+            # remove axis labels from interior plots
+            if not plot_ind == 0:
+                rms_ax.set_yticks([])
+            else:
+                rms_ax.set_ylabel('m')
+
+        else:
+            if opts.log_scale:
+                rms_im = rms_ax.imshow(np.log10(rms_data)[plot_ind].reshape([npix_side]*2),
+                                                       origin='lower',
+                                                       extent=extent_lm)
+            else:
+                rms_im = rms_ax.imshow(rms_data[plot_ind].reshape([npix_side]*2),
+                                                       origin='lower',
+                                                       extent=extent_lm)
+
+        rms_ax.set_title('Polynomial Order: %d' %poly_orders[plot_ind])
+        rms_ax.set_xlabel('l')
+
+        imgs.append(rms_im)
+
+# Set title based on params
+title = r'FOV: %d$\,^o$' %np.round(np.rad2deg(FOV))
+if opts.uniform_sky or 'uniform' in opts.rms_data:
+    title = r'Uniform Sky, ' + title
+elif opts.zenith_source or 'zenith' in opts.rms_data:
+    title = r'Zenith Source, ' + title
+elif opts.horizon_source or 'horizon' in opts.rms_data:
+    title = r'Horizon Source, ' + title
+else:
+    title = r'Nsources: %d, ' %nsources + title
+
+if opts.fractional_fit:
+    title = r'Fractional fit, ' + title
+else:
+    title = r'Absolute fit, ' + title
+
+fig.suptitle(title)
+gs.tight_layout(fig)
+gs.update(top=0.8)
+
+if opts.force_lim:
+    # Append master colorbar
+    gs.update(right=0.85)
+    ax_divider = make_axes_locatable(rms_ax)
+    cbar_ax = ax_divider.append_axes("right", size="5%", pad="2%")
+    cb = fig.colorbar(imgs[0], cax=cbar_ax)
+    cb.set_clim(vmin, vmax)
+
+    if opts.log_scale:
+        cb.set_label('Log Visibilities', size=fontsize, labelpad=10)
+    else:
+        cb.set_label('Visibilities', size=fontsize, labelpad=10)
+
+    cb.ax.tick_params(labelsize=fontsize)
+else:
     for i,ax in enumerate(fig.axes):
         ax_divider = make_axes_locatable(ax)
         cax = ax_divider.append_axes("right", size="5%", pad="2%")
         cb = fig.colorbar(imgs[i], cax=cax)
-        cb.set_label('Fitted RMS' %np.log10(opts.rms), size=16)
+        if i == (nplots - 1):
+            if opts.log_scale:
+                cb.set_label('log10(Fitted RMS)', size=fontsize)
+            else:
+                cb.set_label('Fitted RMS', size=fontsize)
 
-else:
-    print 3
-    # Colorscale stuff
-    norm = Normalize()
-    s_m = cm.ScalarMappable(cmap=cm.jet_r)
-    s_m.set_array([])
-    colors = s_m.to_rgba(np.linspace(0, 1, nlm))[::-1]
-
-    rms_ax = fig.add_subplot(gs[0])
-    print 4
-    for pix_ind in range(nlm):
-        rms_ax.plot(poly_orders, rms_data[:, pix_ind], marker='o', linestyle='', c=colors[pix_ind])
-    print 5
-    rms_ax.set_xticks(poly_orders)
-    rms_ax.set_xlabel('Polynomial Order', size=fontsize)
-    rms_ax.set_ylabel('RMS (maxL Sky Solution - Polynomial Fit)', size=fontsize)
-    if opts.uniform_sky or 'uniform' in opts.rms_data:
-        rms_ax.set_title(r'Uniform Sky, FOV: %d$\,^o$' %np.round(np.rad2deg(FOV)))
-    elif opts.zenith_source or 'zenith' in opts.rms_data:
-        rms_ax.set_title(r'Zenith Source, FOV: %d$\,^o$' %np.round(np.rad2deg(FOV)))
-    elif opts.horizon_source or 'horizon' in opts.rms_data:
-        rms_ax.set_title(r'Horizon Source, FOV: %d$\,^o$' %np.round(np.rad2deg(FOV)))
-    else:
-        rms_ax.set_title(r'Nsources: %d, FOV: %d$\,^o$' %(nsources, np.round(np.rad2deg(FOV))))
-
-
-gs.tight_layout(fig)
 show()

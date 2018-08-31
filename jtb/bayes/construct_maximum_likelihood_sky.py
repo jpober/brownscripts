@@ -33,6 +33,10 @@ o.add_option('--horizon_source',
     action = 'store_true',
     help = 'If passed, only place one source at the horizon.')
 
+o.add_option('--uniform_sky',
+    action = 'store_true',
+    help = 'If passed, make sky uniform with amplitude 1.')
+
 o.add_option('--l_offset',
     type = float,
     help = 'Moves source in l-direction by l_offset*ls.max().  Must be between 0 and 1.')
@@ -192,6 +196,15 @@ elif opts.l_offset or opts.m_offset:
         true_pos[i, 1] = ms[grid_pos[i, 0]] + np.random.uniform(low=-lm_pixel_half,
                                                                                             high=lm_pixel_half)
 
+elif opts.uniform_sky:
+    nsources = ls.size*ms.size
+    grid_pos = np.array([[0, 0]])
+    for i in range(0, opts.npix_side):
+        for j in range(0, opts.npix_side):
+            grid_pos = np.append(grid_pos, np.array([[i, j]]), axis=0)
+    grid_pos = grid_pos[1:]
+    true_pos = np.stack([ms_vec, ls_vec]).T
+
 else:
     for i in range(grid_pos.shape[0]):
         grid_pos[i, 0] = np.random.randint(0, ms.shape[0])
@@ -203,9 +216,11 @@ else:
 
 if opts.beam:
     if nsources == 1:
+        print 'Nsources: %d' %nsources
         pos_vec = np.where(np.logical_and(ls_vec == ls[grid_pos[:, 1]],
                                                             ms_vec == ms[grid_pos[:, 0]]))[0][0]
     else:
+        print 'More than one source'
         pos_vec = np.zeros(0, dtype=int)
         for (l, m) in np.stack([ls[grid_pos[:, 1]], ms[grid_pos[:, 0]]], axis=1):
             pos_vec = np.append(pos_vec, np.where(np.logical_and(ls_vec == l,
@@ -442,25 +457,25 @@ gs = gridspec.GridSpec(2, 3)
 skyax = fig.add_subplot(gs[0,0])
 skyax.scatter(true_pos[:, 0], true_pos[:, 1], marker='.', c='r', alpha=0.5, s=25)
 if opts.log_scale:
-    if opts.beam:
-        skyim = skyax.imshow(np.log10(Sky[freq_ind]*Sky_counts*
-                                          beam_grid[freq_ind].reshape((npix_side, npix_side))),
-                                          extent=extent_lm,
-                                          origin='lower')
-        skyax.set_title('Log Sky*Beam, %.1fMHz' %freqs[freq_ind], fontsize=fontsize)
-    else:
+    # if opts.beam:
+    #     skyim = skyax.imshow(np.log10(Sky[freq_ind]*Sky_counts*
+    #                                       beam_grid[freq_ind].reshape((npix_side, npix_side))),
+    #                                       extent=extent_lm,
+    #                                       origin='lower')
+    #     skyax.set_title('Log Sky*Beam, %.1fMHz' %freqs[freq_ind], fontsize=fontsize)
+    # else:
         skyim = skyax.imshow(np.log10(Sky[freq_ind]*Sky_counts),
                                           extent=extent_lm,
                                           origin='lower')
         skyax.set_title('Log Sky, %.1fMHz' %freqs[freq_ind], fontsize=fontsize)
 else:
-    if opts.beam:
-         skyim = skyax.imshow((Sky[freq_ind]*Sky_counts*
-                                           beam_grid[freq_ind].reshape((npix_side, npix_side))),
-                                           extent=extent_lm,
-                                           origin='lower')
-         skyax.set_title('Sky, %.1fMHz' %freqs[freq_ind], fontsize=fontsize)
-    else:
+    # if opts.beam:
+    #      skyim = skyax.imshow((Sky[freq_ind]*Sky_counts*
+    #                                        beam_grid[freq_ind].reshape((npix_side, npix_side))),
+    #                                        extent=extent_lm,
+    #                                        origin='lower')
+    #      skyax.set_title('Sky*Beam, %.1fMHz' %freqs[freq_ind], fontsize=fontsize)
+    # else:
         skyim = skyax.imshow(Sky[freq_ind]*Sky_counts,
                                           extent=extent_lm,
                                           origin='lower')
@@ -504,25 +519,26 @@ visax.set_ylabel('v [wavelengths]')
 # Plot sky solution for maximum likelihood
 anskyax = fig.add_subplot(gs[1,0])
 if opts.log_scale:
-    if opts.beam:
-        anskyim = anskyax.imshow(np.log10(np.real(a[freq_ind])*
-                                                 beam_grid[freq_ind].reshape((npix_side, npix_side))),
-                                                 extent=extent_lm,
-                                                 origin='lower')
-        anskyax.set_title('Log MaxL Sky, %.1fMHz' %freqs[freq_ind], fontsize=fontsize)
-    else:
+    # if opts.beam:
+    #     anskyim = anskyax.imshow(np.log10(np.real(a[freq_ind])*
+    #                                              beam_grid[freq_ind].reshape((npix_side, npix_side))),
+    #                                              extent=extent_lm,
+    #                                              origin='lower')
+    #     anskyax.set_title('Log MaxL Sky, %.1fMHz' %freqs[freq_ind], fontsize=fontsize)
+    # else:
         anskyim = anskyax.imshow(np.log10(np.real(a[freq_ind])),
                                                  extent=extent_lm,
                                                  origin='lower')
         anskyax.set_title('Log MaxL Sky, %.1fMHz' %freqs[freq_ind], fontsize=fontsize)
 else:
-    if opts.beam:
-        anskyim = anskyax.imshow((np.real(a[freq_ind])*
-                                                 beam_grid[freq_ind].reshape((npix_side, npix_side))),
-                                                 extent=extent_lm,
-                                                 origin='lower')
-        anskyax.set_title('MaxL Sky, %.1fMHz' %freqs[freq_ind], fontsize=fontsize)
-    else:
+    # Why am I multiplying by the beam?  This is wrong and misleading...
+    # if opts.beam:
+    #     anskyim = anskyax.imshow((np.real(a[freq_ind])*
+    #                                              beam_grid[freq_ind].reshape((npix_side, npix_side))),
+    #                                              extent=extent_lm,
+    #                                              origin='lower')
+    #     anskyax.set_title('MaxL Sky, %.1fMHz' %freqs[freq_ind], fontsize=fontsize)
+    # else:
         anskyim = anskyax.imshow(np.real(a[freq_ind]),
                                                  extent=extent_lm,
                                                  origin='lower')
