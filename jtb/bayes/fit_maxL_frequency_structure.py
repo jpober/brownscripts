@@ -385,7 +385,6 @@ if not opts.rms_data:
     # Assumes a Gaussian log likelihood function
     # Requires noise injection into data (visibilities above)
     a = np.zeros_like(Vs)
-    Vs_maxL = np.zeros_like(a)
     N_inv = np.eye(npix)/opts.rms**2
 
     # Create data from visibilities with injected Gaussian noise
@@ -493,13 +492,12 @@ if not opts.rms_data:
             filename += '_fractional-fit'
         else:
             filename += '_absolute-fit'
-        print 'Writing ' + filename + '.npy ...\n'
 
+        print 'Writing ' + filename + '.npy ...\n'
         out_dic = {}
-        out_dic['sky'] = Sky[freq_ind]*Sky_counts
+        out_dic['sky'] = Sky
         out_dic['vis'] = Vs
         out_dic['maxL_sky'] = a
-        out_dic['maxL_vis'] = Vs_maxL
         out_dic['input_rms'] = opts.rms
         out_dic['freqs'] = freqs
         if opts.beam:

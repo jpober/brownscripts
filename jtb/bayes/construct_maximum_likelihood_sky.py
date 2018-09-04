@@ -76,6 +76,15 @@ o.add_option('--fit_beam',
     action = 'store_true',
     help = 'If passed, fit a two dimensional Gaussian to the beam for use in the maxL solution.')
 
+o.add_option('--fractional_fit',
+    action = 'store_true',
+    help = 'If passed, normalize the beam at each frequency to have a peak at 1.')
+
+o.add_option('--ref_freq_chan',
+    type = 'int',
+    default = 0,
+    help = 'Array index of frequency to use as reference frequency for external fitting of frequency structure.')
+
 o.add_option('--npix_side',
     type = int,
     default = 31,
@@ -105,12 +114,15 @@ def Vs_func(u, l, v, m):
 def Gaussian(x, a, x0, sigma):
     return a*np.exp(-(x-x0)**2/(2*sigma**2))
 
-def twoD_Gaussian((x, y), amp, x0, y0, sigma_x, sigma_y):
+def twoD_Gaussian((x, y), x0, y0, sigma_x, sigma_y):
     # See https://stackoverflow.com/questions/21566379/
     # fitting-a-2d-gaussian-function-using-scipy-optimize-curve-fit-valueerror-and-m
     # for example of 2d Guassian fitting using scipy.optimize.curve_fit
-    return (amp*np.exp(-(x-x0)**2/(2*sigma_x**2) - (y-y0)**2/(2*sigma_y**2))).ravel()
+    return (np.exp(-(x-x0)**2/(2*sigma_x**2) - (y-y0)**2/(2*sigma_y**2))).ravel()
 
+if opts.fractional_fit:
+    # Force fit_beam = False to use the raw beam
+    opts.fit_beam = False
 
 # Constants
 C = 3.e8 # meters per second
@@ -126,7 +138,7 @@ elif '-' in opts.freq:
                               decimals=3)
     freqs = freqs[np.where(freqs <= freqs_arr[1])]
 elif not (',' in opts.freq and '-' in opts.freq):
-    freqs = [float(opts.freq)]
+    freqs = np.array([float(opts.freq)])
 
 nfreqs = len(freqs)
 
@@ -138,6 +150,7 @@ print 'Constructing sky...'
 FOV = np.deg2rad(opts.fov)
 ls = np.linspace(-FOV/2, FOV/2, npix_side)
 ms = np.copy(ls)
+nlm = ls.size*ms.size
 lm_pixel_half = np.diff(ls)[0]/2.
 ls_vec, ms_vec = np.zeros(0), np.zeros(0)
 for m in ms:
@@ -196,15 +209,6 @@ elif opts.l_offset or opts.m_offset:
         true_pos[i, 1] = ms[grid_pos[i, 0]] + np.random.uniform(low=-lm_pixel_half,
                                                                                             high=lm_pixel_half)
 
-elif opts.uniform_sky:
-    nsources = ls.size*ms.size
-    grid_pos = np.array([[0, 0]])
-    for i in range(0, opts.npix_side):
-        for j in range(0, opts.npix_side):
-            grid_pos = np.append(grid_pos, np.array([[i, j]]), axis=0)
-    grid_pos = grid_pos[1:]
-    true_pos = np.stack([ms_vec, ls_vec]).T
-
 else:
     for i in range(grid_pos.shape[0]):
         grid_pos[i, 0] = np.random.randint(0, ms.shape[0])
@@ -216,11 +220,9 @@ else:
 
 if opts.beam:
     if nsources == 1:
-        print 'Nsources: %d' %nsources
         pos_vec = np.where(np.logical_and(ls_vec == ls[grid_pos[:, 1]],
                                                             ms_vec == ms[grid_pos[:, 0]]))[0][0]
     else:
-        print 'More than one source'
         pos_vec = np.zeros(0, dtype=int)
         for (l, m) in np.stack([ls[grid_pos[:, 1]], ms[grid_pos[:, 0]]], axis=1):
             pos_vec = np.append(pos_vec, np.where(np.logical_and(ls_vec == l,
@@ -231,18 +233,22 @@ Sky = np.zeros((nfreqs, npix_side, npix_side))
 Sky_counts = np.zeros((npix_side, npix_side))
 for i, freq in enumerate(freqs):
     if not opts.spec_index == 0.0:
-        Sky[i, grid_pos[:, 0], grid_pos[:, 1]] += 1./(1 + (freq - freqs.min())**opts.spec_index)
+        Sky[i, grid_pos[:, 0], grid_pos[:, 1]] = 1./(1 + (freq - freqs.min())**opts.spec_index)
     else:
-        Sky[i, grid_pos[:, 0], grid_pos[:, 1]] += 1.
+        Sky[i, grid_pos[:, 0], grid_pos[:, 1]] = 1.
 
 unique_grid_pos, unique_grid_pos_counts = np.unique(grid_pos,
                                                                                  axis=0,
                                                                                  return_counts=True)
 Sky_counts[unique_grid_pos[:, 0], unique_grid_pos[:, 1]] = unique_grid_pos_counts
 
-# Flatten sky for matrix computation
-Sky_vec = Sky.flatten()
+for i in range(freqs.size):
+    Sky[i] *= Sky_counts
 
+# Flatten sky for matrix computation
+Sky_vec = Sky.reshape((nfreqs, npix_side**2))
+
+# Beam stuff
 if opts.beam:
     # Get beam on sky grid
     thetas = np.sqrt(ls_vec**2 + ms_vec**2)
@@ -260,12 +266,22 @@ if opts.beam:
         fit_beam_grid = np.zeros_like(beam_grid)
 
     # Get beam on grid
+    ref_beam_set = False
     for i, freq in enumerate(freqs):
         freq_ind = np.where(beam_freqs == freq)[0][0]
         beam_grid[i] = hp.get_interp_val(beam_E[:, freq_ind], thetas, phis)
+        beam_grid[i] /= beam_grid[i].max()
+
+        if opts.fractional_fit:
+            if not ref_beam_set:
+                print 'Setting reference beam at %.3fMHz' %freq
+                ref_beam = np.copy(beam_grid[opts.ref_freq_chan])
+                ref_beam_set = True
+            beam_grid[i] /= ref_beam
 
         if opts.fit_beam:
-            initial_guess = (beam_grid[i].max(), 0., 0., 1., 1.)
+            initial_guess = (0., 0., 1., 1.)
+            # popt, pcov = curve_fit(lambda (l, m), l0, m0, sl, sm: twoD_Gaussian((l, m), l0, m0, sl, sm), (L, M), beam_grid[i], p0=initial_guess)
             popt, pcov = curve_fit(twoD_Gaussian, (L, M), beam_grid[i], p0=initial_guess)
             fit_beam_grid[i] = twoD_Gaussian((L, M), *popt)
 
@@ -298,36 +314,39 @@ else:
 
 # Use analytical solution to get visibilities using true positions
 Vs = np.zeros((nfreqs, nvis), dtype=complex)
-for i in range(nfreqs):
-    for j in range(us_vec.size):
-        if opts.uvdata:
-            inv_wavelength = freqs[i]*1.e6/C
-        else:
-            inv_wavelength = 1.
-        if opts.grid_pos:
-            if opts.beam:
-                Vs[i, j] = np.sum(beam_grid[i, pos_vec]*Vs_func(us_vec[j]*inv_wavelength,
-                                                       ls[grid_pos[:, 1]],
-                                                       vs_vec[j]*inv_wavelength,
-                                                       ms[grid_pos[:, 0]]))
+if opts.uniform_sky:
+    # Construct visibilities faster as FT of beam*sky
+    Vs[i] = np.fft.fftshift(np.fft.fft2((beam_grid[i]*Sky_vec[i]).reshape([npix_side]*2))).flatten()
+else:
+    for i in range(nfreqs):
+        for j in range(us_vec.size):
+            if opts.uvdata:
+                inv_wavelength = freqs[i]*1.e6/C
             else:
-                Vs[i, j] = np.sum(Vs_func(us_vec[j]*inv_wavelength,
-                                                       ls[grid_pos[:, 1]],
-                                                       vs_vec[j]*inv_wavelength,
-                                                       ms[grid_pos[:, 0]]))
-        else:
-            if opts.beam:
-                Vs[i, j] = np.sum(beam_grid[i, pos_vec]*Vs_func(us_vec[j]*inv_wavelength,
-                                                                              true_pos[:, 0],
-                                                                              vs_vec[j]*inv_wavelength,
-                                                                              true_pos[:, 1]))
+                inv_wavelength = 1.
+            if opts.grid_pos:
+                if opts.beam:
+                    Vs[i, j] = np.sum(beam_grid[i, pos_vec]*Vs_func(us_vec[j]*inv_wavelength,
+                                                           ls[grid_pos[:, 1]],
+                                                           vs_vec[j]*inv_wavelength,
+                                                           ms[grid_pos[:, 0]]))
+                else:
+                    Vs[i, j] = np.sum(Vs_func(us_vec[j]*inv_wavelength,
+                                                           ls[grid_pos[:, 1]],
+                                                           vs_vec[j]*inv_wavelength,
+                                                           ms[grid_pos[:, 0]]))
             else:
-                Vs[i, j] = np.sum(Vs_func(us_vec[j]*inv_wavelength,
-                                                       true_pos[:, 0],
-                                                       vs_vec[j]*inv_wavelength,
-                                                       true_pos[:, 1]))
+                if opts.beam:
+                    Vs[i, j] = np.sum(beam_grid[i, pos_vec]*Vs_func(us_vec[j]*inv_wavelength,
+                                                                                  true_pos[:, 0],
+                                                                                  vs_vec[j]*inv_wavelength,
+                                                                                  true_pos[:, 1]))
+                else:
+                    Vs[i, j] = np.sum(Vs_func(us_vec[j]*inv_wavelength,
+                                                           true_pos[:, 0],
+                                                           vs_vec[j]*inv_wavelength,
+                                                           true_pos[:, 1]))
 
-Vs = Vs.reshape((nfreqs, npix_side, npix_side))
 
 ## ---------------------------------- Construct MaxL Sky ---------------------------------- ##
 print 'Constructing maximum likelihood sky...'
@@ -342,62 +361,51 @@ N_inv = np.eye(npix)/opts.rms**2
 d = np.copy(Vs)
 
 # Iterate over frequencies
-print 'Entering for loop...'
-for i in range(nfreqs):
+print 'Frequency [MHz]: ',
+for freq_ind in range(nfreqs):
+    if freq_ind == nfreqs - 1:
+        print '%.0f' %freqs[freq_ind]
+    else:
+        print '%.0f, ' %freqs[freq_ind] ,
     # Noise must be added so that d is still Hermitian
-    d_flat = d[i].flatten()
-    Vs_flat = Vs[i].flatten()
-
     half_ind = int(us_vec.size/2.) + 1
     for j, [u,v] in enumerate(np.stack((us_vec, vs_vec), axis=1)[:half_ind]):
         neg_ind = np.where(np.logical_and(us_vec == -u, vs_vec == -v))[0][0]
         complex_noise = np.random.normal(0, opts.rms, 1) + 1j*np.random.normal(0, opts.rms, 1)
-        d_flat[j] += complex_noise
-        d_flat[neg_ind] += complex_noise.conjugate()
+        d[freq_ind, j] += complex_noise
+        d[freq_ind, neg_ind] += complex_noise.conjugate()
 
-    d[i] = d_flat.reshape([npix_side]*2)
-
+    # Construct DFT matrix
     DFT = np.exp(-1j*2*np.pi*(np.outer(us_vec, ls_vec)
                         +
                         np.outer(vs_vec, ms_vec)))
 
     if opts.beam:
         if opts.fit_beam:
-            P = np.diag(fit_beam_grid[i])
+            P = np.diag(fit_beam_grid[freq_ind])
         else:
-            P = np.diag(beam_grid[i])
+            P = np.diag(beam_grid[freq_ind])
         DftP = np.dot(DFT, P)
         inv_part = np.linalg.inv(np.dot(np.dot(DftP.conj().T, N_inv), DftP))
-        right_part = np.dot(np.dot(DftP.conj().T, N_inv), d[i].flatten())
+        right_part = np.dot(np.dot(DftP.conj().T, N_inv), d[freq_ind])
     else:
         inv_part = np.linalg.inv(np.dot(np.dot(DFT.conj().T, N_inv), DFT))
-        right_part = np.dot(np.dot(DFT.conj().T, N_inv), d[i].flatten())
+        right_part = np.dot(np.dot(DFT.conj().T, N_inv), d[freq_ind])
 
     # Maximum likelihood solution for the sky
-    # imaginary part is like six orders of magnitude away from machine precision zero???
-    a[i] = np.dot(inv_part, right_part).reshape((npix_side, npix_side))
+    a[freq_ind] = np.dot(inv_part, right_part)
 
     # Generate visibilities from maximum liklihood solution
     if opts.beam:
-        Vs_maxL[i] = np.dot(np.dot(DFT, P),  a[i].flatten()).reshape((npix_side, npix_side))
+        Vs_maxL[i] = np.dot(np.dot(DFT, P),  a[i])
 
         del(DFT, inv_part, right_part, P)
     else:
-        Vs_maxL[i] = np.dot(DFT, a[i].flatten()).reshape((npix_side, npix_side))
+        Vs_maxL[i] = np.dot(DFT, a[i])
 
         del(DFT, inv_part, right_part)
 
 print 'For loop finished...'
-
-# Fit for RMS of residuals
-diff_data = np.abs(Vs) - np.abs(Vs_maxL)
-counts, bins = np.histogram(diff_data[0].flatten(), bins=50)
-bin_width = np.mean(np.diff(bins))
-fit_xs = bins[:-1] + bin_width/2
-guess_params = [np.max(counts), 0.0, opts.rms]
-fit_params, fit_cov = curve_fit(Gaussian, fit_xs, counts, p0=guess_params)
-# 0: amplitude, 1: mean, 2:std dev
-gauss_fit = Gaussian(fit_xs, fit_params[0], fit_params[1], fit_params[2])
 
 if opts.write:
     # Write fitted RMS data
@@ -417,6 +425,30 @@ if opts.write:
         else:
             filename = 'maxL_visdata_%sMHz_%.0fdfov' %(opts.freq,
                                                                                       np.rad2deg(FOV))
+
+    filename += '_%dnpix-side' %opts.npix_side
+    if opts.zenith_source:
+        filename += '_zenith-source'
+    elif opts.horizon_source:
+        filename += '_horizon-source'
+    elif opts.uniform_sky:
+        filename += '_uniform-sky'
+    else:
+        if opts.l_offset:
+            if opts.m_offset:
+                filename += '_loff-%.3f_moff-%.3f' %(opts.l_offset, opts.m_offset)
+            else:
+                filename += '_loff-%.3f' %opts.l_offset
+        elif opts.m_offset:
+            filename += '_moff-%.3f' %opts.m_offset
+        else:
+            filename += '_%dsources' %opts.nsources
+
+    if opts.fractional_fit:
+        filename += '_fractional-fit'
+    else:
+        filename += '_absolute-fit'
+
     print 'Writing ' + filename + '.npy ...\n'
     out_dic = {}
     out_dic['sky'] = Sky[freq_ind]*Sky_counts
@@ -435,6 +467,16 @@ if opts.write:
 
     sys.exit()
 
+
+# Fit for RMS of residuals
+diff_data = np.abs(Vs) - np.abs(Vs_maxL)
+counts, bins = np.histogram(diff_data[0], bins=50)
+bin_width = np.mean(np.diff(bins))
+fit_xs = bins[:-1] + bin_width/2
+guess_params = [np.max(counts), 0.0, opts.rms]
+fit_params, fit_cov = curve_fit(Gaussian, fit_xs, counts, p0=guess_params)
+# 0: amplitude, 1: mean, 2:std dev
+gauss_fit = Gaussian(fit_xs, *fit_params)
 
 ## ---------------------------------- Plotting ---------------------------------- ##
 from mpl_toolkits.axes_grid1.axes_divider import make_axes_locatable
@@ -457,29 +499,15 @@ gs = gridspec.GridSpec(2, 3)
 skyax = fig.add_subplot(gs[0,0])
 skyax.scatter(true_pos[:, 0], true_pos[:, 1], marker='.', c='r', alpha=0.5, s=25)
 if opts.log_scale:
-    # if opts.beam:
-    #     skyim = skyax.imshow(np.log10(Sky[freq_ind]*Sky_counts*
-    #                                       beam_grid[freq_ind].reshape((npix_side, npix_side))),
-    #                                       extent=extent_lm,
-    #                                       origin='lower')
-    #     skyax.set_title('Log Sky*Beam, %.1fMHz' %freqs[freq_ind], fontsize=fontsize)
-    # else:
-        skyim = skyax.imshow(np.log10(Sky[freq_ind]*Sky_counts),
-                                          extent=extent_lm,
-                                          origin='lower')
-        skyax.set_title('Log Sky, %.1fMHz' %freqs[freq_ind], fontsize=fontsize)
+    skyim = skyax.imshow(np.log10(Sky[freq_ind]),
+                                      extent=extent_lm,
+                                      origin='lower')
+    skyax.set_title('Log Sky, %.1fMHz' %freqs[freq_ind], fontsize=fontsize)
 else:
-    # if opts.beam:
-    #      skyim = skyax.imshow((Sky[freq_ind]*Sky_counts*
-    #                                        beam_grid[freq_ind].reshape((npix_side, npix_side))),
-    #                                        extent=extent_lm,
-    #                                        origin='lower')
-    #      skyax.set_title('Sky*Beam, %.1fMHz' %freqs[freq_ind], fontsize=fontsize)
-    # else:
-        skyim = skyax.imshow(Sky[freq_ind]*Sky_counts,
-                                          extent=extent_lm,
-                                          origin='lower')
-        skyax.set_title('Sky, %.1fMHz' %freqs[freq_ind], fontsize=fontsize)
+    skyim = skyax.imshow(Sky[freq_ind],
+                                      extent=extent_lm,
+                                      origin='lower')
+    skyax.set_title('Sky, %.1fMHz' %freqs[freq_ind], fontsize=fontsize)
 skyax.set_xlabel('l')
 skyax.set_ylabel('m')
 
@@ -501,13 +529,13 @@ else:
         vmin = np.abs(Vs[freq_ind]).min()
         vmax = np.abs(Vs[freq_ind]).max()
 if opts.log_scale:
-    visim = visax.imshow(np.log10(np.abs(Vs[freq_ind])),
+    visim = visax.imshow(np.log10(np.abs(Vs[freq_ind])).reshape([npix_side]*2),
                                     extent=extent_uv,
                                     vmin=vmin, vmax=vmax,
                                     origin='lower')
     visax.set_title('Log |Vs|, %.1fMHz ' %freqs[freq_ind], fontsize=fontsize)
 else:
-    visim = visax.imshow(np.abs(Vs[freq_ind]),
+    visim = visax.imshow(np.abs(Vs[freq_ind]).reshape([npix_side]*2),
                                     extent=extent_uv,
                                     vmin=vmin, vmax=vmax,
                                     origin='lower')
@@ -519,30 +547,15 @@ visax.set_ylabel('v [wavelengths]')
 # Plot sky solution for maximum likelihood
 anskyax = fig.add_subplot(gs[1,0])
 if opts.log_scale:
-    # if opts.beam:
-    #     anskyim = anskyax.imshow(np.log10(np.real(a[freq_ind])*
-    #                                              beam_grid[freq_ind].reshape((npix_side, npix_side))),
-    #                                              extent=extent_lm,
-    #                                              origin='lower')
-    #     anskyax.set_title('Log MaxL Sky, %.1fMHz' %freqs[freq_ind], fontsize=fontsize)
-    # else:
-        anskyim = anskyax.imshow(np.log10(np.real(a[freq_ind])),
-                                                 extent=extent_lm,
-                                                 origin='lower')
-        anskyax.set_title('Log MaxL Sky, %.1fMHz' %freqs[freq_ind], fontsize=fontsize)
+    anskyim = anskyax.imshow(np.log10(np.real(a[freq_ind])).reshape([npix_side]*2),
+                                             extent=extent_lm,
+                                             origin='lower')
+    anskyax.set_title('Log MaxL Sky, %.1fMHz' %freqs[freq_ind], fontsize=fontsize)
 else:
-    # Why am I multiplying by the beam?  This is wrong and misleading...
-    # if opts.beam:
-    #     anskyim = anskyax.imshow((np.real(a[freq_ind])*
-    #                                              beam_grid[freq_ind].reshape((npix_side, npix_side))),
-    #                                              extent=extent_lm,
-    #                                              origin='lower')
-    #     anskyax.set_title('MaxL Sky, %.1fMHz' %freqs[freq_ind], fontsize=fontsize)
-    # else:
-        anskyim = anskyax.imshow(np.real(a[freq_ind]),
-                                                 extent=extent_lm,
-                                                 origin='lower')
-        anskyax.set_title('MaxL Sky, %.1fMHz' %freqs[freq_ind], fontsize=fontsize)
+    anskyim = anskyax.imshow(np.real(a[freq_ind]).reshape([npix_side]*2),
+                                             extent=extent_lm,
+                                             origin='lower')
+    anskyax.set_title('MaxL Sky, %.1fMHz' %freqs[freq_ind], fontsize=fontsize)
 anskyax.set_xlabel('l')
 anskyax.set_ylabel('m')
 
@@ -550,12 +563,12 @@ anskyax.set_ylabel('m')
 # Plot visibilities for maximum likelihood solution
 anvisax = fig.add_subplot(gs[1,1])
 if opts.log_scale:
-    anvisim = anvisax.imshow(np.log10(np.abs(Vs_maxL[freq_ind])),
+    anvisim = anvisax.imshow(np.log10(np.abs(Vs_maxL[freq_ind])).reshape([npix_side]*2),
                                            extent=extent_uv,
                                            origin='lower')
     anvisax.set_title('Log|MaxL Visibilities|, %.1fMHz' %freqs[freq_ind], fontsize=fontsize)
 else:
-    anvisim = anvisax.imshow(np.abs(Vs_maxL[freq_ind]),
+    anvisim = anvisax.imshow(np.abs(Vs_maxL[freq_ind]).reshape([npix_side]*2),
                                            extent=extent_uv,
                                            origin='lower')
     anvisax.set_title('|MaxL Visibilities|, %.1fMHz' %freqs[freq_ind], fontsize=fontsize)
@@ -566,13 +579,13 @@ anvisax.set_ylabel('v [wavelengths]')
 # Plot |Vs| - |Vs_maxL|
 diffax = fig.add_subplot(gs[:, -1])
 if opts.log_scale:
-    diffim = diffax.imshow(np.log10(diff_data[freq_ind]),
+    diffim = diffax.imshow(np.log10(diff_data[freq_ind]).reshape([npix_side]*2),
                                       extent=extent_uv,
                                       origin='lower')
     diffax.set_title('Log(|Vs| - |MaxL Vs|), %.1fMHz\nFitted RMS: %.2e\nMean: %.2e'
                           %(freqs[freq_ind], fit_params[2], fit_params[1]), fontsize=fontsize)
 else:
-    diffim = diffax.imshow(diff_data[freq_ind],
+    diffim = diffax.imshow(diff_data[freq_ind].reshape([npix_side]*2),
                                       extent=extent_uv,
                                       origin='lower')
     diffax.set_title('|Vs| - |MaxL Vs|, %.1fMHz\nFitted RMS: %.2e\nMean: %.2e'
