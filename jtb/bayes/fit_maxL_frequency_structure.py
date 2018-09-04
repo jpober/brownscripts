@@ -278,7 +278,7 @@ if not opts.rms_data:
         Sky[i] *= Sky_counts
 
     # Flatten sky for matrix computation
-    Sky_vec = Sky.flatten()
+    Sky_vec = Sky.reshape((nfreqs, npix_side**2))
 
     # Beam stuff
     if opts.beam:
@@ -345,34 +345,38 @@ if not opts.rms_data:
 
     # Use analytical solution to get visibilities using true positions
     Vs = np.zeros((nfreqs, nvis), dtype=complex)
-    for i in range(nfreqs):
-        for j in range(us_vec.size):
-            if opts.uvdata:
-                inv_wavelength = freqs[i]*1.e6/C
-            else:
-                inv_wavelength = 1.
-            if opts.grid_pos:
-                if opts.beam:
-                    Vs[i, j] = np.sum(beam_grid[i, pos_vec]*Vs_func(us_vec[j]*inv_wavelength,
-                                                           ls[grid_pos[:, 1]],
-                                                           vs_vec[j]*inv_wavelength,
-                                                           ms[grid_pos[:, 0]]))
+    if opts.uniform_sky:
+        # Construct visibilities faster as FT of beam*sky
+        Vs[i] = np.fft.fftshift(np.fft.fft2((beam_grid[i]*Sky_vec[i]).reshape([npix_side]*2))).flatten()
+    else:
+        for i in range(nfreqs):
+            for j in range(us_vec.size):
+                if opts.uvdata:
+                    inv_wavelength = freqs[i]*1.e6/C
                 else:
-                    Vs[i, j] = np.sum(Vs_func(us_vec[j]*inv_wavelength,
-                                                           ls[grid_pos[:, 1]],
-                                                           vs_vec[j]*inv_wavelength,
-                                                           ms[grid_pos[:, 0]]))
-            else:
-                if opts.beam:
-                    Vs[i, j] = np.sum(beam_grid[i, pos_vec]*Vs_func(us_vec[j]*inv_wavelength,
-                                                                                  true_pos[:, 0],
-                                                                                  vs_vec[j]*inv_wavelength,
-                                                                                  true_pos[:, 1]))
+                    inv_wavelength = 1.
+                if opts.grid_pos:
+                    if opts.beam:
+                        Vs[i, j] = np.sum(beam_grid[i, pos_vec]*Vs_func(us_vec[j]*inv_wavelength,
+                                                               ls[grid_pos[:, 1]],
+                                                               vs_vec[j]*inv_wavelength,
+                                                               ms[grid_pos[:, 0]]))
+                    else:
+                        Vs[i, j] = np.sum(Vs_func(us_vec[j]*inv_wavelength,
+                                                               ls[grid_pos[:, 1]],
+                                                               vs_vec[j]*inv_wavelength,
+                                                               ms[grid_pos[:, 0]]))
                 else:
-                    Vs[i, j] = np.sum(Vs_func(us_vec[j]*inv_wavelength,
-                                                           true_pos[:, 0],
-                                                           vs_vec[j]*inv_wavelength,
-                                                           true_pos[:, 1]))
+                    if opts.beam:
+                        Vs[i, j] = np.sum(beam_grid[i, pos_vec]*Vs_func(us_vec[j]*inv_wavelength,
+                                                                                      true_pos[:, 0],
+                                                                                      vs_vec[j]*inv_wavelength,
+                                                                                      true_pos[:, 1]))
+                    else:
+                        Vs[i, j] = np.sum(Vs_func(us_vec[j]*inv_wavelength,
+                                                               true_pos[:, 0],
+                                                               vs_vec[j]*inv_wavelength,
+                                                               true_pos[:, 1]))
 
 
     ## ---------------------------------- Construct MaxL Sky ---------------------------------- ##
@@ -633,14 +637,24 @@ else:
 
 # Set title based on params
 title = r'FOV: %d$\,^o$' %np.round(np.rad2deg(FOV))
-if opts.uniform_sky or 'uniform' in opts.rms_data:
-    title = r'Uniform Sky, ' + title
-elif opts.zenith_source or 'zenith' in opts.rms_data:
-    title = r'Zenith Source, ' + title
-elif opts.horizon_source or 'horizon' in opts.rms_data:
-    title = r'Horizon Source, ' + title
+if opts.rms_data is None:
+    if opts.uniform_sky:
+        title = r'Uniform Sky, ' + title
+    elif opts.zenith_source:
+        title = r'Zenith Source, ' + title
+    elif opts.horizon_source:
+        title = r'Horizon Source, ' + title
+    else:
+        title = r'Nsources: %d, ' %nsources + title
 else:
-    title = r'Nsources: %d, ' %nsources + title
+    if 'uniform' in opts.rms_data:
+        title = r'Uniform Sky, ' + title
+    elif 'zenith' in opts.rms_data:
+        title = r'Zenith Source, ' + title
+    elif 'horizon' in opts.rms_data:
+        title = r'Horizon Source, ' + title
+    else:
+        title = r'Nsources: %d, ' %nsources + title
 
 if opts.fractional_fit:
     title = r'Fractional fit, ' + title
