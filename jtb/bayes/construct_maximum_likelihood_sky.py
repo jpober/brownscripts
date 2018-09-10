@@ -37,6 +37,10 @@ o.add_option('--uniform_sky',
     action = 'store_true',
     help = 'If passed, make sky uniform with amplitude 1.')
 
+o.add_option('--noise_sky',
+    action = 'store_true',
+    help = 'If passed, draw sky from normal distribution with rms given by --rms.')
+
 o.add_option('--l_offset',
     type = float,
     help = 'Moves source in l-direction by l_offset*ls.max().  Must be between 0 and 1.')
@@ -169,26 +173,98 @@ if len(ms) % 2 == 0:
 else:
     mid_m = int(len(ms)/2. - 0.5)
 
-grid_pos = np.zeros((nsources, 2), dtype = int)
-true_pos = np.zeros((nsources, 2))
+# grid_pos = np.zeros((nsources, 2), dtype = int)
+# true_pos = np.zeros((nsources, 2))
+#
+# if opts.zenith_source:
+#     for i in range(grid_pos.shape[0]):
+#         grid_pos[i, 0] = mid_m
+#         grid_pos[i, 1] = mid_l
+#         true_pos[i, 0] = ls[grid_pos[i, 1]] + np.random.uniform(low=-lm_pixel_half,
+#                                                                                           high=lm_pixel_half)
+#         true_pos[i, 1] = ms[grid_pos[i, 0]] + np.random.uniform(low=-lm_pixel_half,
+#                                                                                             high=lm_pixel_half)
+#
+# elif opts.horizon_source:
+#     for i in range(grid_pos.shape[0]):
+#         grid_pos[i, 0] = 0
+#         grid_pos[i, 1] = mid_l
+#         true_pos[i, 0] = ls[grid_pos[i, 1]] + np.random.uniform(low=-lm_pixel_half,
+#                                                                                           high=lm_pixel_half)
+#         true_pos[i, 1] = ms[grid_pos[i, 0]] + np.random.uniform(low=0,
+#                                                                                             high=lm_pixel_half)
+#
+# elif opts.l_offset or opts.m_offset:
+#     if opts.l_offset:
+#         l_off = int(mid_l*opts.l_offset)
+#     else:
+#         l_off = 0
+#
+#     if opts.m_offset:
+#         m_off = int(mid_m*opts.m_offset)
+#     else:
+#         m_off = 0
+#
+#     for i in range(grid_pos.shape[0]):
+#         grid_pos[i, 0] = mid_m + m_off
+#         grid_pos[i, 1] = mid_l + l_off
+#         true_pos[i, 0] = ls[grid_pos[i, 1]] + np.random.uniform(low=-lm_pixel_half,
+#                                                                                           high=lm_pixel_half)
+#         true_pos[i, 1] = ms[grid_pos[i, 0]] + np.random.uniform(low=-lm_pixel_half,
+#                                                                                             high=lm_pixel_half)
+#
+# elif opts.uniform_sky:
+#     nsources = nlm
+#     grid_pos = np.array([[0, 0]])
+#     for i in range(0, opts.npix_side):
+#         for j in range(0, opts.npix_side):
+#             grid_pos = np.append(grid_pos, np.array([[i, j]]), axis=0)
+#     grid_pos = grid_pos[1:]
+#     true_pos = np.stack([ms_vec, ls_vec]).T
+#
+# else:
+#     for i in range(grid_pos.shape[0]):
+#         grid_pos[i, 0] = np.random.randint(0, ms.shape[0])
+#         grid_pos[i, 1] = np.random.randint(0, ls.shape[0])
+#         true_pos[i, 0] = ls[grid_pos[i, 1]] + np.random.uniform(low=-lm_pixel_half,
+#                                                                                           high=lm_pixel_half)
+#         true_pos[i, 1] = ms[grid_pos[i, 0]] + np.random.uniform(low=-lm_pixel_half,
+#                                                                                             high=lm_pixel_half)
+#
+# if opts.beam:
+#     if nsources == 1:
+#         pos_vec = np.where(np.logical_and(ls_vec == ls[grid_pos[:, 1]],
+#                                                             ms_vec == ms[grid_pos[:, 0]]))[0][0]
+#     else:
+#         pos_vec = np.zeros(0, dtype=int)
+#         for (l, m) in np.stack([ls[grid_pos[:, 1]], ms[grid_pos[:, 0]]], axis=1):
+#             pos_vec = np.append(pos_vec, np.where(np.logical_and(ls_vec == l,
+#                                                                                               ms_vec == m))[0][0])
+#
+# # Make sky matrix
+# Sky = np.zeros((nfreqs, npix_side, npix_side))
+# Sky_counts = np.zeros((npix_side, npix_side))
+# for i, freq in enumerate(freqs):
+#     if not opts.spec_index == 0.0:
+#         Sky[i, grid_pos[:, 0], grid_pos[:, 1]] = 1./(1 + (freq - freqs.min())**opts.spec_index)
+#     else:
+#         Sky[i, grid_pos[:, 0], grid_pos[:, 1]] = 1.
+#
+# unique_grid_pos, unique_grid_pos_counts = np.unique(grid_pos,
+#                                                                                  axis=0,
+#                                                                                  return_counts=True)
+# Sky_counts[unique_grid_pos[:, 0], unique_grid_pos[:, 1]] = unique_grid_pos_counts
+#
+# for i in range(freqs.size):
+#     Sky[i] *= Sky_counts
+
+Sky = np.zeros((nfreqs, npix_side, npix_side))
 
 if opts.zenith_source:
-    for i in range(grid_pos.shape[0]):
-        grid_pos[i, 0] = mid_m
-        grid_pos[i, 1] = mid_l
-        true_pos[i, 0] = ls[grid_pos[i, 1]] + np.random.uniform(low=-lm_pixel_half,
-                                                                                          high=lm_pixel_half)
-        true_pos[i, 1] = ms[grid_pos[i, 0]] + np.random.uniform(low=-lm_pixel_half,
-                                                                                            high=lm_pixel_half)
+    Sky[:, mid_m, mid_l] = 1.0
 
 elif opts.horizon_source:
-    for i in range(grid_pos.shape[0]):
-        grid_pos[i, 0] = 0
-        grid_pos[i, 1] = mid_l
-        true_pos[i, 0] = ls[grid_pos[i, 1]] + np.random.uniform(low=-lm_pixel_half,
-                                                                                          high=lm_pixel_half)
-        true_pos[i, 1] = ms[grid_pos[i, 0]] + np.random.uniform(low=0,
-                                                                                            high=lm_pixel_half)
+    Sky[:, 0, mid_l] = 1.0
 
 elif opts.l_offset or opts.m_offset:
     if opts.l_offset:
@@ -201,49 +277,18 @@ elif opts.l_offset or opts.m_offset:
     else:
         m_off = 0
 
-    for i in range(grid_pos.shape[0]):
-        grid_pos[i, 0] = mid_m + m_off
-        grid_pos[i, 1] = mid_l + l_off
-        true_pos[i, 0] = ls[grid_pos[i, 1]] + np.random.uniform(low=-lm_pixel_half,
-                                                                                          high=lm_pixel_half)
-        true_pos[i, 1] = ms[grid_pos[i, 0]] + np.random.uniform(low=-lm_pixel_half,
-                                                                                            high=lm_pixel_half)
+    Sky[:, mid_m + m_off, mid_l + l_off] = 1.0
+
+elif opts.uniform_sky or opts.noise_sky:
+    nsources = nlm
+    if opts.noise_sky:
+        Sky = np.ones_like(Sky)*np.random.normal(0, opts.rms, Sky.shape)
+    else:
+        Sky = np.ones_like(Sky)
 
 else:
-    for i in range(grid_pos.shape[0]):
-        grid_pos[i, 0] = np.random.randint(0, ms.shape[0])
-        grid_pos[i, 1] = np.random.randint(0, ls.shape[0])
-        true_pos[i, 0] = ls[grid_pos[i, 1]] + np.random.uniform(low=-lm_pixel_half,
-                                                                                          high=lm_pixel_half)
-        true_pos[i, 1] = ms[grid_pos[i, 0]] + np.random.uniform(low=-lm_pixel_half,
-                                                                                            high=lm_pixel_half)
-
-if opts.beam:
-    if nsources == 1:
-        pos_vec = np.where(np.logical_and(ls_vec == ls[grid_pos[:, 1]],
-                                                            ms_vec == ms[grid_pos[:, 0]]))[0][0]
-    else:
-        pos_vec = np.zeros(0, dtype=int)
-        for (l, m) in np.stack([ls[grid_pos[:, 1]], ms[grid_pos[:, 0]]], axis=1):
-            pos_vec = np.append(pos_vec, np.where(np.logical_and(ls_vec == l,
-                                                                                              ms_vec == m))[0][0])
-
-# Make sky matrix
-Sky = np.zeros((nfreqs, npix_side, npix_side))
-Sky_counts = np.zeros((npix_side, npix_side))
-for i, freq in enumerate(freqs):
-    if not opts.spec_index == 0.0:
-        Sky[i, grid_pos[:, 0], grid_pos[:, 1]] = 1./(1 + (freq - freqs.min())**opts.spec_index)
-    else:
-        Sky[i, grid_pos[:, 0], grid_pos[:, 1]] = 1.
-
-unique_grid_pos, unique_grid_pos_counts = np.unique(grid_pos,
-                                                                                 axis=0,
-                                                                                 return_counts=True)
-Sky_counts[unique_grid_pos[:, 0], unique_grid_pos[:, 1]] = unique_grid_pos_counts
-
-for i in range(freqs.size):
-    Sky[i] *= Sky_counts
+    for i in range(nsources):
+        Sky[:, np.random.randint(0, ms.shape[0]), np.random.randint(0, ls.shape[0])] += 1.0
 
 # Flatten sky for matrix computation
 Sky_vec = Sky.reshape((nfreqs, npix_side**2))
@@ -314,38 +359,43 @@ else:
 
 # Use analytical solution to get visibilities using true positions
 Vs = np.zeros((nfreqs, nvis), dtype=complex)
-if opts.uniform_sky:
+# if opts.uniform_sky:
+print 'Constructing visibilities using FFT...'
+for i in range(nfreqs):
     # Construct visibilities faster as FT of beam*sky
-    Vs[i] = np.fft.fftshift(np.fft.fft2((beam_grid[i]*Sky_vec[i]).reshape([npix_side]*2))).flatten()
-else:
-    for i in range(nfreqs):
-        for j in range(us_vec.size):
-            if opts.uvdata:
-                inv_wavelength = freqs[i]*1.e6/C
-            else:
-                inv_wavelength = 1.
-            if opts.grid_pos:
-                if opts.beam:
-                    Vs[i, j] = np.sum(beam_grid[i, pos_vec]*Vs_func(us_vec[j]*inv_wavelength,
-                                                           ls[grid_pos[:, 1]],
-                                                           vs_vec[j]*inv_wavelength,
-                                                           ms[grid_pos[:, 0]]))
-                else:
-                    Vs[i, j] = np.sum(Vs_func(us_vec[j]*inv_wavelength,
-                                                           ls[grid_pos[:, 1]],
-                                                           vs_vec[j]*inv_wavelength,
-                                                           ms[grid_pos[:, 0]]))
-            else:
-                if opts.beam:
-                    Vs[i, j] = np.sum(beam_grid[i, pos_vec]*Vs_func(us_vec[j]*inv_wavelength,
-                                                                                  true_pos[:, 0],
-                                                                                  vs_vec[j]*inv_wavelength,
-                                                                                  true_pos[:, 1]))
-                else:
-                    Vs[i, j] = np.sum(Vs_func(us_vec[j]*inv_wavelength,
-                                                           true_pos[:, 0],
-                                                           vs_vec[j]*inv_wavelength,
-                                                           true_pos[:, 1]))
+    if opts.beam:
+        Vs[i] = np.fft.fftshift(np.fft.fft2(np.fft.ifftshift((beam_grid[i]*Sky_vec[i]).reshape([npix_side]*2)))).flatten()
+    else:
+        Vs[i] = np.fft.fftshift(np.fft.fft2(np.fft.ifftshift((Sky_vec[i]).reshape([npix_side]*2)))).flatten()
+# else:
+#     for i in range(nfreqs):
+#         for j in range(us_vec.size):
+#             if opts.uvdata:
+#                 inv_wavelength = freqs[i]*1.e6/C
+#             else:
+#                 inv_wavelength = 1.
+#             if opts.grid_pos:
+#                 if opts.beam:
+#                     Vs[i, j] = np.sum(beam_grid[i, pos_vec]*Vs_func(us_vec[j]*inv_wavelength,
+#                                                            ls[grid_pos[:, 1]],
+#                                                            vs_vec[j]*inv_wavelength,
+#                                                            ms[grid_pos[:, 0]]))
+#                 else:
+#                     Vs[i, j] = np.sum(Vs_func(us_vec[j]*inv_wavelength,
+#                                                            ls[grid_pos[:, 1]],
+#                                                            vs_vec[j]*inv_wavelength,
+#                                                            ms[grid_pos[:, 0]]))
+#             else:
+#                 if opts.beam:
+#                     Vs[i, j] = np.sum(beam_grid[i, pos_vec]*Vs_func(us_vec[j]*inv_wavelength,
+#                                                                                   true_pos[:, 0],
+#                                                                                   vs_vec[j]*inv_wavelength,
+#                                                                                   true_pos[:, 1]))
+#                 else:
+#                     Vs[i, j] = np.sum(Vs_func(us_vec[j]*inv_wavelength,
+#                                                            true_pos[:, 0],
+#                                                            vs_vec[j]*inv_wavelength,
+#                                                            true_pos[:, 1]))
 
 
 ## ---------------------------------- Construct MaxL Sky ---------------------------------- ##
@@ -354,7 +404,7 @@ print 'Constructing maximum likelihood sky...'
 # Assumes a Gaussian log likelihood function
 # Requires noise injection into data (visibilities above)
 a = np.zeros_like(Vs)
-Vs_maxL = np.zeros_like(a)
+# Vs_maxL = np.zeros_like(a)
 N_inv = np.eye(npix)/opts.rms**2
 
 # Create data from visibilities with injected Gaussian noise
@@ -396,14 +446,14 @@ for freq_ind in range(nfreqs):
     a[freq_ind] = np.dot(inv_part, right_part)
 
     # Generate visibilities from maximum liklihood solution
-    if opts.beam:
-        Vs_maxL[i] = np.dot(np.dot(DFT, P),  a[i])
-
-        del(DFT, inv_part, right_part, P)
-    else:
-        Vs_maxL[i] = np.dot(DFT, a[i])
-
-        del(DFT, inv_part, right_part)
+    # if opts.beam:
+    #     Vs_maxL[freq_ind] = np.dot(DftP,  a[freq_ind])
+    #
+    #     # del(DFT, inv_part, right_part, P, DftP)
+    # else:
+    #     Vs_maxL[freq_ind] = np.dot(DFT, a[freq_ind])
+    #
+    #     # del(DFT, inv_part, right_part)
 
 print 'For loop finished...'
 
@@ -427,12 +477,15 @@ if opts.write:
                                                                                       np.rad2deg(FOV))
 
     filename += '_%dnpix-side' %opts.npix_side
+    filename += '_rms%.0e' %opts.rms
     if opts.zenith_source:
         filename += '_zenith-source'
     elif opts.horizon_source:
         filename += '_horizon-source'
     elif opts.uniform_sky:
         filename += '_uniform-sky'
+    elif opts.noise_sky:
+        filename += '_noise-sky'
     else:
         if opts.l_offset:
             if opts.m_offset:
@@ -451,10 +504,10 @@ if opts.write:
 
     print 'Writing ' + filename + '.npy ...\n'
     out_dic = {}
-    out_dic['sky'] = Sky[freq_ind]*Sky_counts
+    out_dic['sky'] = Sky
     out_dic['vis'] = Vs
     out_dic['maxL_sky'] = a
-    out_dic['maxL_vis'] = Vs_maxL
+    # out_dic['maxL_vis'] = Vs_maxL
     out_dic['input_rms'] = opts.rms
     out_dic['freqs'] = freqs
     if opts.beam:
