@@ -108,7 +108,7 @@ o.add_option('--uvdata',
     help = 'Filename for input uvw binary .npy file.')
 
 opts,args = o.parse_args(sys.argv[1:])
-
+print o.values
 
 # Visibility function
 def Vs_func(u, l, v, m):
