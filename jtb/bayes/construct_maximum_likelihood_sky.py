@@ -502,7 +502,8 @@ if opts.write:
     else:
         filename += '_absolute-fit'
 
-    print 'Writing ' + filename + '.npy ...\n'
+
+
     out_dic = {}
     out_dic['sky'] = Sky
     out_dic['vis'] = Vs
@@ -516,7 +517,16 @@ if opts.write:
         out_dic['fitted_beam'] = True
     else:
         out_dic['fitted_beam'] = False
-    np.save(filename + '.npy', out_dic)
+
+    try:
+        print 1
+        os.makedirs(filename)
+        print 'Made directory ' + filename
+        print 'Writing ' + filename + '/data_dic.npy ...\n'
+        np.save(filename + '/data_dic.npy', out_dic)
+    except:
+        print 'Writing ' + filename + '.npy ...\n'
+        np.save(filename + '.npy', out_dic)
 
     sys.exit()
 
