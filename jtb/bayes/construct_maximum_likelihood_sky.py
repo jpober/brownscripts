@@ -518,15 +518,17 @@ if opts.write:
     else:
         out_dic['fitted_beam'] = False
 
-    try:
-        print 1
-        os.makedirs(filename)
-        print 'Made directory ' + filename
-        print 'Writing ' + filename + '/data_dic.npy ...\n'
-        np.save(filename + '/data_dic.npy', out_dic)
-    except:
-        print 'Writing ' + filename + '.npy ...\n'
-        np.save(filename + '.npy', out_dic)
+    # try:
+    #     os.makedirs(filename)
+    #     print 'Made directory ' + filename
+    #     print 'Writing ' + filename + '/data_dic.npy ...\n'
+    #     np.save(filename + '/data_dic.npy', out_dic)
+    # except:
+    #     print 'Writing ' + filename + '.npy ...\n'
+    #     np.save(filename + '.npy', out_dic)
+    print 'Writing ' + filename + '.npy ...\n'
+    np.save(filename + '.npy', out_dic)
+
 
     sys.exit()
 
