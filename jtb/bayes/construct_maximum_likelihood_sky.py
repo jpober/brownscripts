@@ -84,10 +84,10 @@ o.add_option('--fractional_fit',
     action = 'store_true',
     help = 'If passed, normalize the beam at each frequency to have a peak at 1.')
 
-o.add_option('--ref_freq_chan',
+o.add_option('--ref_freq',
     type = 'int',
-    default = 0,
-    help = 'Array index of frequency to use as reference frequency for external fitting of frequency structure.')
+    default = 150,
+    help = 'Frequency to use as reference frequency for external fitting of frequency structure.')
 
 o.add_option('--npix_side',
     type = int,
@@ -311,17 +311,15 @@ if opts.beam:
         fit_beam_grid = np.zeros_like(beam_grid)
 
     # Get beam on grid
-    ref_beam_set = False
+    ref_freq_ind = np.where(beam_freqs == opts.ref_freq)[0][0]
+    ref_beam = hp.get_interp_val(beam_E[:, ref_freq_ind], thetas, phis)
+    ref_beam /= ref_beam.max()
     for i, freq in enumerate(freqs):
         freq_ind = np.where(beam_freqs == freq)[0][0]
         beam_grid[i] = hp.get_interp_val(beam_E[:, freq_ind], thetas, phis)
         beam_grid[i] /= beam_grid[i].max()
 
         if opts.fractional_fit:
-            if not ref_beam_set:
-                print 'Setting reference beam at %.3fMHz' %freq
-                ref_beam = np.copy(beam_grid[opts.ref_freq_chan])
-                ref_beam_set = True
             beam_grid[i] /= ref_beam
 
         if opts.fit_beam:
