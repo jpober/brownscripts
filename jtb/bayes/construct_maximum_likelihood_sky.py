@@ -402,7 +402,7 @@ print 'Constructing maximum likelihood sky...'
 # Assumes a Gaussian log likelihood function
 # Requires noise injection into data (visibilities above)
 a = np.zeros_like(Vs)
-# Vs_maxL = np.zeros_like(a)
+Vs_maxL = np.zeros_like(a)
 N_inv = np.eye(npix)/opts.rms**2
 
 # Create data from visibilities with injected Gaussian noise
@@ -444,14 +444,14 @@ for freq_ind in range(nfreqs):
     a[freq_ind] = np.dot(inv_part, right_part)
 
     # Generate visibilities from maximum liklihood solution
-    # if opts.beam:
-    #     Vs_maxL[freq_ind] = np.dot(DftP,  a[freq_ind])
-    #
-    #     # del(DFT, inv_part, right_part, P, DftP)
-    # else:
-    #     Vs_maxL[freq_ind] = np.dot(DFT, a[freq_ind])
-    #
-    #     # del(DFT, inv_part, right_part)
+    if opts.beam:
+        Vs_maxL[freq_ind] = np.dot(DftP,  a[freq_ind])
+
+        # del(DFT, inv_part, right_part, P, DftP)
+    else:
+        Vs_maxL[freq_ind] = np.dot(DFT, a[freq_ind])
+
+        # del(DFT, inv_part, right_part)
 
 print 'For loop finished...'
 
@@ -506,7 +506,7 @@ if opts.write:
     out_dic['sky'] = Sky
     out_dic['vis'] = Vs
     out_dic['maxL_sky'] = a
-    # out_dic['maxL_vis'] = Vs_maxL
+    out_dic['maxL_vis'] = Vs_maxL
     out_dic['input_rms'] = opts.rms
     out_dic['freqs'] = freqs
     if opts.beam:
@@ -526,7 +526,6 @@ if opts.write:
     #     np.save(filename + '.npy', out_dic)
     print 'Writing ' + filename + '.npy ...\n'
     np.save(filename + '.npy', out_dic)
-
 
     sys.exit()
 
@@ -560,7 +559,7 @@ gs = gridspec.GridSpec(2, 3)
 
 # Plot sky
 skyax = fig.add_subplot(gs[0,0])
-skyax.scatter(true_pos[:, 0], true_pos[:, 1], marker='.', c='r', alpha=0.5, s=25)
+# skyax.scatter(true_pos[:, 0], true_pos[:, 1], marker='.', c='r', alpha=0.5, s=25)
 if opts.log_scale:
     skyim = skyax.imshow(np.log10(Sky[freq_ind]),
                                       extent=extent_lm,
@@ -659,6 +658,7 @@ diffax.set_ylabel('v [wavelengths]')
 
 # imgs = [skyim, visim, ftvisim, anskyim, anvisim, anftvisim]
 imgs = [skyim, visim, anskyim, anvisim, diffim]
+# imgs = [skyim, visim, anskyim, anvisim]
 
 for i,ax in enumerate(fig.axes):
     ax_divider = make_axes_locatable(ax)
