@@ -118,7 +118,7 @@ o.add_option('--rms_data',
     help = 'File path for previously generated rms data via this script.')
 
 opts,args = o.parse_args(sys.argv[1:])
-
+print o.values
 
 if not opts.rms_data:
     # Visibility function
@@ -440,7 +440,7 @@ if opts.write:
                                                                                           np.rad2deg(FOV))
 
     filename += '_%dnpix-side' %opts.npix_side
-    filename += '_%dpoly' %opts.poly_order
+    filename += '_%spoly' %opts.poly_order
 
     if opts.zenith_source:
         filename += '_zenith-source'
