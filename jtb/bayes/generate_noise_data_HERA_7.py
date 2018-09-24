@@ -22,16 +22,24 @@ o.add_option('--data',
     help = 'Filename for input HERA data file.')
 
 o.add_option('--phase',
-    action='store_true',
+    action = 'store_true',
     help = 'If passed, phase data to first visibility lst and telescope lat.')
 
 o.add_option('--rms',
-    type='float',
+    type = 'float',
     default=1.e-5,
     help = 'RMS to use for Gaussian noise in dataset.  Actual rms used is opts.rms/np.sqrt(2).')
 
+o.add_option('--filepath',
+    type = 'str',
+    help = 'Filepath for saving output .uvfits file.')
+
 opts,args = o.parse_args(sys.argv[1:])
 print o.values
+
+if not os.path.exists(opts.filepath):
+    print opts.filepath + ' is not a valid path'
+    sys.exit()
 
 # Read in data
 uvd = UVData()
@@ -67,7 +75,7 @@ uvd.data_array = (np.random.normal(0, rms, uvd.data_array.shape)
                            np.random.normal(0, rms, uvd.data_array.shape)*1j)
 
 # Save data
-filename = '/Users/jburba/hera_things/data/noise_hera7-hex_%.1erms' %opts.rms
+filename = opts.filepath + 'noise_hera7-hex_%.1erms' %opts.rms
 if opts.nfreqs:
     filename += '_%dnfreqs' %opts.nfreqs
 if opts.ntimes:
