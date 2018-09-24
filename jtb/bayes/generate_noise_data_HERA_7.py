@@ -66,6 +66,7 @@ times = np.unique(uvd.time_array)[:opts.ntimes]
 
 # Filter data by ants, freqs, and times
 print 'Applying select...'
+uv.select(ant_str = 'cross')
 uvd.select(antenna_nums=antenna_nums, frequencies=frequencies, times=times)
 
 # Generate noise data
