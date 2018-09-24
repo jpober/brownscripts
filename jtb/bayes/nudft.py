@@ -10,23 +10,33 @@ o = optparse.OptionParser()
 o.add_option('--uvdata',
     type = str,
     help = 'Filename for input uvw binary .npy file.')
+
 o.add_option('--pixel_count',
     type = int,
     help = 'Number of pixels along one axis in sky image.  Total number of pixels is pixel_count**2.',
     default = 31)
+
 o.add_option('--cmap',
     type = str,
     help = 'Colormap to use for plotting.',
     default = 'gnuplot')
+
 o.add_option('--plot_phase',
     action = 'store_true',
     help = 'If passed, also plot and compare phase.')
+
 o.add_option('--l_offset',
     type = float,
     help = 'Moves source in l-direction by l_offset*|ls|.max().  Must be between -1 and 1.')
+
 o.add_option('--m_offset',
     type = float,
     help = 'Moves source in m-direction by m_offset*|ms|.max().  Must be between -1 and 1.')
+
+o.add_option('--uniform_sky',
+    action = 'store_true',
+    help = 'If passed, make sky uniform with amplitude 1.')
+
 opts,args = o.parse_args(sys.argv[1:])
 
 ## ----------------- Construct sky ----------------- ##
@@ -57,7 +67,10 @@ if opts.m_offset:
 else:
     m_off = 0
 
-I[mid_m + m_off, mid_l + l_off] = 1.0
+if opts.uniform_sky:
+    I = np.ones_like(L)
+else:
+    I[mid_m + m_off, mid_l + l_off] = 1.0
 N_freq = 1
 pixel_area = (ls[1]-ls[0])*(ms[1]-ms[0])
 
@@ -75,8 +88,8 @@ for l in ls:
 
 # Read in u,v sampling points
 uvs = np.load(opts.uvdata)
-us = uvs[0, 0, :, 0]
-vs = uvs[0, 0, :, 1]
+us = uvs[:, 0]
+vs = uvs[:, 1]
 N_vis = us.size*vs.size
 extent_uv = [us.min(), us.max(), vs.min(), vs.max()]
 

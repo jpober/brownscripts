@@ -109,7 +109,7 @@ o.add_option('--uvdata',
 
 o.add_option('--poly_order',
     type = str,
-    default = '2',
+    # default = '2',
     help = 'If n, fit beam variation as a function of frequency with an n-th order polynomial.')
 
 o.add_option('--rms_data',
@@ -394,13 +394,14 @@ if '*' in opts.rms_data or opts.poly_order:
             if get_nsources:
                 nsources = np.sum(data_dic['sky'])
                 get_nsources = False
-            a[i] = data_dic['maxL_sky']
+            a[i] = data_dic['maxL_sky'][i]
             MHz_ind = file.find('MHz')
             back_ind = file.find('_', MHz_ind - 4)
             freqs[i] = float(file[back_ind + 1:MHz_ind])
 
     rms_data = np.zeros([npolys, nlm])
     poly_fits = np.zeros([npolys, nfreqs, nlm])
+    residuals = np.zeros_like(poly_fits)
 
     print 'Performing polynomial fit...'
     print 'Polynomial order: ',
@@ -417,18 +418,18 @@ if '*' in opts.rms_data or opts.poly_order:
             for j in range(poly_order + 1):
                 poly_fits[poly_ind, :, pix_ind] += fit_coeffs[j, pix_ind]*freqs**(poly_order - j)
 
-        residuals = np.abs(a) - np.abs(poly_fits[poly_ind])
-        rms_data[poly_ind] = np.std(residuals, axis=0)
+        residuals[poly_ind] = np.abs(a) - np.abs(poly_fits[poly_ind])
+        rms_data[poly_ind] = np.std(residuals[poly_ind], axis=0)
 
 if opts.write:
     # Write fitted RMS data
-    if os.path.exists('./sim_vis/'):
+    if os.path.exists('./freq_fit/'):
         if nfreqs > 1:
-            filename = 'sim_vis/maxL_rms_freq_fit_%sMHz_%sMHz_%.0fdfov' %(opts.freq,
+            filename = 'freq_fit/maxL_rms_freq_fit_%sMHz_%sMHz_%.0fdfov' %(opts.freq,
                                                                                                                   opts.freq_res,
                                                                                                                   np.rad2deg(FOV))
         else:
-            filename = 'sim_vis/maxL_rms_freq_fit_%sMHz_%.0fdfov' %(opts.freq,
+            filename = 'freq_fit/maxL_rms_freq_fit_%sMHz_%.0fdfov' %(opts.freq,
                                                                                                       np.rad2deg(FOV))
     else:
         if nfreqs > 1:
@@ -518,8 +519,6 @@ if not opts.rms_data == '' and not opts.poly_order:
 from mpl_toolkits.axes_grid1.axes_divider import make_axes_locatable
 from matplotlib.pyplot import *
 
-print 'Polynomial orders: ',
-print map(str, poly_orders)
 print 'Plotting...'
 
 nplots = len(poly_orders)
@@ -602,6 +601,7 @@ else:
 
         rms_ax.set_title('Polynomial Order: %d' %poly_orders[plot_ind])
         rms_ax.set_xlabel('l')
+        rms_ax.set_aspect('equal')
 
         imgs.append(rms_im)
 
@@ -637,7 +637,7 @@ gs.update(top=0.8, wspace=0.25)
 
 if opts.force_lim:
     # Append master colorbar
-    gs.update(right=0.85)
+    gs.update(right=0.95)
     ax_divider = make_axes_locatable(rms_ax)
     cbar_ax = ax_divider.append_axes("right", size="5%", pad="2%")
     cb = fig.colorbar(imgs[0], cax=cbar_ax)
