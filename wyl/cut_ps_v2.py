@@ -74,6 +74,31 @@ def bin_3d(kx,ky,kz):
                 k[ix][iy][iz] = np.sqrt(kx[ix]**2+ky[iy]**2+kz[iz]**2)
     return k
 
+def get_3d_ps(powerfn, bin_dict, slots_1d):
+    d = readsav(powerfn)
+    p = np.copy(d['power_3d'])
+    w = np.copy(d['weights_3d'])
+    kx = d['kx_mpc']
+    ky = d['ky_mpc']
+    kz = d['kz_mpc']
+    p *= bin_dict['3d_mask']
+    w *= bin_dict['3d_mask']
+    p1d = np.zeros(slots_1d.size-1)
+    w1d = np.zeros(slots_1d.size-1)
+    for ix in range(kx.size):
+        for iy in range(ky.size):
+            for iz in range(kz.size):
+                k = np.sqrt(kx[ix]**2+ky[iy]**2+kz[iz]**2)
+                ind = np.where(slots_1d<k)[0][-1]
+                try:
+                    p1d[ind] += p[iz,iy,ix]*w[iz,iy,ix]
+                    w1d[ind] += w[iz,iy,ix]*(p[iz,iy,ix]!=0)
+                except: pass
+    ind = np.where(w1d!=0)[0]
+    p1d[ind] /= w1d[ind]
+    p1d *= 2
+    return p1d
+
 def histbin(data,wgts,bins):
     w = wgts/np.sum(wgts)
     counts,edges,_=plt.hist(data,weights=w,bins=bins)     
@@ -200,6 +225,18 @@ def power1dplot(fn):
     plt.xscale('log')
     plt.yscale('log')
     plt.show()
+
+def get_1d_limit(fn):
+    d = readsav(fn)
+    h = d['hubble_param']
+    p = d['power']*(h**3)
+    s = (h**3)/np.sqrt(d['weights'])
+    k_edges = d['k_edges']/h
+    k = k_edges[1:]/2+k_edges[:-1]/2
+    p = p*k**3/2/np.pi**2
+    s = s*k**3/2/np.pi**2
+    pkup = np.sqrt(2)*s*erfinv(0.977-(1-0.977)*erf(p/s/np.sqrt(2))) + p
+    return k, pkup
 
 def exratio(fi):
     #fi=obs+'_cubeXX__even_odd_joint_bh_res_'+pol+'_averemove_swbh_dencorr_no_horizon_wedge_kperplambda5-50_1dkpower.idlsave'
