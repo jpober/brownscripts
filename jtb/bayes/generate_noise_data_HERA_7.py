@@ -7,12 +7,12 @@ from pyuvdata import UVData
 o = optparse.OptionParser()
 
 o.add_option('--nfreqs',
-    type=str,
+    type = int,
     default = 36,
     help='Frequency(ies) of observation in MHz.')
 
 o.add_option('--ntimes',
-    type=str,
+    type = int,
     default = 10,
     help='Frequency(ies) of observation in MHz.')
 
@@ -33,6 +33,10 @@ o.add_option('--rms',
 o.add_option('--filepath',
     type = 'str',
     help = 'Filepath for saving output .uvfits file.')
+
+o.add_option('--dic',
+    action = 'store_true',
+    help = 'If passed, output data to numpy dictionary format.')
 
 opts,args = o.parse_args(sys.argv[1:])
 print o.values
@@ -66,14 +70,29 @@ times = np.unique(uvd.time_array)[:opts.ntimes]
 
 # Filter data by ants, freqs, and times
 print 'Applying select...'
-uv.select(ant_str = 'cross')
+uvd.select(ant_str = 'cross')
 uvd.select(antenna_nums=antenna_nums, frequencies=frequencies, times=times)
 
 # Generate noise data
 rms = opts.rms/np.sqrt(2)
-uvd.data_array = (np.random.normal(0, rms, uvd.data_array.shape)
-                           +
-                           np.random.normal(0, rms, uvd.data_array.shape)*1j)
+# uvd.data_array = (np.random.normal(0, rms, uvd.data_array.shape)
+#                            +
+#                            np.random.normal(0, rms, uvd.data_array.shape)*1j)
+
+uvw_array = np.copy(uvd.uvw_array)
+uvw_array = np.vstack((uvw_array, -uvw_array))
+data_array = np.zeros((uvw_array.shape[0], opts.nfreqs), dtype=complex)
+half_ind = uvw_array.shape[0]/2
+print uvw_array.shape
+for i in range(half_ind):
+    print uvw_array[i, :2], uvw_array[half_ind + i, :2]
+    complex_noise = np.random.normal(0, rms, (1, opts.nfreqs)) + 1j*np.random.normal(0, rms, (1, opts.nfreqs))
+    data_array[i] = complex_noise
+    data_array[half_ind + i] = complex_noise.conjugate()
+
+# lexsort_inds = np.lexsort((uvw_array[:, 0], uvw_array[:, 1]))
+# uvw_array = uvw_array[lexsort_inds]
+# data_array = data_array[lexsort_inds]
 
 # Save data
 filename = opts.filepath + 'noise_hera7-hex_%.1erms' %opts.rms
@@ -83,6 +102,16 @@ if opts.ntimes:
     filename += '_%dntimes' %opts.ntimes
 if opts.phase:
     filename += '_phased'
-filename += '.uvfits'
+if not opts.dic:
+    filename += '.uvfits'
+else:
+    filename += '.npy'
 print 'Writing %s' %filename
-uvd.write_uvfits(filename, spoof_nonessential=True)
+if not opts.dic:
+    uvd.write_uvfits(filename, spoof_nonessential=True)
+else:
+    out_dic = {}
+    out_dic['data_array'] = uvd.data_array.copy()
+    out_dic['uvw_array'] = uvd.uvw_array.copy()
+    out_dic['freq_array'] = uvd.freq_array.copy()
+    np.save(filename, out_dic)
