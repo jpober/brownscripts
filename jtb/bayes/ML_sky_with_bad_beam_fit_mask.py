@@ -338,7 +338,7 @@ if opts.data is '':
     # Construct solution using analytic solution for maximum likelihood
     # Assumes a Gaussian log likelihood function
     # Requires noise injection into data (visibilities above)
-    a = np.zeros((nfreqs, ls_maxl_fov.size**2))
+    a = np.zeros((nfreqs, ls_maxl_fov.size**2), dtype=complex)
     N_inv = np.eye(npix)/opts.rms**2
 
     # Create data from visibilities with injected Gaussian noise
@@ -500,7 +500,7 @@ from matplotlib.pyplot import *
 
 print 'Plotting...'
 
-nplots = 3
+nplots = 4
 plot_size = 5
 nrows = 1
 ncols = nplots
@@ -522,22 +522,22 @@ for plot_ind in range(nplots):
 
     if plot_ind == 0:
         if opts.log_scale:
-            im = rms_ax.imshow(np.log10((Sky_vec[0]*beam_grid[0]/fit_beam_grid[0])[maxl_fov_inds]).reshape([npix_side]*2),
+            im = rms_ax.imshow(np.log10((Sky_vec[0]*beam_grid[0]/fit_beam_grid[0])[maxl_fov_inds]).reshape([ls_maxl_fov.size]*2),
                                                    origin='lower',
                                                    extent=extent_lm_maxl_fov)
         else:
-            im = rms_ax.imshow((Sky_vec[0]*beam_grid[0]/fit_beam_grid[0])[maxl_fov_inds].reshape([npix_side]*2),
+            im = rms_ax.imshow((Sky_vec[0]*beam_grid[0]/fit_beam_grid[0])[maxl_fov_inds].reshape([ls_maxl_fov.size]*2),
                                             origin = 'lower',
-                                            extent = extent_lm)
+                                            extent = extent_lm_maxl_fov)
                                             # vmin = a[0].real.min(),
                                             # vmax = a[0].real.max())
-        if maxl_fov < FOV:
-            vlines(np.rad2deg([ls_maxl_fov.min(), ls_maxl_fov.max()]),
-                        np.rad2deg(ms_maxl_fov.min()),
-                        np.rad2deg(ms_maxl_fov.max()))
-            hlines(np.rad2deg([ms_maxl_fov.min(), ms_maxl_fov.max()]),
-                        np.rad2deg(ls_maxl_fov.min()),
-                        np.rad2deg(ls_maxl_fov.max()))
+        # if maxl_fov < FOV:
+        #     vlines(np.rad2deg([ls_maxl_fov.min(), ls_maxl_fov.max()]),
+        #                 np.rad2deg(ms_maxl_fov.min()),
+        #                 np.rad2deg(ms_maxl_fov.max()))
+        #     hlines(np.rad2deg([ms_maxl_fov.min(), ms_maxl_fov.max()]),
+        #                 np.rad2deg(ls_maxl_fov.min()),
+        #                 np.rad2deg(ls_maxl_fov.max()))
         rms_ax.set_title('Sky*Beam/Fitted_Beam')
     else:
         if maxl_fov < FOV:
@@ -571,6 +571,25 @@ for plot_ind in range(nplots):
                                                 extent = extent)
             else:
                 im = rms_ax.imshow((diff_data).reshape([ls_maxl_fov.size]*2),
+                                                origin = 'lower',
+                                                extent = extent)
+        elif plot_ind == 3:
+            if not opts.fit_beam:
+                rms_ax.set_title('ML Sky Solution / Sky')
+                if opts.maxl_fov < opts.fov:
+                    ratio_data = a[0].real/Sky_vec[0, maxl_fov_inds]
+                else:
+                    ratio_data = a[0].real/Sky_vec[0]
+            else:
+                rms_ax.set_title('ML Sky Solution / Sky*Beam/Fitted_Beam', size=8)
+                if opts.maxl_fov < opts.fov:
+                    ratio_data = a[0].real/((Sky_vec[0]*beam_grid[0]/fit_beam_grid[0])[maxl_fov_inds])
+            if opts.log_scale:
+                im = rms_ax.imshow(np.log10(ratio_data).reshape([ls_maxl_fov.size]*2),
+                                                origin = 'lower',
+                                                extent = extent)
+            else:
+                im = rms_ax.imshow((ratio_data).reshape([ls_maxl_fov.size]*2),
                                                 origin = 'lower',
                                                 extent = extent)
 
