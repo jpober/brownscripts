@@ -522,11 +522,11 @@ for plot_ind in range(nplots):
 
     if plot_ind == 0:
         if opts.log_scale:
-            im = rms_ax.imshow(np.log10((Sky_vec[0]*beam_grid[0]/fit_beam_grid[0])).reshape([npix_side]*2),
+            im = rms_ax.imshow(np.log10((Sky_vec[0]*beam_grid[0]/fit_beam_grid[0])[maxl_fov_inds]).reshape([npix_side]*2),
                                                    origin='lower',
-                                                   extent=extent_lm)
+                                                   extent=extent_lm_maxl_fov)
         else:
-            im = rms_ax.imshow((Sky_vec[0]*beam_grid[0]/fit_beam_grid[0]).reshape([npix_side]*2),
+            im = rms_ax.imshow((Sky_vec[0]*beam_grid[0]/fit_beam_grid[0])[maxl_fov_inds].reshape([npix_side]*2),
                                             origin = 'lower',
                                             extent = extent_lm)
                                             # vmin = a[0].real.min(),
