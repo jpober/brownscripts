@@ -504,7 +504,7 @@ nplots = 4
 plot_size = 5
 nrows = 1
 ncols = nplots
-fig = figure(figsize=(plot_size*nplots, plot_size))
+fig = figure(figsize=(plot_size*(nplots + 1), plot_size))
 
 fontsize = 14
 extent_lm = [ls.min() - lm_pixel_half, ls.max() + lm_pixel_half,
@@ -626,7 +626,7 @@ else:
 fig.suptitle(title)
 gs.tight_layout(fig)
 # gs.update(top=0.8, wspace=0.25)
-gs.update(right=0.9, wspace=0.35)
+gs.update(left=0.05, right=0.95, wspace=0.4, top=0.9)
 
 if opts.force_lim:
     # Append master colorbar
