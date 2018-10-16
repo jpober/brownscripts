@@ -59,7 +59,7 @@ if opts.beam:
     nside = hp.npix2nside(beam_E.shape[0])
 else:
     filenames = args
-    print filenames
+    print 'Reading in %d files...' %len(filenames)
     freqs = np.array([float(re.findall(r'\d+', f.split('_')[-1])[0]) for f in filenames])
     order = np.argsort(freqs)
     freqs = freqs[order]
@@ -81,6 +81,14 @@ else:
         lut = interpolate.RectBivariateSpline(lat, lon, gain)
         for i in np.arange(hp.nside2npix(nside)):
             beam_E[i, fi] = lut(thetai[i], phii[i])
+
+    # Write to .fits file
+    filename = 'healpix_beam_%.0f-%.0fMHz_nside-%d.fits' %(freqs[0], freqs[-1], nside)
+    new_hdul = fits.HDUList()
+    new_hdul.append(fits.ImageHDU(data=beam_E, name='BEAM_E'))
+    new_hdul.append(fits.ImageHDU(data=freqs, name='FREQS'))
+    print 'Writing ' + filename
+    new_hdul.writeto(filename)
 
 max_inds = np.argmax(beam_E, axis=0)
 max_locs = np.zeros((nfreqs, 2))
