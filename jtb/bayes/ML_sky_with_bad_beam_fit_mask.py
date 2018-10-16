@@ -518,16 +518,30 @@ for plot_ind in range(nplots):
     rms_ax = fig.add_subplot(gs[plot_ind])
 
     if plot_ind == 0:
-        if opts.log_scale:
-            im = rms_ax.imshow(np.log10((Sky_vec[0]*beam_grid[0]/fit_beam_grid[0])[maxl_fov_inds]).reshape([ls_maxl_fov.size]*2),
-                                                   origin='lower',
-                                                   extent=extent_lm_maxl_fov)
+        if opts.fit_beam:
+            if opts.log_scale:
+                im = rms_ax.imshow(np.log10((Sky_vec[0]*beam_grid[0]/fit_beam_grid[0])[maxl_fov_inds]).reshape([ls_maxl_fov.size]*2),
+                                                       origin='lower',
+                                                       extent=extent_lm_maxl_fov)
+            else:
+                im = rms_ax.imshow((Sky_vec[0]*beam_grid[0]/fit_beam_grid[0])[maxl_fov_inds].reshape([ls_maxl_fov.size]*2),
+                                                origin = 'lower',
+                                                extent = extent_lm_maxl_fov)
+                                                # vmin = a[0].real.min(),
+                                                # vmax = a[0].real.max())
+            rms_ax.set_title('Sky*Beam/Fitted_Beam')
         else:
-            im = rms_ax.imshow((Sky_vec[0]*beam_grid[0]/fit_beam_grid[0])[maxl_fov_inds].reshape([ls_maxl_fov.size]*2),
-                                            origin = 'lower',
-                                            extent = extent_lm_maxl_fov)
-                                            # vmin = a[0].real.min(),
-                                            # vmax = a[0].real.max())
+            if opts.log_scale:
+                im = rms_ax.imshow(np.log10(Sky_vec[0])[maxl_fov_inds].reshape([ls_maxl_fov.size]*2),
+                                                       origin='lower',
+                                                       extent=extent_lm_maxl_fov)
+            else:
+                im = rms_ax.imshow((Sky_vec[0])[maxl_fov_inds].reshape([ls_maxl_fov.size]*2),
+                                                origin = 'lower',
+                                                extent = extent_lm_maxl_fov)
+                                                # vmin = a[0].real.min(),
+                                                # vmax = a[0].real.max())
+            rms_ax.set_title('Sky')
         # if maxl_fov < FOV:
         #     vlines(np.rad2deg([ls_maxl_fov.min(), ls_maxl_fov.max()]),
         #                 np.rad2deg(ms_maxl_fov.min()),
@@ -535,7 +549,6 @@ for plot_ind in range(nplots):
         #     hlines(np.rad2deg([ms_maxl_fov.min(), ms_maxl_fov.max()]),
         #                 np.rad2deg(ls_maxl_fov.min()),
         #                 np.rad2deg(ls_maxl_fov.max()))
-        rms_ax.set_title('Sky*Beam/Fitted_Beam')
     else:
         if maxl_fov < FOV:
             extent = extent_lm_maxl_fov
