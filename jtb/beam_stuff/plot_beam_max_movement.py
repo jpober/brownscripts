@@ -1,12 +1,10 @@
 import numpy as np
 import healpy as hp
-import matplotlib.gridspec as gridspec
 import time, optparse, sys, os, re
 
 from astropy.io import fits
 from scipy import interpolate
-from mpl_toolkits.axes_grid1.axes_divider import make_axes_locatable
-from matplotlib.pyplot import *
+
 
 ## ----------------- Option Parser ----------------- ##
 o = optparse.OptionParser()
@@ -90,6 +88,8 @@ else:
     print 'Writing ' + filename
     new_hdul.writeto(filename)
 
+    sys.exit()
+
 max_inds = np.argmax(beam_E, axis=0)
 max_locs = np.zeros((nfreqs, 2))
 max_locs[:, 0], max_locs[:, 1] = hp.pix2ang(nside, max_inds)
@@ -100,6 +100,10 @@ max_locs_lm[:, 1] = np.sin(max_locs[:, 1])*np.sin(max_locs[:, 0])
 max_locs_lm = np.rad2deg(max_locs_lm)
 
 # ---------------------------------- Plotting ---------------------------------- #
+import matplotlib.gridspec as gridspec
+
+from mpl_toolkits.axes_grid1.axes_divider import make_axes_locatable
+from matplotlib.pyplot import *
 
 fig = figure(figsize=(9, 4))
 gs = GridSpec(2, 2)
