@@ -273,7 +273,6 @@ if opts.data is '':
 
             if opts.fit_beam:
                 initial_guess = (0., 0., 1., 1.)
-                # popt, pcov = curve_fit(lambda (l, m), l0, m0, sl, sm: twoD_Gaussian((l, m), l0, m0, sl, sm), (L, M), beam_grid[i], p0=initial_guess)
                 popt, pcov = curve_fit(twoD_Gaussian, (L, M), beam_grid[i], p0=initial_guess)
                 print 'Fitting beam...'
                 fit_beam_grid[i] = twoD_Gaussian((L, M), *popt)
