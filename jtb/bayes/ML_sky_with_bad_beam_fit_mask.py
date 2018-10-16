@@ -139,8 +139,6 @@ print o.values
 if opts.maxl_fov > opts.fov:
     opts.maxl_fov = opts.fov
 
-opts.fit_beam = True
-
 # Visibility function
 def Vs_func(u, l, v, m):
     return np.exp(-2*np.pi*1j*(u*l+ v*m))
