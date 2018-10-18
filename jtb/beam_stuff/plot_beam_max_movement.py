@@ -31,6 +31,10 @@ o.add_option('--nside',
     default = 64,
     help = 'Nside parameter for healpix map.')
 
+o.add_option('--linear',
+    action = 'store_true',
+    help = 'If passed, use a linear nearest neighbor interpolation.')
+
 opts,args = o.parse_args(sys.argv[1:])
 nside = opts.nside
 
@@ -71,17 +75,29 @@ else:
 
     for fi, f in enumerate(filenames):
         data = np.loadtxt(f, skiprows=2)
-        lat = np.unique(data[:, 0]) * np.pi / 180.0
-        nlat = len(lat)
-        lon = np.unique(data[:, 1]) * np.pi / 180.0
-        nlon = len(lon)
-        gain = data[:, 2].reshape(nlon, nlat).transpose()
-        lut = interpolate.RectBivariateSpline(lat, lon, gain)
+        if opts.linear:
+            lat = data[:, 0] * np.pi / 180.0
+            nlat = len(lat)
+            lon = data[:, 1] * np.pi / 180.0
+            nlon = len(lon)
+            coords = np.stack((lat, lon)).T
+            gain = data[:, 2]
+            lut = interpolate.LinearNDInterpolator(coords, gain)
+        else:
+            lat = np.unique(data[:, 0]) * np.pi / 180.0
+            nlat = len(lat)
+            lon = np.unique(data[:, 1]) * np.pi / 180.0
+            nlon = len(lon)
+            gain = data[:, 2].reshape(nlon, nlat).transpose()
+            lut = interpolate.RectBivariateSpline(lat, lon, gain)
         for i in np.arange(hp.nside2npix(nside)):
             beam_E[i, fi] = lut(thetai[i], phii[i])
 
     # Write to .fits file
-    filename = 'healpix_beam_%.0f-%.0fMHz_nside-%d.fits' %(freqs[0], freqs[-1], nside)
+    if opts.linear:
+        filename = 'healpix_beam_%.0f-%.0fMHz_nside-%d_linear-interp.fits' %(freqs[0], freqs[-1], nside)
+    else:
+        filename = 'healpix_beam_%.0f-%.0fMHz_nside-%d.fits' %(freqs[0], freqs[-1], nside)
     new_hdul = fits.HDUList()
     new_hdul.append(fits.ImageHDU(data=beam_E, name='BEAM_E'))
     new_hdul.append(fits.ImageHDU(data=freqs, name='FREQS'))
@@ -98,6 +114,7 @@ max_locs_lm = np.zeros_like(max_locs)
 max_locs_lm[:, 0] = np.cos(max_locs[:, 1])*np.sin(max_locs[:, 0])
 max_locs_lm[:, 1] = np.sin(max_locs[:, 1])*np.sin(max_locs[:, 0])
 max_locs_lm = np.rad2deg(max_locs_lm)
+max_locs = np.rad2deg(max_locs)
 
 # ---------------------------------- Plotting ---------------------------------- #
 import matplotlib.gridspec as gridspec
@@ -116,12 +133,12 @@ scat_ax.grid(which='both')
 
 lat_ax = fig.add_subplot(gs[0, 1])
 lat_ax.scatter(freqs, max_locs[:, 0], linestyle='-', c='k', marker='.')
-lat_ax.set_ylabel('Lat [deg]', size=16)
+lat_ax.set_ylabel('Theta [deg]', size=16)
 lat_ax.set_xticks([])
 
 lon_ax = fig.add_subplot(gs[1, 1])
 lon_ax.scatter(freqs, max_locs[:, 1], linestyle='-', c='k', marker='.')
-lon_ax.set_ylabel('Lon [deg]', size=16)
+lon_ax.set_ylabel('Phi [deg]', size=16)
 lon_ax.set_xlabel('Frequency [MHz]', size=16)
 
 ax_divider = make_axes_locatable(scat_ax)
