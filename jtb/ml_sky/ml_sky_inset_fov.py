@@ -248,8 +248,13 @@ if opts.data is '':
         phis[phis < 0.0] += 2*np.pi
 
         # Get beam on my (l, m) grid
-        beam_E = fits.getdata(opts.beam, extname='BEAM_E')
-        beam_freqs = fits.getdata(opts.beam, extname='FREQS')
+        if 'NF' in opts.beam:
+            hdulist = fits.open(opts.beam)
+            beam_E = np.copy(hdulist[0].data).squeeze()[0].T
+            beam_freqs = np.arange(100, 201, 1)
+        else:
+            beam_E = fits.getdata(opts.beam, extname='BEAM_E')
+            beam_freqs = fits.getdata(opts.beam, extname='FREQS')
         beam_grid = np.zeros((nfreqs, thetas.size))
 
         if opts.fit_beam:
