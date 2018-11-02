@@ -55,6 +55,10 @@ o.add_option('--nsources',
     default = 1,
     help= 'Number of sources to add to image')
 
+o.add_option('--gaussian_source',
+    action = 'store_true',
+    help = 'If passed, use a narrow gaussian source centered at (l_off, m_off).')
+
 o.add_option('--rms',
     type = float,
     default = 1.e-5,
@@ -85,17 +89,6 @@ o.add_option('--fit_beam',
     action = 'store_true',
     help = 'If passed, fit a two dimensional Gaussian to the beam for use in the maxL solution.')
 
-o.add_option('--gof_inds',
-    action = 'store_true',
-    help = 'If passed, use the fractional difference between the true and fitted beams to determine '
-               'what pixels to use for construction of the maximum likelihood solution for the sky via --fit_tol.')
-
-o.add_option('--fit_tol',
-    type = 'float',
-    default = 0.1,
-    help = 'Cutoff value for --gof_inds.  If fit_tol=0.1 (default), then all pixels where the fractional difference between '
-               'the true and fitted beam is greater than 10% will be ignored in the maximum likelihood sky construction.')
-
 o.add_option('--fractional_fit',
     action = 'store_true',
     help = 'If passed, normalize the beam at each frequency to have a peak at 1.')
@@ -110,7 +103,7 @@ o.add_option('--fov',
     default = 10,
     help = 'Field of view in degrees.')
 
-o.add_option('--maxl_fov',
+o.add_option('--inset_fov',
     type = float,
     default = 10,
     help = 'Field of view in degrees to use when constructing the maximum likelihood solution for the sky.')
@@ -136,8 +129,8 @@ o.add_option('--data',
 opts,args = o.parse_args(sys.argv[1:])
 print o.values
 
-if opts.maxl_fov > opts.fov:
-    opts.maxl_fov = opts.fov
+if opts.inset_fov > opts.fov:
+    opts.inset_fov = opts.fov
 
 # Visibility function
 def Vs_func(u, l, v, m):
@@ -182,15 +175,12 @@ if opts.data is '':
 
     # Construct l,m grid
     FOV = np.deg2rad(opts.fov)
-    ls = np.round(np.linspace(-FOV/2, FOV/2, npix_side), decimals=14)
+    ls = np.linspace(-FOV/2, FOV/2, npix_side)
     ms = np.copy(ls)
     nlm = ls.size*ms.size
     lm_pixel_half = np.diff(ls)[0]/2.
-    ls_vec, ms_vec = np.zeros(0), np.zeros(0)
-    for m in ms:
-        for l in ls:
-            ls_vec = np.append(ls_vec, l)
-            ms_vec = np.append(ms_vec, m)
+    L, M = np.meshgrid(ls, ms)
+    ls_vec, ms_vec = L.flatten(), M.flatten()
 
     #Make source catalog
     nsources = opts.nsources
@@ -212,7 +202,7 @@ if opts.data is '':
     elif opts.horizon_source:
         Sky[:, 0, mid_l] = 1.0
 
-    elif opts.l_offset or opts.m_offset:
+    elif (opts.l_offset or opts.m_offset) and not opts.gaussian_source:
         if opts.l_offset:
             l_off = int(mid_l*opts.l_offset)
         else:
@@ -223,6 +213,8 @@ if opts.data is '':
         else:
             m_off = 0
 
+        print '\tAdding source at l=%.1f, m=%.1f...' %(np.rad2deg(ls[mid_l + l_off]),
+                                                                             np.rad2deg(ms[mid_m + m_off]))
         Sky[:, mid_m + m_off, mid_l + l_off] = 1.0
 
     elif opts.uniform_sky or opts.noise_sky:
@@ -231,6 +223,23 @@ if opts.data is '':
             Sky = np.ones_like(Sky)*np.random.normal(0, opts.rms, Sky.shape)
         else:
             Sky = np.ones_like(Sky)
+
+    elif opts.gaussian_source:
+        stddev = 0.03
+        if opts.l_offset:
+            l_off = int(mid_l*opts.l_offset)
+        else:
+            l_off = 0
+
+        if opts.m_offset:
+            m_off = int(mid_m*opts.m_offset)
+        else:
+            m_off = 0
+        print '\tAdding Gaussian source at l=%.1f, m=%.1f...' %(np.rad2deg(ls[mid_l + l_off]),
+                                                                                           np.rad2deg(ms[mid_m + m_off]))
+        Sky_vec = twoD_Gaussian((L, M), ls[mid_l + l_off], ms[mid_m + m_off], stddev, stddev)
+        Sky_vec += twoD_Gaussian((L, M), ls[int(mid_l*(1-0.5))], 0, stddev, stddev)
+        Sky = np.tile(Sky_vec, nfreqs).reshape((nfreqs, npix_side**2))
 
     else:
         for i in range(nsources):
@@ -241,6 +250,7 @@ if opts.data is '':
 
     # Beam stuff
     if opts.beam:
+        print 'Reading in beam file: %s' %opts.beam
         # Get beam on sky grid
         thetas = np.sqrt(ls_vec**2 + ms_vec**2)
         thetas *= FOV/(2.*thetas.max())
@@ -258,7 +268,6 @@ if opts.data is '':
         beam_grid = np.zeros((nfreqs, thetas.size))
 
         if opts.fit_beam:
-            L, M = np.meshgrid(ls, ms)
             fit_beam_grid = np.zeros_like(beam_grid)
 
         # Get beam on grid
@@ -266,72 +275,53 @@ if opts.data is '':
         for i, freq in enumerate(freqs):
             freq_ind = np.where(beam_freqs == freq)[0][0]
             beam_grid[i] = hp.get_interp_val(beam_E[:, freq_ind], thetas, phis)
+            beam_grid[i] = beam_grid[i]**2
             beam_grid[i] /= beam_grid[i].max()
 
             if opts.fractional_fit:
                 if ref_beam is None:
-                    print 'Setting reference beam at %.3fMHz' %freq
+                    print '\tSetting reference beam at %.3fMHz' %freq
                     ref_beam = np.copy(beam_grid[i])
                 beam_grid[i] /= ref_beam
 
             if opts.fit_beam:
                 initial_guess = (0., 0., 1., 1.)
                 popt, pcov = curve_fit(twoD_Gaussian, (L, M), beam_grid[i], p0=initial_guess)
-                print 'Fitting beam...'
+                print '\tFitting beam...'
                 fit_beam_grid[i] = twoD_Gaussian((L, M), *popt)
 
-
-    if opts.gof_inds:
-        fractional_diff = np.abs((fit_beam_grid - beam_grid)/beam_grid)
-        good_fit_inds = fractional_diff <= opts.fit_tol
-    else:
-        maxl_fov = np.round(np.deg2rad(opts.maxl_fov), decimals=14)
-        maxl_fov_l_inds = np.logical_and(ls_vec >= -maxl_fov/2, ls_vec <= maxl_fov/2)
-        maxl_fov_m_inds = np.logical_and(ms_vec >= -maxl_fov/2, ms_vec <= maxl_fov/2)
-        maxl_fov_inds = maxl_fov_l_inds*maxl_fov_m_inds
-        ls_maxl_fov = np.unique(ls_vec[maxl_fov_inds])
-        ms_maxl_fov = np.copy(ls_maxl_fov)
+        inset_fov = np.deg2rad(opts.inset_fov)
+        inset_fov_l_inds = np.logical_and(ls_vec >= -inset_fov/2, ls_vec <= inset_fov/2)
+        inset_fov_m_inds = np.logical_and(ms_vec >= -inset_fov/2, ms_vec <= inset_fov/2)
+        inset_fov_inds = inset_fov_l_inds*inset_fov_m_inds
+        ls_inset_vec = ls_vec[inset_fov_inds]
+        ms_inset_vec = ms_vec[inset_fov_inds]
+        ls_inset_grid = np.unique(ls_inset_vec)
+        ms_inset_grid = np.copy(ls_inset_grid)
 
     ## ----------------------------------- Construct Visibilities ----------------------------------- ##
     print 'Constructing visibilities...'
 
-    if opts.uvdata:
-        # Can we even use a non gridded case for this scenario?
-        # This would produce a maxL sky with shape (nfreqs, nuv)
-        # but what (l, m) do those nuv sky pixels correspond to?
-        print 'Loading uv coverage...'
-        uvws_meters = np.load(opts.uvdata)
-        # uvs only contains unique (u,v) assuming perfect degeneracy
-        # uvs has shape (nfreqs, ntimes, nblns, 3)
-        us_vec = uvws_meters[:, 0]
-        vs_vec = uvws_meters[:, 1]
-        # us_vec and vs_vec have shape (nfreqs, nblns)
-        nvis = us_vec.shape[1]
-    else:
-        # Construct u,v grid
-        us_grid = np.fft.fftshift(np.fft.fftfreq(ls.shape[0], d=np.mean(np.diff(ls))))
-        vs_grid = np.fft.fftshift(np.fft.fftfreq(ms.shape[0], d=np.mean(np.diff(ms))))
-        us_vec, vs_vec = np.zeros(0), np.zeros(0)
-        for v in vs_grid:
-            for u in us_grid:
-                us_vec = np.append(us_vec, u)
-                vs_vec = np.append(vs_vec, v)
-        uv_pixel_half = np.mean(np.diff(us_grid))/2.
-        nvis = us_vec.shape[0]
+    # Construct u,v grid
+    us_inset_grid = np.fft.fftshift(np.fft.fftfreq(ls_inset_grid.shape[0], d=np.mean(np.diff(ls_inset_grid))))
+    vs_inset_grid = np.fft.fftshift(np.fft.fftfreq(ms_inset_grid.shape[0], d=np.mean(np.diff(ms_inset_grid))))
+    U_inset, V_inset = np.meshgrid(us_inset_grid, vs_inset_grid)
+    us_inset_vec, vs_inset_vec = U_inset.flatten(), V_inset.flatten()
+    uv_pixel_half = np.mean(np.diff(us_inset_grid))/2.
+    nvis = us_inset_vec.shape[0]
 
     # Use analytical solution to get visibilities using true positions
     Vs = np.zeros((nfreqs, nvis), dtype=complex)
+    # Use (u, v) corresponding to the inset fov to get "data"
+    DFT = np.exp(-1j*2*np.pi*(np.outer(us_inset_vec, ls_vec)
+                        +
+                        np.outer(vs_inset_vec, ms_vec)))
     # if opts.uniform_sky:
     for i in range(nfreqs):
-        # Construct visibilities faster as FT of beam*sky
         if opts.beam:
-            # Multiply by the indices at which the beam is well described by the fit
-            if opts.gof_inds:
-                Vs[i] = np.fft.fftshift(np.fft.fft2(np.fft.ifftshift((beam_grid[i]*Sky_vec[i]*good_fit_inds[i]).reshape([npix_side]*2)))).flatten()
-            else:
-                Vs[i] = np.fft.fftshift(np.fft.fft2(np.fft.ifftshift((beam_grid[i]*Sky_vec[i]).reshape([npix_side]*2)))).flatten()
+            Vs[i] = np.dot(DFT, beam_grid[i]*Sky_vec[i])
         else:
-            Vs[i] = np.fft.fftshift(np.fft.fft2(np.fft.ifftshift((Sky_vec[i]).reshape([npix_side]*2)))).flatten()
+            Vs[i] = np.dot(DFT, Sky_vec[i])
 
 
 
@@ -340,8 +330,8 @@ if opts.data is '':
     # Construct solution using analytic solution for maximum likelihood
     # Assumes a Gaussian log likelihood function
     # Requires noise injection into data (visibilities above)
-    a = np.zeros((nfreqs, ls_maxl_fov.size**2), dtype=complex)
-    N_inv = np.eye(npix)/opts.rms**2
+    a = np.zeros((nfreqs, ls_inset_vec.size), dtype=complex)
+    N_inv = np.eye(us_inset_vec.size)/opts.rms**2
 
     # Create data from visibilities with injected Gaussian noise
     d = np.copy(Vs)
@@ -354,34 +344,23 @@ if opts.data is '':
         else:
             print '%.0f, ' %freqs[freq_ind] ,
         # Noise must be added so that d is still Hermitian
-        half_ind = int(us_vec.size/2.) + 1
-        for j, [u,v] in enumerate(np.stack((us_vec, vs_vec), axis=1)[:half_ind]):
-            neg_ind = np.where(np.logical_and(us_vec == -u, vs_vec == -v))[0][0]
+        half_ind = int(us_inset_vec.size/2.) + 1
+        for j, [u,v] in enumerate(np.stack((us_inset_vec, vs_inset_vec), axis=1)[:half_ind]):
+            neg_ind = np.where(np.logical_and(us_inset_vec == -u, vs_inset_vec == -v))[0][0]
             complex_noise = np.random.normal(0, opts.rms, 1) + 1j*np.random.normal(0, opts.rms, 1)
             d[freq_ind, j] += complex_noise
             d[freq_ind, neg_ind] += complex_noise.conjugate()
 
         # Construct DFT matrix
-        if opts.gof_inds:
-            DFT = np.exp(-1j*2*np.pi*(np.outer(us_vec, ls_vec)
+            DFT = np.exp(-1j*2*np.pi*(np.outer(us_inset_vec, ls_inset_vec)
                                 +
-                                np.outer(vs_vec, ms_vec)))
-        else:
-            DFT = np.exp(-1j*2*np.pi*(np.outer(us_vec, ls_vec[maxl_fov_inds])
-                                +
-                                np.outer(vs_vec, ms_vec[maxl_fov_inds])))
+                                np.outer(vs_inset_vec, ms_inset_vec)))
 
         if opts.beam:
             if opts.fit_beam:
-                if opts.gof_inds:
-                    P = np.diag(fit_beam_grid[freq_ind])
-                else:
-                    P = np.diag(fit_beam_grid[freq_ind, maxl_fov_inds])
+                P = np.diag(fit_beam_grid[freq_ind, inset_fov_inds])
             else:
-                if opts.gof_inds:
-                    P = np.diag(beam_grid[freq_ind])
-                else:
-                    P = np.diag(beam_grid[freq_ind, maxl_fov_inds])
+                P = np.diag(beam_grid[freq_ind, inset_fov_inds])
             DftP = np.dot(DFT, P)
             inv_part = np.linalg.inv(np.dot(np.dot(DftP.conj().T, N_inv), DftP))
             right_part = np.dot(np.dot(DftP.conj().T, N_inv), d[freq_ind])
@@ -411,6 +390,8 @@ if opts.data is '':
         elif opts.uniform_sky:
             filename += '_uniform-sky'
         else:
+            if opts.gaussian_source:
+                filename += '_gaussian-source'
             if opts.l_offset:
                 if opts.m_offset:
                     filename += '_loff-%.3f_moff-%.3f' %(opts.l_offset, opts.m_offset)
@@ -418,7 +399,7 @@ if opts.data is '':
                     filename += '_loff-%.3f' %opts.l_offset
             elif opts.m_offset:
                 filename += '_moff-%.3f' %opts.m_offset
-            else:
+            elif not (opts.l_offset or opts.m_offset or opts.gaussian_source):
                 filename += '_%dsources' %opts.nsources
 
         if opts.fractional_fit:
@@ -426,18 +407,12 @@ if opts.data is '':
         else:
             filename += '_absolute-fit'
 
-        if opts.gof_inds:
-            filename += '_%.1efit-tol' %opts.fit_tol
-        else:
-            filename += '_%.0fdmaxl-fov' %opts.maxl_fov
+        filename += '_%.0fdinset-fov' %opts.inset_fov
 
         print 'Writing ' + filename + '.npy ...\n'
         out_dic = {}
         out_dic['sky'] = Sky
-        if opts.gof_inds:
-            out_dic['good_fit_inds'] = good_fit_inds
-        else:
-            out_dic['maxl_fov'] = opts.maxl_fov
+        out_dic['inset_fov'] = opts.inset_fov
         out_dic['vis'] = Vs
         out_dic['maxL_sky'] = a
         out_dic['input_rms'] = opts.rms
@@ -474,24 +449,24 @@ if not opts.data is '':
             for l in ls:
                 ls_vec = np.append(ls_vec, l)
                 ms_vec = np.append(ms_vec, m)
-        if 'dmaxl' in opts.data:
-            dmaxl_ind = opts.data.find('dmaxl')
-            back_ind = opts.data.find('_', dmaxl_ind - 4)
-            maxl_fov = np.round(np.deg2rad(float(opts.data[back_ind + 1:dmaxl_ind])), decimals=14)
-        maxl_fov_l_inds = np.logical_and(ls_vec >= -maxl_fov/2, ls_vec <= maxl_fov/2)
-        maxl_fov_m_inds = np.logical_and(ms_vec >= -maxl_fov/2, ms_vec <= maxl_fov/2)
-        maxl_fov_inds = maxl_fov_l_inds*maxl_fov_m_inds
-        ls_maxl_fov = np.unique(ls_vec[maxl_fov_inds])
-        ms_maxl_fov = np.copy(ls_maxl_fov)
-        ls_maxl_fov = ls[np.logical_and(ls >= -maxl_fov/2, ls <= maxl_fov/2)]
-        ms_maxl_fov = np.copy(ls_maxl_fov)
+        if 'dinset' in opts.data:
+            dinset_ind = opts.data.find('dinset')
+            back_ind = opts.data.find('_', dinset_ind - 4)
+            inset_fov = np.round(np.deg2rad(float(opts.data[back_ind + 1:dinset_ind])), decimals=14)
+        inset_fov_l_inds = np.logical_and(ls_vec >= -inset_fov/2, ls_vec <= inset_fov/2)
+        inset_fov_m_inds = np.logical_and(ms_vec >= -inset_fov/2, ms_vec <= inset_fov/2)
+        inset_fov_inds = inset_fov_l_inds*inset_fov_m_inds
+        ls_inset_grid = np.unique(ls_vec[inset_fov_inds])
+        ms_inset_grid = np.copy(ls_inset_grid)
+        ls_inset_grid = ls[np.logical_and(ls >= -inset_fov/2, ls <= inset_fov/2)]
+        ms_inset_grid = np.copy(ls_inset_grid)
         if not any(x in opts.data for x in ['uniform', 'zenith', 'horizon']):
             nsources = np.sum(data_dic['sky'])
         nfreqs = 1
         Sky_vec = Sky.reshape((nfreqs, npix_side**2))
-        us_grid = np.copy(ls_maxl_fov)
-        if maxl_fov < FOV:
-            diff_data = a[0].real - (Sky_vec[0]*beam_grid[0]/fit_beam_grid[0])[maxl_fov_inds]
+        us_grid = np.copy(ls_inset_grid)
+        if inset_fov < FOV:
+            diff_data = a[0].real - (Sky_vec[0]*beam_grid[0]/fit_beam_grid[0])[inset_fov_inds]
         else:
             diff_data = a[0].real - Sky_vec[0]*beam_grid[0]/fit_beam_grid[0]
 
@@ -511,10 +486,10 @@ fig = figure(figsize=(plot_size*(nplots + 1), plot_size))
 fontsize = 14
 extent_lm = [ls.min() - lm_pixel_half, ls.max() + lm_pixel_half,
                     ms.min() - lm_pixel_half, ms.max() + lm_pixel_half]
-extent_lm_maxl_fov = [ls_maxl_fov.min() - lm_pixel_half, ls_maxl_fov.max() + lm_pixel_half,
-                    ms_maxl_fov.min() - lm_pixel_half, ms_maxl_fov.max() + lm_pixel_half]
+extent_lm_inset_fov = [ls_inset_grid.min() - lm_pixel_half, ls_inset_grid.max() + lm_pixel_half,
+                    ms_inset_grid.min() - lm_pixel_half, ms_inset_grid.max() + lm_pixel_half]
 extent_lm = np.rad2deg(extent_lm)
-extent_lm_maxl_fov = np.rad2deg(extent_lm_maxl_fov)
+extent_lm_inset_fov = np.rad2deg(extent_lm_inset_fov)
 
 gs = gridspec.GridSpec(nrows, nplots)
 imgs = []
@@ -525,86 +500,86 @@ for plot_ind in range(nplots):
     if plot_ind == 0:
         if opts.fit_beam:
             if opts.log_scale:
-                im = rms_ax.imshow(np.log10((Sky_vec[0]*beam_grid[0]/fit_beam_grid[0])[maxl_fov_inds]).reshape([ls_maxl_fov.size]*2),
+                im = rms_ax.imshow(np.log10((Sky_vec[0]*beam_grid[0]/fit_beam_grid[0])[inset_fov_inds]).reshape([ls_inset_grid.size]*2),
                                                        origin='lower',
-                                                       extent=extent_lm_maxl_fov)
+                                                       extent=extent_lm_inset_fov)
             else:
-                im = rms_ax.imshow((Sky_vec[0]*beam_grid[0]/fit_beam_grid[0])[maxl_fov_inds].reshape([ls_maxl_fov.size]*2),
+                im = rms_ax.imshow((Sky_vec[0]*beam_grid[0]/fit_beam_grid[0])[inset_fov_inds].reshape([ls_inset_grid.size]*2),
                                                 origin = 'lower',
-                                                extent = extent_lm_maxl_fov)
+                                                extent = extent_lm_inset_fov)
                                                 # vmin = a[0].real.min(),
                                                 # vmax = a[0].real.max())
             rms_ax.set_title('Sky*Beam/Fitted_Beam')
         else:
             if opts.log_scale:
-                im = rms_ax.imshow(np.log10(Sky_vec[0])[maxl_fov_inds].reshape([ls_maxl_fov.size]*2),
+                im = rms_ax.imshow(np.log10(Sky_vec[0])[inset_fov_inds].reshape([ls_inset_grid.size]*2),
                                                        origin='lower',
-                                                       extent=extent_lm_maxl_fov)
+                                                       extent=extent_lm_inset_fov)
             else:
-                im = rms_ax.imshow((Sky_vec[0])[maxl_fov_inds].reshape([ls_maxl_fov.size]*2),
+                im = rms_ax.imshow((Sky_vec[0])[inset_fov_inds].reshape([ls_inset_grid.size]*2),
                                                 origin = 'lower',
-                                                extent = extent_lm_maxl_fov)
+                                                extent = extent_lm_inset_fov)
                                                 # vmin = a[0].real.min(),
                                                 # vmax = a[0].real.max())
             rms_ax.set_title('Sky')
-        # if maxl_fov < FOV:
-        #     vlines(np.rad2deg([ls_maxl_fov.min(), ls_maxl_fov.max()]),
-        #                 np.rad2deg(ms_maxl_fov.min()),
-        #                 np.rad2deg(ms_maxl_fov.max()))
-        #     hlines(np.rad2deg([ms_maxl_fov.min(), ms_maxl_fov.max()]),
-        #                 np.rad2deg(ls_maxl_fov.min()),
-        #                 np.rad2deg(ls_maxl_fov.max()))
+        # if inset_fov < FOV:
+        #     vlines(np.rad2deg([ls_inset_grid.min(), ls_inset_grid.max()]),
+        #                 np.rad2deg(ms_inset_grid.min()),
+        #                 np.rad2deg(ms_inset_grid.max()))
+        #     hlines(np.rad2deg([ms_inset_grid.min(), ms_inset_grid.max()]),
+        #                 np.rad2deg(ls_inset_grid.min()),
+        #                 np.rad2deg(ls_inset_grid.max()))
     else:
-        if maxl_fov < FOV:
-            extent = extent_lm_maxl_fov
+        if inset_fov < FOV:
+            extent = extent_lm_inset_fov
         else:
             extent = extent_lm
         if plot_ind ==1:
             if opts.log_scale:
-                im = rms_ax.imshow(np.log10(a[0].real).reshape([ls_maxl_fov.size]*2),
+                im = rms_ax.imshow(np.log10(a[0].real).reshape([ls_inset_grid.size]*2),
                                                 origin = 'lower',
                                                 extent = extent)
             else:
-                im = rms_ax.imshow((a[0].real).reshape([ls_maxl_fov.size]*2),
+                im = rms_ax.imshow((a[0].real).reshape([ls_inset_grid.size]*2),
                                                 origin = 'lower',
                                                 extent = extent)
             rms_ax.set_title('ML Sky Solution')
         elif plot_ind == 2:
             if not opts.fit_beam:
                 rms_ax.set_title('ML Sky Solution - Sky')
-                if opts.maxl_fov < opts.fov:
-                    diff_data = a[0].real - Sky_vec[0, maxl_fov_inds]
+                if opts.inset_fov < opts.fov:
+                    diff_data = a[0].real - Sky_vec[0, inset_fov_inds]
                 else:
                     diff_data = a[0].real - Sky_vec[0]
             else:
                 rms_ax.set_title('ML Sky Solution - Sky*Beam/Fitted_Beam', size=8)
-                if opts.maxl_fov < opts.fov:
-                    diff_data = a[0].real - (Sky_vec[0]*beam_grid[0]/fit_beam_grid[0])[maxl_fov_inds]
+                if opts.inset_fov < opts.fov:
+                    diff_data = a[0].real - (Sky_vec[0]*beam_grid[0]/fit_beam_grid[0])[inset_fov_inds]
             if opts.log_scale:
-                im = rms_ax.imshow(np.log10(diff_data).reshape([ls_maxl_fov.size]*2),
+                im = rms_ax.imshow(np.log10(diff_data).reshape([ls_inset_grid.size]*2),
                                                 origin = 'lower',
                                                 extent = extent)
             else:
-                im = rms_ax.imshow((diff_data).reshape([ls_maxl_fov.size]*2),
+                im = rms_ax.imshow((diff_data).reshape([ls_inset_grid.size]*2),
                                                 origin = 'lower',
                                                 extent = extent)
         elif plot_ind == 3:
             if not opts.fit_beam:
                 rms_ax.set_title('ML Sky Solution / Sky')
-                if opts.maxl_fov < opts.fov:
-                    ratio_data = a[0].real/Sky_vec[0, maxl_fov_inds]
+                if opts.inset_fov < opts.fov:
+                    ratio_data = a[0].real/Sky_vec[0, inset_fov_inds]
                 else:
                     ratio_data = a[0].real/Sky_vec[0]
             else:
                 rms_ax.set_title('ML Sky Solution / Sky*Beam/Fitted_Beam', size=8)
-                if opts.maxl_fov < opts.fov:
-                    ratio_data = a[0].real/((Sky_vec[0]*beam_grid[0]/fit_beam_grid[0])[maxl_fov_inds])
+                if opts.inset_fov < opts.fov:
+                    ratio_data = a[0].real/((Sky_vec[0]*beam_grid[0]/fit_beam_grid[0])[inset_fov_inds])
             if opts.log_scale:
-                im = rms_ax.imshow(np.log10(ratio_data).reshape([ls_maxl_fov.size]*2),
+                im = rms_ax.imshow(np.log10(ratio_data).reshape([ls_inset_grid.size]*2),
                                                 origin = 'lower',
                                                 extent = extent)
             else:
-                im = rms_ax.imshow((ratio_data).reshape([ls_maxl_fov.size]*2),
+                im = rms_ax.imshow((ratio_data).reshape([ls_inset_grid.size]*2),
                                                 origin = 'lower',
                                                 extent = extent)
 
@@ -617,8 +592,8 @@ for plot_ind in range(nplots):
 
 # Set title based on params
 title = r'FOV: %d$\,^o$' %np.round(np.rad2deg(FOV))
-if maxl_fov < FOV:
-    title += r', Fit FOV: %d$\,^o$' %np.round(np.rad2deg(maxl_fov))
+if inset_fov < FOV:
+    title += r', Fit FOV: %d$\,^o$' %np.round(np.rad2deg(inset_fov))
 if opts.data is '':
     if opts.uniform_sky:
         title = r'Uniform Sky, ' + title

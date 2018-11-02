@@ -89,17 +89,6 @@ o.add_option('--fit_beam',
     action = 'store_true',
     help = 'If passed, fit a two dimensional Gaussian to the beam for use in the maxL solution.')
 
-o.add_option('--gof_inds',
-    action = 'store_true',
-    help = 'If passed, use the fractional difference between the true and fitted beams to determine '
-               'what pixels to use for construction of the maximum likelihood solution for the sky via --fit_tol.')
-
-o.add_option('--fit_tol',
-    type = 'float',
-    default = 0.1,
-    help = 'Cutoff value for --gof_inds.  If fit_tol=0.1 (default), then all pixels where the fractional difference between '
-               'the true and fitted beam is greater than 10% will be ignored in the maximum likelihood sky construction.')
-
 o.add_option('--fractional_fit',
     action = 'store_true',
     help = 'If passed, normalize the beam at each frequency to have a peak at 1.')
@@ -184,17 +173,13 @@ nfreqs = len(freqs)
 print 'Constructing sky...'
 
 # Construct l,m grid
-# FOV = np.round(np.deg2rad(opts.fov), decimals=14)
 FOV = np.deg2rad(opts.fov)
 ls = np.linspace(-FOV/2, FOV/2, npix_side)
 ms = np.copy(ls)
 nlm = ls.size*ms.size
 lm_pixel_half = np.diff(ls)[0]/2.
-ls_vec, ms_vec = np.zeros(0), np.zeros(0)
-for m in ms:
-    for l in ls:
-        ls_vec = np.append(ls_vec, l)
-        ms_vec = np.append(ms_vec, m)
+L, M = np.meshgrid((ls, ms))
+ls_vec, ms_vec = L.flatten(), M.flatten()
 
 #Make source catalog
 nsources = opts.nsources
@@ -227,7 +212,8 @@ elif (opts.l_offset or opts.m_offset) and not opts.gaussian_source:
     else:
         m_off = 0
 
-    print '\tAdding source at l=%.1f, m=%.1f...' %(np.rad2deg(ls[mid_l + l_off]), np.rad2deg(ms[mid_m + m_off]))
+    print '\tAdding source at l=%.1f, m=%.1f...' %(np.rad2deg(ls[mid_l + l_off]),
+                                                                         np.rad2deg(ms[mid_m + m_off]))
     Sky[:, mid_m + m_off, mid_l + l_off] = 1.0
 
 elif opts.uniform_sky or opts.noise_sky:
@@ -238,7 +224,6 @@ elif opts.uniform_sky or opts.noise_sky:
         Sky = np.ones_like(Sky)
 
 elif opts.gaussian_source:
-    L, M = np.meshgrid(ls, ms)
     stddev = 0.03
     if opts.l_offset:
         l_off = int(mid_l*opts.l_offset)
@@ -249,7 +234,8 @@ elif opts.gaussian_source:
         m_off = int(mid_m*opts.m_offset)
     else:
         m_off = 0
-    print '\tAdding Gaussian source at l=%.1f, m=%.1f...' %(np.rad2deg(ls[mid_l + l_off]), np.rad2deg(ms[mid_m + m_off]))
+    print '\tAdding Gaussian source at l=%.1f, m=%.1f...' %(np.rad2deg(ls[mid_l + l_off]),
+                                                                                       np.rad2deg(ms[mid_m + m_off]))
     Sky_vec = twoD_Gaussian((L, M), ls[mid_l + l_off], ms[mid_m + m_off], stddev, stddev)
     Sky_vec += twoD_Gaussian((L, M), ls[int(mid_l*(1-0.5))], 0, stddev, stddev)
     Sky = np.tile(Sky_vec, nfreqs).reshape((nfreqs, npix_side**2))
@@ -263,6 +249,7 @@ Sky_vec = Sky.reshape((nfreqs, npix_side**2))
 
 # Beam stuff
 if opts.beam:
+    print 'Reading in beam file: %s' %opts.beam
     # Get beam on sky grid
     thetas = np.sqrt(ls_vec**2 + ms_vec**2)
     thetas *= FOV/(2.*thetas.max())
@@ -280,7 +267,6 @@ if opts.beam:
     beam_grid = np.zeros((nfreqs, thetas.size))
 
     if opts.fit_beam:
-        L, M = np.meshgrid(ls, ms)
         fit_beam_grid = np.zeros_like(beam_grid)
 
     # Get beam on grid
@@ -292,17 +278,17 @@ if opts.beam:
 
         if opts.fractional_fit:
             if ref_beam is None:
-                print 'Setting reference beam at %.3fMHz' %freq
+                print '\tSetting reference beam at %.3fMHz' %freq
                 ref_beam = np.copy(beam_grid[i])
             beam_grid[i] /= ref_beam
 
         if opts.fit_beam:
             initial_guess = (0., 0., 1., 1.)
             popt, pcov = curve_fit(twoD_Gaussian, (L, M), beam_grid[i], p0=initial_guess)
-            print 'Fitting beam...'
+            print '\tFitting beam...'
             fit_beam_grid[i] = twoD_Gaussian((L, M), *popt)
 
-# inset_fov = np.round(np.deg2rad(opts.inset_fov), decimals=14)
+
 inset_fov = np.deg2rad(opts.inset_fov)
 inset_fov_l_inds = np.logical_and(ls_vec >= -inset_fov/2, ls_vec <= inset_fov/2)
 inset_fov_m_inds = np.logical_and(ms_vec >= -inset_fov/2, ms_vec <= inset_fov/2)
@@ -336,7 +322,6 @@ DFT_inset = np.exp(-1j*2*np.pi*(np.outer(us_inset_vec, ls_inset_vec)
 
 
 for i in range(nfreqs):
-    # Construct visibilities faster as FT of beam*sky
     if opts.beam:
         print 'Using beam'
         Vs[i] = np.dot(DFT, beam_grid[i]*Sky_vec[i])
