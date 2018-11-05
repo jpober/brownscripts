@@ -173,7 +173,7 @@ RFI is present in all radio observations and consists of both terrestrial (e.g. 
 \begin{figure}[H]
 \centering
 \frame{\includegraphics[width=0.8\linewidth]{figures/PostFCStitchArch_v6_1.png}}
-\caption{Deep Full Convolutional Neural Network (D-FCN) architecture design for application to interferometric visibilities. }
+\caption{Deep Full Convolutional Neural Network (D-FCN) architecture design for application to interferometric visibilities. The input space consists of a normalized log amplitude (upper branch) and it's corresponding phase component. Both input layers reintroduce coarse time-frequency information into the transpose convolutional layers in what's referred to as `skip connections'.}
 \label{fig:DFCNArch}
 \end{figure}
 %To overcome foreground dominance in our power spectrum analysis we can use a combination of foreground power mitigating techniques as outlined in the following sections.
