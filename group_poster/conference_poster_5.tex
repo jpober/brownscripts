@@ -156,7 +156,7 @@ The differential brightness temperature $\delta T_b$ is the contrast between the
 \section*{The Foreground Problem} %[I dont need all of these plots, they're just there to be cut as needed or if necessary to take up more space]
 %Galactic and extragalactic foregrounds pose a difficult problem when trying to measure the 21cm EoR signal. Relative to galactic foregrounds, the EoR signal is $\sim$ 5 orders of magnitude smaller than the galactic emissions that exist between our observing radio telescope arrays and the highly redshifted 21cm signal. The overlapping sources of power in our observations can be seen in Fig. \ref{fig:foregroundsrcs}.  -- Just making this shorter, and clarifying a bit on what the foregrounds are.
 
-The expected EoR signal is $\sim$ 5 orders of magnitude weaker than known foreground sources, such as diffuse emission from the Galaxy and extragalactic point sources. Removing these foregrounds, as well as instrumental noise, is a nontrivial problem. An example of the overlapping sources of power in our observations can be seen in Fig. \ref{fig:foregroundsrcs}.
+The expected EoR signal is $\sim$ 5 orders of magnitude weaker than known foreground sources, such as diffuse emission from the Galaxy and extragalactic point sources. Removing these foregrounds, as well as instrumental noise, is a nontrivial problem. An example of the overlapping sources of power in our observations can be seen in Fig. \ref{fig:foregroundsrcs}. In addition to galactic and extragalactic foregrounds we must also contend with Radio Frequency Interference (RFI).
 
 
 \begin{figure}[H]
@@ -165,7 +165,18 @@ The expected EoR signal is $\sim$ 5 orders of magnitude weaker than known foregr
 \caption{The various cosmological and galactic sources that contribute to the measured sky temperature, and their relative strengths.\\\hspace{\textwidth}
 Source: Zaroubi, Saleem. \textit`{The First Galaxies}. Springer Berlin Heidelberg, 2013. 45-101.}\label{fig:foregroundsrcs}
 \end{figure}
-To overcome foreground dominance in our power spectrum analysis we can use a combination of foreground power mitigating techniques as outlined in the following sections.
+
+
+
+\subsection*{Deep Learning for RFI Mitigation}
+RFI is present in all radio observations and consists of both terrestrial (e.g. TV stations) and in orbit (e.g. satellites) sources. This interference reduces sensitivity in 21cm EoR experiments because it can be present in nearly all frequency channels and is brighter than galactic foregrounds. Due to the nature of how RFI manifests itself in visibility data as sharp discontinuities or disruptive amorphous shapes, novel machine learning techniques can be applied. We introduce a Deep Fully Convolutional Neural Network (D-FCN) which uses the time-frequency context from both amplitude and phase to form a robust and efficient method for identifying RFI.
+\begin{figure}[H]
+\centering
+\frame{\includegraphics[width=0.8\linewidth]{figures/PostFCStitchArch_v6_1.png}}
+\caption{Deep Full Convolutional Neural Network (D-FCN) architecture design for application to interferometric visibilities. }
+\label{fig:DFCNArch}
+\end{figure}
+%To overcome foreground dominance in our power spectrum analysis we can use a combination of foreground power mitigating techniques as outlined in the following sections.
 %The issue of foreground emission dominance in our power spectrum can be overcome through the mixed use of the following traditional and novel foreground mitigation techniques. \\
 %\subsubsection*{Foreground Subtraction}
 %Foreground subtraction is performed in the image domain using an extragalactic source catalog. The source catalog is used to generate a foreground model which can then be fit by an $n^{th}$ order polynomial and subtracted from the observation.
@@ -174,22 +185,22 @@ To overcome foreground dominance in our power spectrum analysis we can use a com
 %additionally convolved with the telescope arrays synthesized beam model. The resulting model which has been built can then be subtracted 
 %from the observation leaving behind the EoR signal and diffuse emissions.
 
-\subsection*{Hydrid Foreground Subtraction and Avoidance}
-The need for managing foregrounds in 21cm EoR experiments has led to two distinct techniques: Avoidance and Subtraction. Avoidance is the practice of filtering out foregrounds in Fourier space. Subtraction requires a model of either extragalactic point sources or diffuse emission that can be precisely subtracted from observations. The hybrid approach attempts to use both techniques to further mitigate foreground contamination for the purpose of an EoR detection in the 21cm power spectrum.
+%\subsection*{Hydrid Foreground Subtraction and Avoidance}
+%The need for managing foregrounds in 21cm EoR experiments has led to two distinct techniques: Avoidance and Subtraction. Avoidance is the practice of filtering out foregrounds in Fourier space. Subtraction requires a model of either extragalactic point sources or diffuse emission that can be precisely subtracted from observations. The hybrid approach attempts to use both techniques to further mitigate foreground contamination for the purpose of an EoR detection in the 21cm power spectrum.
 
-\begin{figure}[H]
-\centering
-\frame{\includegraphics[width=0.7\linewidth]{figures/PSPECXMid.png}}
-\caption{Power spectra from PAPER-64 which shows the effectiveness of filtering (blue), subtraction (red), and hybrid (purple) strategies for foreground subtraction and avoidance when compared with a raw (green) power spectrum.}
-\label{fig:stages}
-\end{figure}
+%\begin{figure}[H]
+%\centering
+%\frame{\includegraphics[width=0.7\linewidth]{figures/PSPECXMid.png}}
+%\caption{Power spectra from PAPER-64 which shows the effectiveness of filtering (blue), subtraction (red), and hybrid (purple) strategies for foreground subtraction and avoidance when compared with a raw (green) power spectrum.}
+%\label{fig:stages}
+%\end{figure}
 
-\begin{figure}[H]
-\centering
-\frame{\includegraphics[width=0.7\linewidth]{figures/DIFFXMid.png}}
-\caption{The differenced power spectrum of filtering (blue) and filtering + subtraction (purple) from Fig. \ref{fig:stages}. This demonstrates that the hybrid foreground subtraction and avoidance technique is able to remove additional contamination from foregrounds necessary for placing the tightest constraints on the EoR power spectrum.}
-\label{fig:diffmid}
-\end{figure}
+%\begin{figure}[H]
+%\centering
+%\frame{\includegraphics[width=0.7\linewidth]{figures/DIFFXMid.png}}
+%\caption{The differenced power spectrum of filtering (blue) and filtering + subtraction (purple) from Fig. \ref{fig:stages}. This demonstrates that the hybrid foreground subtraction and avoidance technique is able to remove additional contamination from foregrounds necessary for placing the tightest constraints on the EoR power spectrum.}
+%\label{fig:diffmid}
+%\end{figure}
 
 %\subsubsection*{Foreground Avoidance}
 %\begin{equation}
