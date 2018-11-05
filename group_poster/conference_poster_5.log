@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.14159265-2.6-1.40.17 (TeX Live 2016) (preloaded format=pdflatex 2016.5.22)  4 NOV 2018 22:48
+This is pdfTeX, Version 3.14159265-2.6-1.40.17 (TeX Live 2016) (preloaded format=pdflatex 2016.5.22)  5 NOV 2018 10:53
 entering extended mode
  restricted \write18 enabled.
  file:line:error style messages enabled.
@@ -922,17 +922,13 @@ File: figures/sim_flowchart.png Graphic file (type png)
 Package pdftex.def Info: figures/sim_flowchart.png used on input line 235.
 (pdftex.def)             Requested size: 594.77661pt x 147.42941pt.
 
-<figures/f299.png, id=11, 1228.59pt x 867.24pt>
-File: figures/f299.png Graphic file (type png)
- <use figures/f299.png>
-Package pdftex.def Info: figures/f299.png used on input line 248.
-(pdftex.def)             Requested size: 749.2364pt x 528.87007pt.
-LaTeX Font Info:    Try loading font information for OT1+pcr on input line 249.
+<figures/projtest2.pdf, id=11, 462.52798pt x 346.89601pt>
+File: figures/projtest2.pdf Graphic file (type pdf)
 
+<use figures/projtest2.pdf>
+Package pdftex.def Info: figures/projtest2.pdf used on input line 248.
+(pdftex.def)             Requested size: 749.2364pt x 561.95787pt.
 
-(/usr/local/texlive/2016/texmf-dist/tex/latex/psnfss/ot1pcr.fd
-File: ot1pcr.fd 2001/06/04 font definitions for OT1/pcr.
-)
 Underfull \hbox (badness 10000) in paragraph at lines 273--274
 
  []
@@ -956,28 +952,27 @@ Non-PDF special ignored!
 Non-PDF special ignored!{/usr/local/texlive/2016/texmf-var/fonts/map/pdftex/upd
 map/pdftex.map} <./figures/radiologo_update.png> <./figures/differential_bright
 ness.png> <./figures/global_history.png> <./figures/foreground_figure.png> <./f
-igures/PostFCStitchArch_v6_1.png> <./figures/sim_flowchart.png> <./figures/f299
-.png> <./figures/HERA19.png> <./figures/HERAsensitivity.png>]
+igures/PostFCStitchArch_v6_1.png> <./figures/sim_flowchart.png> <./figures/proj
+test2.pdf> <./figures/HERA19.png> <./figures/HERAsensitivity.png>]
 (./conference_poster_5.aux) ) 
 Here is how much of TeX's memory you used:
- 14937 strings out of 493014
- 290983 string characters out of 6133351
- 368904 words of memory out of 5000000
- 18132 multiletter control sequences out of 15000+600000
- 41560 words of font info for 109 fonts, out of 8000000 for 9000
+ 14903 strings out of 493014
+ 290509 string characters out of 6133351
+ 367125 words of memory out of 5000000
+ 18103 multiletter control sequences out of 15000+600000
+ 41045 words of font info for 107 fonts, out of 8000000 for 9000
  1141 hyphenation exceptions out of 8191
- 62i,10n,77p,1008b,1043s stack positions out of 5000i,500n,10000p,200000b,80000s
+ 62i,10n,77p,1008b,1012s stack positions out of 5000i,500n,10000p,200000b,80000s
 {/usr/local/texlive/2016/texmf-dist/fonts/enc/dvip
 s/base/8r.enc}</usr/local/texlive/2016/texmf-dist/fonts/type1/public/amsfonts/e
 uler/eurm10.pfb></usr/local/texlive/2016/texmf-dist/fonts/type1/public/amsfonts
-/euler/eusm10.pfb></usr/local/texlive/2016/texmf-dist/fonts/type1/urw/courier/u
-crr8a.pfb></usr/local/texlive/2016/texmf-dist/fonts/type1/urw/times/utmb8a.pfb>
-</usr/local/texlive/2016/texmf-dist/fonts/type1/urw/times/utmr8a.pfb></usr/loca
-l/texlive/2016/texmf-dist/fonts/type1/urw/times/utmri8a.pfb>
-Output written on conference_poster_5.pdf (1 page, 2084056 bytes).
+/euler/eusm10.pfb></usr/local/texlive/2016/texmf-dist/fonts/type1/urw/times/utm
+b8a.pfb></usr/local/texlive/2016/texmf-dist/fonts/type1/urw/times/utmr8a.pfb></
+usr/local/texlive/2016/texmf-dist/fonts/type1/urw/times/utmri8a.pfb>
+Output written on conference_poster_5.pdf (1 page, 1817250 bytes).
 PDF statistics:
- 57 PDF objects out of 1000 (max. 8388607)
- 28 compressed objects within 1 object stream
+ 105 PDF objects out of 1000 (max. 8388607)
+ 31 compressed objects within 1 object stream
  0 named destinations out of 1000 (max. 500000)
  64 words of extra memory for PDF output out of 10000 (max. 10000000)
 
