@@ -38,7 +38,9 @@
 \usepackage[center]{titlesec}
 \usepackage{background}
 \usepackage{blindtext}
+\usepackage{adjustbox}
 \usepackage{euler}
+\usepackage{hyperref}
 \backgroundsetup{
 scale=1,
 angle=0,
@@ -58,15 +60,16 @@ contents={\begin{tikzpicture}[remember picture,overlay]
 % The third is 19% wide and houses a logo for your university/organization or a photo of you
 % The widths of these boxes can be easily edited to accommodate your content as you see fit
 
-\begin{minipage}[b]{0.5\textwidth}
+\begin{minipage}[b]{0.45\textwidth}
 \veryHuge \color{Brown} \textbf{Radio Cosmology Lab} \color{Black}\textbf{$|$} \color{Black}\LARGE\textit{Exploring the Epoch of Reionization}\\
-\textbf{Adam Lanman, Wenyang Li, Joshua Kerrigan,\\ Jacob Burba, Peter Sims, Jonathan Pober}\\ % Author(s)
+\textbf{Adam Lanman, Wenyang Li, Joshua Kerrigan, Jacob Burba, \\Peter Sims, Daniya Seitova, Jonathan Pober}\\ % Author(s)
 \huge Brown University Physics\\ % University/organization
 \end{minipage}
-\begin{minipage}[b]{0.6\linewidth}
-\includegraphics[width=45cm]{radiologo_update.png} % Logo or a photo of you, adjust its dimensions here
+\hfill
+\begin{minipage}[b]{0.45\textwidth}
+\includegraphics[width=50cm, height=10cm]{radiologo_update.png} % Logo or a photo of you, adjust its dimensions here
 \end{minipage}
-%I CANT SEEM TO GET THIS DAMN LOGO TO THE RIGHT
+\vspace*{10pt}
 
 %[Maybe put logos at the top(or bottom), PAPER doesn't have an official logo afaik, can't find a good one for MWA]
 %\hspace{5cm}
@@ -122,12 +125,10 @@ contents={\begin{tikzpicture}[remember picture,overlay]
 %----------------------------------------------------------------------------------------
 \color{DarkSlateGray}  % SaddleBrown color for the introduction
 
-\section*{Introduction}
+\subsection*{Introduction}
 Following the recombination of hydrogen and release of the cosmic microwave background radiation, the baryonic matter of the universe consisted mostly of neutral hydrogen and helium. Gradually, small inhomogeneities collapsed and ignited into the first luminous structures. Energetic photons emitted from the first stars and quasars reionized the surrounding medium, producing ionized bubbles which grew and merged into the fully ionized intergalactic medium we see today. This \emph{Epoch of Reionization} (EoR) remains a poorly-understood period of the universe's history which offers a wealth of cosmological and astrophysical information.
 
 The Pober lab is part of an international effort to build instruments capable of studying the EoR. The neutral hydrogen (HI) of the EoR emits faintly at a wavelength of 21cm due to the hyperfine transition. This emission is unique to neutral hydrogen, and is anti-correlated with the ionized (HII) regions that fill the universe through the EoR. CMB constraints and quasar absorption spectra place the EoR within the redshift range $6 < z < 12$, which means 21cm emissions will reach us at meter scale wavelengths. This is accessible to modern radio interferometers, including the \emph{Donald C. Backer Precision Array for Probing the Epoch of Reionization} (PAPER), the \emph{Murchison Widefield Array} (MWA), and our newly observing \emph{Hydrogen Epoch of Reionization Array} (HERA). Extracting this weak signal remains a challenge unprecedented in radio astronomy.
-
-
 
 \subsubsection*{Differential Brightness Temperature}
 %\begin{equation}
@@ -153,97 +154,126 @@ The differential brightness temperature $\delta T_b$ is the contrast between the
 %	OBJECTIVES
 %----------------------------------------------------------------------------------------
 % DarkSlateGray color for the rest of the content
-\section*{The Foreground Problem} %[I dont need all of these plots, they're just there to be cut as needed or if necessary to take up more space]
+%\section*{The Foreground Problem} %[I dont need all of these plots, they're just there to be cut as needed or if necessary to take up more space]
 %Galactic and extragalactic foregrounds pose a difficult problem when trying to measure the 21cm EoR signal. Relative to galactic foregrounds, the EoR signal is $\sim$ 5 orders of magnitude smaller than the galactic emissions that exist between our observing radio telescope arrays and the highly redshifted 21cm signal. The overlapping sources of power in our observations can be seen in Fig. \ref{fig:foregroundsrcs}.  -- Just making this shorter, and clarifying a bit on what the foregrounds are.
 
-The expected EoR signal is $\sim$ 5 orders of magnitude weaker than known foreground sources, such as diffuse emission from the Galaxy and extragalactic point sources. Removing these foregrounds, as well as instrumental noise, is a nontrivial problem. An example of the overlapping sources of power in our observations can be seen in Fig. \ref{fig:foregroundsrcs}.
+The major challenge of EoR detection is the overwhelmingly bright foreground contamination. The expected EoR signal is $\sim$ 5 orders of magnitude weaker than known foreground sources, such as diffuse emission from the Galaxy and extragalactic point sources. Removing these foregrounds, as well as instrumental noise, is a nontrivial problem. In addition to galactic and extragalactic foregrounds we must also contend with Radio Frequency Interference (RFI).
 
-
-\begin{figure}[H]
-\centering
-\includegraphics[width=0.55\linewidth]{figures/foreground_figure.png}
-\caption{The various cosmological and galactic sources that contribute to the measured sky temperature, and their relative strengths.\\\hspace{\textwidth}
-Source: Zaroubi, Saleem. \textit`{The First Galaxies}. Springer Berlin Heidelberg, 2013. 45-101.}\label{fig:foregroundsrcs}
-\end{figure}
-To overcome foreground dominance in our power spectrum analysis we can use a combination of foreground power mitigating techniques as outlined in the following sections.
-%The issue of foreground emission dominance in our power spectrum can be overcome through the mixed use of the following traditional and novel foreground mitigation techniques. \\
-%\subsubsection*{Foreground Subtraction}
-%Foreground subtraction is performed in the image domain using an extragalactic source catalog. The source catalog is used to generate a foreground model which can then be fit by an $n^{th}$ order polynomial and subtracted from the observation.
-%Baseline visibilities are gridded to form an image which is calibrated to a catalog model. The catalog model contains point sources from 
-%surveys which contain the sources' right ascension, declination, and flux in stokes I. The model built from the catalog of sources is 
-%additionally convolved with the telescope arrays synthesized beam model. The resulting model which has been built can then be subtracted 
-%from the observation leaving behind the EoR signal and diffuse emissions.
-
-\subsection*{Hydrid Foreground Subtraction and Avoidance}
-The need for managing foregrounds in 21cm EoR experiments has led to two distinct techniques: Avoidance and Subtraction. Avoidance is the practice of filtering out foregrounds in Fourier space. Subtraction requires a model of either extragalactic point sources or diffuse emission that can be precisely subtracted from observations. The hybrid approach attempts to use both techniques to further mitigate foreground contamination for the purpose of an EoR detection in the 21cm power spectrum.
-
-\begin{figure}[H]
-\centering
-\frame{\includegraphics[width=0.7\linewidth]{figures/PSPECXMid.png}}
-\caption{Power spectra from PAPER-64 which shows the effectiveness of filtering (blue), subtraction (red), and hybrid (purple) strategies for foreground subtraction and avoidance when compared with a raw (green) power spectrum.}
-\label{fig:stages}
-\end{figure}
-
-\begin{figure}[H]
-\centering
-\frame{\includegraphics[width=0.7\linewidth]{figures/DIFFXMid.png}}
-\caption{The differenced power spectrum of filtering (blue) and filtering + subtraction (purple) from Fig. \ref{fig:stages}. This demonstrates that the hybrid foreground subtraction and avoidance technique is able to remove additional contamination from foregrounds necessary for placing the tightest constraints on the EoR power spectrum.}
-\label{fig:diffmid}
-\end{figure}
-
-%\subsubsection*{Foreground Avoidance}
-%\begin{equation}
-%\label{delaytransform}
-%V_b(\tau) = \int dl dm d\nu A(l,m,\nu)I(l,m,\nu)e^{-2\pi i\nu(\tau_g -\tau)}
-%\end{equation}
-%Equation \ref{delaytransform} demonstrates the delay transform used to transform a visibility to delay space. By working in delay space it can be seen in both Figs. \ref{foregroundsrcs1} \& \ref{foregroundsrcs2} that power from foreground sources are confined within a delay limit known as the horizon limit. --- this seemed unclear, so I made it a little longe
-
-%Equation \ref{delaytransform} demonstrates the \emph{delay transform}: A Fourier transform of frequency to its conjugate \emph{delay}. There is a natural limit in delay, set by the time it takes light from a source at the horizon to travel between the two antennas of a baseline. Power from foreground sources is confined within this \emph{horizon limit}, as shown by Figs. \ref{foregroundsrcs1} \& \ref{foregroundsrcs2}.
-
-%Taking the Fourier transform of a baseline visibility over frequency with the geometric group delay offset (eqn. \ref{delaytransform}) results %in smooth spectrum foregrounds bunching up nearest to the delay of $\tau = 0$. This is because foreground sources have a maximal %geometric delay associated with a baseline length, $|\vec{b}|$, which is also known as the horizon limit. The EoR signal is unsmooth %spectrally, distinguishing it from foreground sources, and pushing it beyond the horizon limit imposed by the baseline length. Using this %information, delays below the horizon limit can be filtered giving significant foreground power removal.
 
 %\begin{figure}[H]
 %\centering
-%\includegraphics[width=0.8\linewidth]{figures/delaytransform.png}
-%\caption{Delay transform visibilities of two different baseline types. Smooth spectral sources moving between delays over time can be seen to remain within the horizon limit (dotted), while unsmooth spectral sources (light blue) extend beyond the horizon limit.  \textbf{Source}: Aaron Parsons, \textit{A Per Baseline Delay-Spectrum Technique for Accessing the 21cm Cosmic Reionization Signature, Apj. 2012}}
-%\label{foregroundsrcs2}
+%\includegraphics[width=0.55\linewidth]{figures/foreground_figure.png}
+%\caption{The various cosmological and galactic sources that contribute to the measured sky temperature, and their relative strengths.\\\hspace{\textwidth}
+%Source: Zaroubi, Saleem. \textit`{The First Galaxies}. Springer Berlin Heidelberg, 2013. 45-101.}\label{fig:foregroundsrcs}
 %\end{figure}
+
+
+
+\subsection*{Bayesian Data Analysis}
+
+\vspace{-1.0cm}
+\begin{figure}[H]
+\begin{centering}
+\includegraphics[width=0.9\linewidth]{Astro_constraints_lowk_comparison_3.png}\\
+\vspace{-0.3cm}
+{\includegraphics[width=0.9\linewidth]{JF_twopanel.png}}
+\vspace{-0.1cm}
+\caption{[Top] Constraints on the escape fraction of ionizing radiation from galaxies, $f_\mathrm{esc}$, the mean free path of ionizing photons through the intergalactic medium, $R_\mathrm{mfp}$, and the minimum virial temperature of halos hosting galaxies, $T_\mathrm{vir}$ derived from power spectrum estimates accessible using the existing HERA analysis pipeline (red) and Bayesian forward modeling analysis of simulated HERA data (blue). [Bottom] Recovered EoR power spectrum from simulated HERA data using a Bayesian power spectral estimation methodology with i) polynomial foreground parametrization (red points, left) and ii) an optimized power law parametrization derived using Bayesian model selection (blue points, right).}
+\label{SphericalPSofEoRplusFgs_with_CylindricalFgPrior}
+\end{centering}
+\end{figure}
+
+A statistically robust analysis of the data is essential to avoid a spurious or mischaracterised detection of the EoR signal. We have developed an advanced Bayesian mathematical data analysis framework designed to meet this need. By extending the range of spatial scales on which the EoR signal can be reliably measured, this framework brings forward a first detection of the EoR signal and facilitates further analysis of the data to probe the state of dark matter in the early Universe.
+
+
+
+
+
+\subsection*{Deep Learning for RFI Mitigation}
+RFI is present in all radio observations and consists of both terrestrial (e.g. TV stations) and in orbit (e.g. satellites) sources.
+% This interference reduces sensitivity in 21cm EoR experiments because it can be present in nearly all frequency channels and is brighter than galactic foregrounds. 
+Due to the nature of how RFI manifests itself in visibility data as sharp discontinuities or disruptive amorphous shapes, novel machine learning techniques can be applied. We introduce a Deep Fully Convolutional Neural Network 
+% (D-FCN) which uses the time-frequency context from both amplitude and phase 
+to form a robust and efficient method for identifying RFI.
+\begin{figure}[H]
+\centering
+\frame{\includegraphics[width=0.8\linewidth]{figures/PostFCStitchArch_v6_1.png}}
+\caption{Deep Full Convolutional Neural Network (D-FCN) architecture design for application to interferometric visibilities. The input space consists of a normalized log amplitude (upper branch) and it's corresponding phase component. Both input layers reintroduce coarse time-frequency information into the transpose convolutional layers in what's referred to as `skip connections'.}
+\label{fig:DFCNArch}
+\end{figure}
+
+
 
 %----------------------------------------------------------------------------------------
 %	MATERIALS AND METHODS
 %----------------------------------------------------------------------------------------
 \columnbreak
-\section*{Simulation}
-
-The particular characteristics of an array can introduce unexpected effects into the data. Understanding and mitigating instrumental effects is critical to making a confident detection of the EoR. For this reason, much effort has been put into simulating the full analysis pipeline -- from the point and diffuse sources on the sky, to the raw visibilities that come out of the correlator, to the power spectrum estimations.
-
-Fast Holographic Deconvolution (FHD) is a purpose-built software framework for analyzing MWA data. FHD does foreground subtraction by \emph{forward modeling}, which builds a simulated data set, including instrumental effects, and subtracts it from the actual data. This forward modeling feature can also be used as a standalone simulation tool, to generate raw visibilities of foregrounds, noise, and EoR off of existing and future 21cm experiments.
+\subsection*{Simulation}
 
 \begin{figure}[H]
 \centering
-\includegraphics[scale=.9]{figures/sim_flowchart.png}
-\caption{A sample data file (or generated data file) holds array coordinates over time and the frequency channels of the instrument. Given a beam model for the antenna, FHD calculates the full synthesized beam (or point-spread function) for a particular time and set of frequencies. The synthesized beam can then convert a sky catalog into a set of foreground visibilities for the instrument. External EoR simulations can also be fed in to test EoR sensitivity, or Gaussian noise can be injected to simulate noise.}
+\vspace*{-20pt}
+\frame{\includegraphics[width=0.8\linewidth]{figures/heratext_image.png}}
+\caption{An image produced from simulated data from pyuvsim, of a mock catalog that spells out "HERA" in point sources at the zenith.}
+\vspace*{-15pt}
+\label{fig:heratext}
 \end{figure}
 
+Radio interferometers have complicated responses which can easily introduce systematics that overwhelm the desired signal. End to end simulation is used to check for these effects and find ways to mitigate them. These simulations start with a known sky model, calculate visibilities via the interferometer measurement equation \eqref{eqn:vis_wpol}, pass these through an analysis pipeline, and compute power spectra and other data products. Often this process reveals effects that had not yet been seen in data, but are later observed.
+
+\begin{equation}
+\mathcal{V}_{ij} = \int\: d\Omega\: \mathcal{J}_i \mathcal{C} \mathcal{J}_j^\dag \exp( - 2\pi i \nu \vec{b}_{ij} \cdot \hat{s} / c)
+= \left( \begin{matrix}
+V^{pp}_{ij} & V^{pq}_{ij} \\
+V^{qp}_{ij} & V^{qq}_{ij}
+\end{matrix} \right)
+\label{eqn:vis_wpol}
+\end{equation}
+Eqn. \eqref{eqn:vis_wpol} gives the visibilities for all pairs of antenna feeds, given the antenna Jones matrices $\mathcal{J}$ and sky coherency matrix $\mathcal{C}$. Evaluating this for large sky models and antenna arrays requires great computational resources, so simulators often make simplifying assumptions that cut runtime at the expense of accuracy.
+
+\texttt{pyuvsim} is a new instrument simulator, developed with an \emph{accuracy first, efficiency second} philosophy that ensures that we take into account all factors known to impact an interferometer signal  These factors include the full polarized response, precise source positioning, empirical primary beams, and full horizon to horizon sky coverage. It has served as a verification tool for other simulators, and will continue to see performance improvements in the coming years.
+
+
+
+%\begin{figure}[H]
+%\centering
+%\includegraphics[scale=.9]{figures/sim_flowchart.png}
+%\caption{A sample data file (or generated data file) holds array coordinates over time and the frequency channels of the instrument. Given a beam model for the antenna, FHD calculates the full synthesized beam (or point-spread function) for a particular time and set of frequencies. The synthesized beam can then convert a sky catalog into a set of foreground visibilities for the instrument. External EoR simulations can also be fed in to test EoR sensitivity, or Gaussian noise can be injected to simulate noise.}
+%\end{figure}
+
 %------------------------------------------------
-\section*{Calibration}
+\subsection*{Calibration}
 
 %The most common techniques we use on visibility calibration are redundant calibration and sky model based calibration. Sky model calibration requires some preknowledge about the sky. With our assumptions about source structures of the sky and understanding of our instrument, we use FHD (Fast Holographic Deconvolution) to calibrate visibility data. The algorithm FHD uses is basically 'CLEAN' algorithm. Redundant calibration is sky model independent. All it assumes is that same antenna separations should measure exact the same Fourier mode of the sky. Redundant calibration requires antenna array with good redundant calibratability, like PAPER64, MWA PhaseII hexes and HERA.  -- [I cut the (Fast Holographic Deconvolution) since I gave the acronym earlier.]
 
-21~cm observations of the Epoch of Reionization (EoR) have the potential to reveal a wealth of information about the formation of the first stars and galaxies by measuring the three dimensional power spectrum and full tomographic maps of the neutral IGM. However, these observations are technically very challenging due to bright astrophysical foregrounds and the chromatic nature of radio interferometers. In the last two years it has become apparent that precision instrument calibration is crucial for disentangling the faint cosmological signal from the bright foregrounds. Current precision calibration efforts for EoR observations fall into two camps:  sky based calibration using deep foreground catalogs and forward modelling of the instrument visibilities, and redundant calibration that foregoes a sky model but requires the tiles be placed on a precise grid.
+Interferometric arrays seeking to measure the 21 cm signal from the EoR must contend with overwhelmingly bright emission from foreground sources. Accurate recovery of the 21 cm signal will require precise calibration of the array, and several new avenues for calibration have been pursued in recent years. Current calibration efforts for EoR observations largely fall into two camps:  sky-based calibration using deep foreground catalogs and forward modeling of the instrument visibilities, and redundant calibration that foregoes a sky model but requires the antennas be placed on a regular grid. A further exploration of combining both approaches has been pushing on to mitigate the contamination in the power spectrum.
 \begin{figure}[H]
 \centering
-\label{comparison_between_FHD_and_OMNICAL}
-\frame{\includegraphics[width=1.0\linewidth]{figures/f299.png}}
-\caption{2 min averaged complex visibilities of EoR0 observation by MWA II at 191MHz from 8 redundant baseline groups. Each color represents one baseline group. Left column: raw visibilities, with arbitrary units; Middle column: visibilities after \texttt{OMNICAL}, with degeneracy parameters projected (units: Jy); Right column: visibilities after FHD sky calibration (units: Jy). Top row: East-West polarization; Bottom row: North-South polarization.}
+\label{comparison_between_sky_and_redundant}
+\frame{\includegraphics[width=0.75\linewidth]{figures/projtest2.pdf}}
+\caption{30 minutes averaged gain calibrations of 2 MWA PhaseII tiles. Upper: Gain amplitude; Middle: Gain phase. Lower: fractional difference between sky based (FHD) and redundancy based (OMNICAL) solutions with degeneracy projected. Blue: FHD solutions; Red: OMNICAL solutions after projecting degeneracy.}
 \end{figure}
 
 
 %----------------------------------------------------------------------------------------
 %	RESULTS 
 %----------------------------------------------------------------------------------------
+\subsection*{Observatories}
 
-\section*{Hydrogen Epoch of Reionization Array (HERA)}
+The Epoch of Reionization signal is expected within the 50 to 200 MHz frequency range, which overlaps with FM radio broadcast bands and numerous other RFI sources. This interference can be reduced by choosing remote locations for building observatories.
+
+\subsection*{Murchison Widefield Array (MWA)}
+
+The MWA is one of the three Square Kilometer Array (SKA) Precursor telescopes located at the Murchison Radio-astronomy Observatory (MRO) in Western Australia. It is a low frequency telescope operating at 80-300MHz, with a processed bandwidth of 30.72 MHz. The Phase I of MWA consists of 128 tiles pseudo-randomly distributed over 3 km diameter area. The newly upgraded Phase II MWA has an additional 128 tiles, with 72 of them arranged as two hexagonal cores.
+\begin{figure}[H]
+\centering
+\label{fig:HERA}
+\frame{\includegraphics[width=0.95\linewidth]{figures/MWA_tiles.jpg}}
+\caption{MWA - Located in the Murchison Radio-astronomy Observatory in Western Australia.}
+\end{figure}
+
+
+\subsection*{Hydrogen Epoch of Reionization Array (HERA)}
 %\begin{figure}[H]
 %\centering
 %\label{fig:PAPER}
@@ -257,24 +287,29 @@ Fast Holographic Deconvolution (FHD) is a purpose-built software framework for a
 %\includegraphics[width=0.85\linewidth]{figures/phaseII_tiles.jpg}
 %\caption{MWA - Located in Western Australia at the Murchison Radio Astronomy Observatory. The MWA serves multiple functions, including ionosphere studies and detection of transient radio signals. Phase I consisted of 128 tiles which are each made up of 16 dipole antennae. The Phase I configuration maximized uv coverage, improving imaging capability. It has since been partially reconfigured into Phase II, which includes two hexagonal grids of tiles designed for high-redundancy EoR research. MWA is a pathfinder project for the Square Kilometer Array (SKA).}
 %\end{figure}
-The Hydrogen Epoch of Reionization Array is a $2^{nd}$ generation radio interferometer observing the 21 cm emission from neutral hydrogen during the Epoch of Reionization (z = 6 - 12). HERA will eventually be an array with 350 14-meter parabolic dishes in South Africa. These elements will be divided into a 320-element hexagonal shaped core and 30 outriggers. The current stage of HERA has 37 dishes deployed and observing. 
+The Hydrogen Epoch of Reionization Array is a $2^{nd}$ generation radio interferometer currently under construction in the Karoo desert of South Africa. When completed, HERA will comprise 350 14.6m zenith-pointing dishes, with a 320-dish close-packed hexagonal core and 30 ``outrigger'' dishes. Each dish will carry dual polarization antenna feeds, sensitive to a bandpass of 50 to 250 MHz ($z \sim 5.68$ -- $28.4$).
 
-Although increasingly stringent upper limits of the 21 cm signal have been placed by the first generation experiments targeting the EoR such as the Precision Array for Probing the Epoch of Reionization array (PAPER), Murchison Widefield Array (MWA) and LOw Frequency ARray (LOFAR), they are not able to detect it due to their sensitivity limits (see Fig. \ref{fig:HERAsense}). HERA is designed to bring both the sensitivity and precision required to directly constrain the topology and evolution of reionization. By understanding the evolution of reionization we can better comprehend the formation of the first stars and earliest galaxies.\\
+%Although increasingly stringent upper limits of the 21 cm signal have been placed by the first generation experiments targeting the EoR such as the Precision Array for Probing the Epoch of Reionization array (PAPER), Murchison Widefield Array (MWA) and LOw Frequency ARray (LOFAR), they are not able to detect it due to their sensitivity limits (see Fig. \ref{fig:HERAsense}). HERA is designed to bring both the sensitivity and precision required to directly constrain the topology and evolution of reionization. By understanding the evolution of reionization we can better comprehend the formation of the first stars and earliest galaxies.\\
 
 \begin{figure}[H]
 \centering
+\vspace*{20pt}
 \label{fig:HERA}
-\frame{\includegraphics[width=0.85\linewidth]{figures/HERA19.png}}
-\caption{HERA - Located in the Karoo desert in South Africa. The current phase of HERA consists of 37 14m parabolic dishes. In its final form, HERA will comprise of 350 dishes in a closely-packed hexagonal grid with outriggers. HERA is additionally a pathfinder project for the Square Kilometer Array (SKA).}
+\frame{\includegraphics[width=0.75\linewidth]{figures/HERA19.png}}
+\caption{HERA - Located in the Karoo desert in South Africa}
+\vspace*{-20pt}
 \end{figure}
 
-\begin{figure}[H]
-\centering
-\frame{\includegraphics[width=0.9\linewidth]{figures/HERAsensitivity.png}}
-\caption{Projected SNR comparison of the 350 element phase of HERA (with 1080 hrs integration time) to other low frequency arrays. Relative to several reionization models (colored), HERA-350
-should have the sensitivity to measure the 21cm EoR signal across multiple redshifts. Source: DeBoer \& HERA Collaboration. PASP (2017).}
-\label{fig:HERAsense}
-\end{figure}
+%\begin{figure}[H]
+%\centering
+%\frame{\includegraphics[width=0.9\linewidth]{figures/HERAsensitivity.png}}
+%\caption{Projected SNR comparison of the 350 element phase of HERA (with 1080 hrs integration time) to other low frequency arrays. Relative to several reionization models (colored), HERA-350
+%should have the sensitivity to measure the 21cm EoR signal across multiple redshifts. Source: DeBoer \& HERA Collaboration. PASP (2017).}
+%\label{fig:HERAsense}
+%\end{figure}
+%\subsection*{The Moon?}
+
+%Signals below 50 MHz are either highly distorted or blocked by the Earth's ionosphere. Observing higher redshifts will inevitably require non-terrestrial observatories, and so efforts are underway to design these.
 
 %----------------------------------------------------------------------------------------
 %	CONCLUSIONS
@@ -285,7 +320,10 @@ should have the sensitivity to measure the 21cm EoR signal across multiple redsh
 %\section*{Conclusions}
 
 %[Do we have conclusions?] [No?]
-
+\section*{}
+\fbox{\begin{minipage}{0.95\linewidth}
+\large \textbf{We are open to undergraduate and graduate students who are interested in our potential research projects. Please contact \url{jonathan\_pober@brown.edu} if you would like to join!}\\
+\end{minipage}}
 
 \color{DarkSlateGray} % Set the color back to DarkSlateGray for the rest of the content
 
