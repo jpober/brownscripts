@@ -125,12 +125,10 @@ contents={\begin{tikzpicture}[remember picture,overlay]
 %----------------------------------------------------------------------------------------
 \color{DarkSlateGray}  % SaddleBrown color for the introduction
 
-\section*{Introduction}
+\subsection*{Introduction}
 Following the recombination of hydrogen and release of the cosmic microwave background radiation, the baryonic matter of the universe consisted mostly of neutral hydrogen and helium. Gradually, small inhomogeneities collapsed and ignited into the first luminous structures. Energetic photons emitted from the first stars and quasars reionized the surrounding medium, producing ionized bubbles which grew and merged into the fully ionized intergalactic medium we see today. This \emph{Epoch of Reionization} (EoR) remains a poorly-understood period of the universe's history which offers a wealth of cosmological and astrophysical information.
 
 The Pober lab is part of an international effort to build instruments capable of studying the EoR. The neutral hydrogen (HI) of the EoR emits faintly at a wavelength of 21cm due to the hyperfine transition. This emission is unique to neutral hydrogen, and is anti-correlated with the ionized (HII) regions that fill the universe through the EoR. CMB constraints and quasar absorption spectra place the EoR within the redshift range $6 < z < 12$, which means 21cm emissions will reach us at meter scale wavelengths. This is accessible to modern radio interferometers, including the \emph{Donald C. Backer Precision Array for Probing the Epoch of Reionization} (PAPER), the \emph{Murchison Widefield Array} (MWA), and our newly observing \emph{Hydrogen Epoch of Reionization Array} (HERA). Extracting this weak signal remains a challenge unprecedented in radio astronomy.
-
-
 
 \subsubsection*{Differential Brightness Temperature}
 %\begin{equation}
@@ -210,7 +208,7 @@ to form a robust and efficient method for identifying RFI.
 %	MATERIALS AND METHODS
 %----------------------------------------------------------------------------------------
 \columnbreak
-\section*{Simulation}
+\subsection*{Simulation}
 
 \begin{figure}[H]
 \centering
@@ -218,9 +216,10 @@ to form a robust and efficient method for identifying RFI.
 \frame{\includegraphics[width=0.8\linewidth]{figures/heratext_image.png}}
 \caption{An image produced from simulated data from pyuvsim, of a mock catalog that spells out "HERA" in point sources at the zenith.}
 \vspace*{-15pt}
+\label{fig:heratext}
 \end{figure}
 
-Radio interferometers have complicated responses which can easily introduce systematics that overwhelm the desired signal. End to end simulation is used to check for these effects and find ways to mitigate them. These simulations start with a known sky model, calculate visibilities via the interferometer measurement equation \eqref{eqn:vis_wpol}, pass these through an analysis pipeline, and compute power spectra and other data products. Often these simulations uncover effects that had not yet been seen in data, but are later observed.
+Radio interferometers have complicated responses which can easily introduce systematics that overwhelm the desired signal. End to end simulation is used to check for these effects and find ways to mitigate them. These simulations start with a known sky model, calculate visibilities via the interferometer measurement equation \eqref{eqn:vis_wpol}, pass these through an analysis pipeline, and compute power spectra and other data products. Often this process reveals effects that had not yet been seen in data, but are later observed.
 
 \begin{equation}
 \mathcal{V}_{ij} = \int\: d\Omega\: \mathcal{J}_i \mathcal{C} \mathcal{J}_j^\dag \exp( - 2\pi i \nu \vec{b}_{ij} \cdot \hat{s} / c)
@@ -230,14 +229,9 @@ V^{qp}_{ij} & V^{qq}_{ij}
 \end{matrix} \right)
 \label{eqn:vis_wpol}
 \end{equation}
-Eqn. \eqref{eqn:vis_wpol} gives the visibilities for all pairs of antenna feeds, given the antenna Jones matrices $\mathcal{J}$ and sky coherency matrix $\mathcal{C}$.
+Eqn. \eqref{eqn:vis_wpol} gives the visibilities for all pairs of antenna feeds, given the antenna Jones matrices $\mathcal{J}$ and sky coherency matrix $\mathcal{C}$. Evaluating this for large sky models and antenna arrays requires great computational resources, so simulators often make simplifying assumptions that cut runtime at the expense of accuracy.
 
-\texttt{pyuvsim} is a new instrument simulator, developed with an \emph{accuracy first, then efficiency second} philosophy that ensures that we take into account all factors known to impact an interferometer signal  These factors include the full polarized response, precise source positioning, empirical primary beams, and full horizon to horizon sky coverage. It has served as a verification tool for other simulators, and will continue to see performance improvements in the coming years.
-
-
-
-
-
+\texttt{pyuvsim} is a new instrument simulator, developed with an \emph{accuracy first, efficiency second} philosophy that ensures that we take into account all factors known to impact an interferometer signal  These factors include the full polarized response, precise source positioning, empirical primary beams, and full horizon to horizon sky coverage. It has served as a verification tool for other simulators, and will continue to see performance improvements in the coming years.
 
 
 
@@ -248,7 +242,7 @@ Eqn. \eqref{eqn:vis_wpol} gives the visibilities for all pairs of antenna feeds,
 %\end{figure}
 
 %------------------------------------------------
-\section*{Calibration}
+\subsection*{Calibration}
 
 %The most common techniques we use on visibility calibration are redundant calibration and sky model based calibration. Sky model calibration requires some preknowledge about the sky. With our assumptions about source structures of the sky and understanding of our instrument, we use FHD (Fast Holographic Deconvolution) to calibrate visibility data. The algorithm FHD uses is basically 'CLEAN' algorithm. Redundant calibration is sky model independent. All it assumes is that same antenna separations should measure exact the same Fourier mode of the sky. Redundant calibration requires antenna array with good redundant calibratability, like PAPER64, MWA PhaseII hexes and HERA.  -- [I cut the (Fast Holographic Deconvolution) since I gave the acronym earlier.]
 
@@ -256,7 +250,7 @@ Interferometric arrays seeking to measure the 21 cm signal from the EoR must con
 \begin{figure}[H]
 \centering
 \label{comparison_between_sky_and_redundant}
-\frame{\includegraphics[width=0.85\linewidth]{figures/projtest2.pdf}}
+\frame{\includegraphics[width=0.75\linewidth]{figures/projtest2.pdf}}
 \caption{30 minutes averaged gain calibrations of 2 MWA PhaseII tiles. Upper: Gain amplitude; Middle: Gain phase. Lower: fractional difference between sky based (FHD) and redundancy based (OMNICAL) solutions with degeneracy projected. Blue: FHD solutions; Red: OMNICAL solutions after projecting degeneracy.}
 \end{figure}
 
@@ -264,10 +258,13 @@ Interferometric arrays seeking to measure the 21 cm signal from the EoR must con
 %----------------------------------------------------------------------------------------
 %	RESULTS 
 %----------------------------------------------------------------------------------------
+\subsection*{Observatories}
 
-\section*{Murchison Widefield Array (MWA)}
+The Epoch of Reionization signal is expected within the 50 to 200 MHz frequency range, which overlaps with FM radio broadcast bands and numerous other RFI sources. This interference can be reduced by choosing remote locations for building observatories.
 
-The Murchison Widefield Array is one of the three Square Kilometer Array (SKA) Precursor telescopes located at the Murchison Radio-astronomy Observatory (MRO) in Western Australia, hunting for the intergalactic hydrogen gas during the Epoch of Reionization. It is a low frequency telescope operating at 80-300MHz, with a processed bandwidth of 30.72 MHz. The Phase I of MWA consists of 128 tiles pseudo-randomly distributed over 3 km diameter area. The newly upgraded Phase II of the MWA has the additional 128 tiles installed, with 72 of them forming into two hexagonal cores. 
+\subsection*{Murchison Widefield Array (MWA)}
+
+The MWA is one of the three Square Kilometer Array (SKA) Precursor telescopes located at the Murchison Radio-astronomy Observatory (MRO) in Western Australia. It is a low frequency telescope operating at 80-300MHz, with a processed bandwidth of 30.72 MHz. The Phase I of MWA consists of 128 tiles pseudo-randomly distributed over 3 km diameter area. The newly upgraded Phase II MWA has an additional 128 tiles, with 72 of them arranged as two hexagonal cores.
 \begin{figure}[H]
 \centering
 \label{fig:HERA}
@@ -276,7 +273,7 @@ The Murchison Widefield Array is one of the three Square Kilometer Array (SKA) P
 \end{figure}
 
 
-\section*{Hydrogen Epoch of Reionization Array (HERA)}
+\subsection*{Hydrogen Epoch of Reionization Array (HERA)}
 %\begin{figure}[H]
 %\centering
 %\label{fig:PAPER}
@@ -290,15 +287,17 @@ The Murchison Widefield Array is one of the three Square Kilometer Array (SKA) P
 %\includegraphics[width=0.85\linewidth]{figures/phaseII_tiles.jpg}
 %\caption{MWA - Located in Western Australia at the Murchison Radio Astronomy Observatory. The MWA serves multiple functions, including ionosphere studies and detection of transient radio signals. Phase I consisted of 128 tiles which are each made up of 16 dipole antennae. The Phase I configuration maximized uv coverage, improving imaging capability. It has since been partially reconfigured into Phase II, which includes two hexagonal grids of tiles designed for high-redundancy EoR research. MWA is a pathfinder project for the Square Kilometer Array (SKA).}
 %\end{figure}
-The Hydrogen Epoch of Reionization Array is a $2^{nd}$ generation radio interferometer observing the 21 cm emission from neutral hydrogen during the Epoch of Reionization. HERA will eventually be an array with 350 14-meter parabolic dishes in South Africa. These elements will be divided into a 320-element hexagonal shaped core and 30 outriggers. The current stage of HERA has 37 dishes deployed and observing. 
+The Hydrogen Epoch of Reionization Array is a $2^{nd}$ generation radio interferometer currently under construction in the Karoo desert of South Africa. When completed, HERA will comprise 350 14.6m zenith-pointing dishes, with a 320-dish close-packed hexagonal core and 30 ``outrigger'' dishes. Each dish will carry dual polarization antenna feeds, sensitive to a bandpass of 50 to 250 MHz ($z \sim 5.68$ -- $28.4$).
 
 %Although increasingly stringent upper limits of the 21 cm signal have been placed by the first generation experiments targeting the EoR such as the Precision Array for Probing the Epoch of Reionization array (PAPER), Murchison Widefield Array (MWA) and LOw Frequency ARray (LOFAR), they are not able to detect it due to their sensitivity limits (see Fig. \ref{fig:HERAsense}). HERA is designed to bring both the sensitivity and precision required to directly constrain the topology and evolution of reionization. By understanding the evolution of reionization we can better comprehend the formation of the first stars and earliest galaxies.\\
 
 \begin{figure}[H]
 \centering
+\vspace*{20pt}
 \label{fig:HERA}
-\frame{\includegraphics[width=0.85\linewidth]{figures/HERA19.png}}
+\frame{\includegraphics[width=0.75\linewidth]{figures/HERA19.png}}
 \caption{HERA - Located in the Karoo desert in South Africa}
+\vspace*{-20pt}
 \end{figure}
 
 %\begin{figure}[H]
@@ -308,6 +307,9 @@ The Hydrogen Epoch of Reionization Array is a $2^{nd}$ generation radio interfer
 %should have the sensitivity to measure the 21cm EoR signal across multiple redshifts. Source: DeBoer \& HERA Collaboration. PASP (2017).}
 %\label{fig:HERAsense}
 %\end{figure}
+%\subsection*{The Moon?}
+
+%Signals below 50 MHz are either highly distorted or blocked by the Earth's ionosphere. Observing higher redshifts will inevitably require non-terrestrial observatories, and so efforts are underway to design these.
 
 %----------------------------------------------------------------------------------------
 %	CONCLUSIONS
