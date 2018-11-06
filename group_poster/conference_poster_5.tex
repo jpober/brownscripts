@@ -168,64 +168,40 @@ The major challenge of EoR detection is the overwhelmingly bright foreground con
 
 
 
+\subsection*{Bayesian Data Analysis}
+
+\vspace{-1.0cm}
+\begin{figure}[H]
+\begin{centering}
+\includegraphics[width=0.9\linewidth]{Astro_constraints_lowk_comparison_3.png}\\
+\vspace{-0.3cm}
+{\includegraphics[width=0.9\linewidth]{JF_twopanel.png}}
+\vspace{-0.1cm}
+\caption{[Top] Constraints on the escape fraction of ionizing radiation from galaxies, $f_\mathrm{esc}$, the mean free path of ionizing photons through the intergalactic medium, $R_\mathrm{mfp}$, and the minimum virial temperature of halos hosting galaxies, $T_\mathrm{vir}$ derived from power spectrum estimates accessible using the existing HERA analysis pipeline (red) and Bayesian forward modeling analysis of simulated HERA data (blue). [Bottom] Recovered EoR power spectrum from simulated HERA data using a Bayesian power spectral estimation methodology with i) polynomial foreground parametrization (red points, left) and ii) an optimized power law parametrization derived using Bayesian model selection (blue points, right).}
+\label{SphericalPSofEoRplusFgs_with_CylindricalFgPrior}
+\end{centering}
+\end{figure}
+
+A statistically robust analysis of the data is essential to avoid a spurious or mischaracterised detection of the EoR signal. We have developed an advanced Bayesian mathematical data analysis framework designed to meet this need. By extending the range of spatial scales on which the EoR signal can be reliably measured, this framework brings forward a first detection of the EoR signal and facilitates further analysis of the data to probe the state of dark matter in the early Universe.
+
+
+
+
+
 \subsection*{Deep Learning for RFI Mitigation}
-RFI is present in all radio observations and consists of both terrestrial (e.g. TV stations) and in orbit (e.g. satellites) sources. This interference reduces sensitivity in 21cm EoR experiments because it can be present at nearly all frequencies and times, and is brighter than galactic foregrounds. We can treat interferometry data as time-ordered visibilities which are image-like, and RFI manifests itself in this data as sharp discontinuities, thus novel machine learning image techniques can be applied. We introduce a Deep Fully Convolutional Neural Network (D-FCN) (Figure \ref{fig:DFCNArch}) which uses the time-frequency context from both amplitude and phase to form a robust and efficient method for identifying RFI. Figure \ref{fig:DFCNCompare} demonstrates an amplitude only and amplitude-phase D-FCN, and the Watershed RFI algorithm, as applied to a HERA waterfall visibility in the sub-band of 157-193 MHz.
+RFI is present in all radio observations and consists of both terrestrial (e.g. TV stations) and in orbit (e.g. satellites) sources.
+% This interference reduces sensitivity in 21cm EoR experiments because it can be present in nearly all frequency channels and is brighter than galactic foregrounds. 
+Due to the nature of how RFI manifests itself in visibility data as sharp discontinuities or disruptive amorphous shapes, novel machine learning techniques can be applied. We introduce a Deep Fully Convolutional Neural Network 
+% (D-FCN) which uses the time-frequency context from both amplitude and phase 
+to form a robust and efficient method for identifying RFI.
 \begin{figure}[H]
 \centering
-\frame{\includegraphics[width=0.65\linewidth]{figures/PostFCStitchArch_v6_1.png}}
-\caption{Deep Full Convolutional Neural Network (D-FCN) architecture design for application to interferometric visibilities. The input space consists of a normalized log amplitude (upper branch) and it's corresponding phase component (lower branch). Both input layers reintroduce coarse time-frequency information into the transpose convolutional layers in what's referred to as `skip connections'.}
+\frame{\includegraphics[width=0.8\linewidth]{figures/PostFCStitchArch_v6_1.png}}
+\caption{Deep Full Convolutional Neural Network (D-FCN) architecture design for application to interferometric visibilities. The input space consists of a normalized log amplitude (upper branch) and it's corresponding phase component. Both input layers reintroduce coarse time-frequency information into the transpose convolutional layers in what's referred to as `skip connections'.}
 \label{fig:DFCNArch}
 \end{figure}
 
-\begin{figure}[H]
-\centering
-\frame{\includegraphics[width=0.9\linewidth]{figures/PredictionComparisons.png}}
-\caption{A comparison between three RFI identification algorithms, a D-FCN using only amplitude as input, a D-FCN with amplitude and phase (Figure \ref{fig:DFCNArch}), and the Watershed RFI algorithm. True positives are indicated in orange, false positives (red), and false negatives (white).}
-\label{fig:DFCNCompare}
-\end{figure}
-%To overcome foreground dominance in our power spectrum analysis we can use a combination of foreground power mitigating techniques as outlined in the following sections.
-%The issue of foreground emission dominance in our power spectrum can be overcome through the mixed use of the following traditional and novel foreground mitigation techniques. \\
-%\subsubsection*{Foreground Subtraction}
-%Foreground subtraction is performed in the image domain using an extragalactic source catalog. The source catalog is used to generate a foreground model which can then be fit by an $n^{th}$ order polynomial and subtracted from the observation.
-%Baseline visibilities are gridded to form an image which is calibrated to a catalog model. The catalog model contains point sources from 
-%surveys which contain the sources' right ascension, declination, and flux in stokes I. The model built from the catalog of sources is 
-%additionally convolved with the telescope arrays synthesized beam model. The resulting model which has been built can then be subtracted 
-%from the observation leaving behind the EoR signal and diffuse emissions.
 
-%\subsection*{Hydrid Foreground Subtraction and Avoidance}
-%The need for managing foregrounds in 21cm EoR experiments has led to two distinct techniques: Avoidance and Subtraction. Avoidance is the practice of filtering out foregrounds in Fourier space. Subtraction requires a model of either extragalactic point sources or diffuse emission that can be precisely subtracted from observations. The hybrid approach attempts to use both techniques to further mitigate foreground contamination for the purpose of an EoR detection in the 21cm power spectrum.
-
-%\begin{figure}[H]
-%\centering
-%\frame{\includegraphics[width=0.7\linewidth]{figures/PSPECXMid.png}}
-%\caption{Power spectra from PAPER-64 which shows the effectiveness of filtering (blue), subtraction (red), and hybrid (purple) strategies for foreground subtraction and avoidance when compared with a raw (green) power spectrum.}
-%\label{fig:stages}
-%\end{figure}
-
-%\begin{figure}[H]
-%\centering
-%\frame{\includegraphics[width=0.7\linewidth]{figures/DIFFXMid.png}}
-%\caption{The differenced power spectrum of filtering (blue) and filtering + subtraction (purple) from Fig. \ref{fig:stages}. This demonstrates that the hybrid foreground subtraction and avoidance technique is able to remove additional contamination from foregrounds necessary for placing the tightest constraints on the EoR power spectrum.}
-%\label{fig:diffmid}
-%\end{figure}
-
-%\subsubsection*{Foreground Avoidance}
-%\begin{equation}
-%\label{delaytransform}
-%V_b(\tau) = \int dl dm d\nu A(l,m,\nu)I(l,m,\nu)e^{-2\pi i\nu(\tau_g -\tau)}
-%\end{equation}
-%Equation \ref{delaytransform} demonstrates the delay transform used to transform a visibility to delay space. By working in delay space it can be seen in both Figs. \ref{foregroundsrcs1} \& \ref{foregroundsrcs2} that power from foreground sources are confined within a delay limit known as the horizon limit. --- this seemed unclear, so I made it a little longe
-
-%Equation \ref{delaytransform} demonstrates the \emph{delay transform}: A Fourier transform of frequency to its conjugate \emph{delay}. There is a natural limit in delay, set by the time it takes light from a source at the horizon to travel between the two antennas of a baseline. Power from foreground sources is confined within this \emph{horizon limit}, as shown by Figs. \ref{foregroundsrcs1} \& \ref{foregroundsrcs2}.
-
-%Taking the Fourier transform of a baseline visibility over frequency with the geometric group delay offset (eqn. \ref{delaytransform}) results %in smooth spectrum foregrounds bunching up nearest to the delay of $\tau = 0$. This is because foreground sources have a maximal %geometric delay associated with a baseline length, $|\vec{b}|$, which is also known as the horizon limit. The EoR signal is unsmooth %spectrally, distinguishing it from foreground sources, and pushing it beyond the horizon limit imposed by the baseline length. Using this %information, delays below the horizon limit can be filtered giving significant foreground power removal.
-
-%\begin{figure}[H]
-%\centering
-%\includegraphics[width=0.8\linewidth]{figures/delaytransform.png}
-%\caption{Delay transform visibilities of two different baseline types. Smooth spectral sources moving between delays over time can be seen to remain within the horizon limit (dotted), while unsmooth spectral sources (light blue) extend beyond the horizon limit.  \textbf{Source}: Aaron Parsons, \textit{A Per Baseline Delay-Spectrum Technique for Accessing the 21cm Cosmic Reionization Signature, Apj. 2012}}
-%\label{foregroundsrcs2}
-%\end{figure}
 
 %----------------------------------------------------------------------------------------
 %	MATERIALS AND METHODS
