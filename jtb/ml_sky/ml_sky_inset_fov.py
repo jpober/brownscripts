@@ -181,6 +181,8 @@ if opts.data is '':
     lm_pixel_half = np.diff(ls)[0]/2.
     L, M = np.meshgrid(ls, ms)
     ls_vec, ms_vec = L.flatten(), M.flatten()
+    ls_vec = ls_vec.reshape((1, -1))
+    ms_vec = ms_vec.reshape((1, -1))
 
     #Make source catalog
     nsources = opts.nsources
@@ -293,9 +295,11 @@ if opts.data is '':
         inset_fov = np.deg2rad(opts.inset_fov)
         inset_fov_l_inds = np.logical_and(ls_vec >= -inset_fov/2, ls_vec <= inset_fov/2)
         inset_fov_m_inds = np.logical_and(ms_vec >= -inset_fov/2, ms_vec <= inset_fov/2)
-        inset_fov_inds = inset_fov_l_inds*inset_fov_m_inds
-        ls_inset_vec = ls_vec[inset_fov_inds]
-        ms_inset_vec = ms_vec[inset_fov_inds]
+        inset_fov_inds = (inset_fov_l_inds*inset_fov_m_inds).flatten()
+        ls_inset_vec = ls_vec[:, inset_fov_inds]
+        ms_inset_vec = ms_vec[:, inset_fov_inds]
+        ls_inset_vec = ls_inset_vec.reshape((1, -1))
+        ms_inset_vec = ms_inset_vec.reshape((1, -1))
         ls_inset_grid = np.unique(ls_inset_vec)
         ms_inset_grid = np.copy(ls_inset_grid)
 
@@ -307,15 +311,17 @@ if opts.data is '':
     vs_inset_grid = np.fft.fftshift(np.fft.fftfreq(ms_inset_grid.shape[0], d=np.mean(np.diff(ms_inset_grid))))
     U_inset, V_inset = np.meshgrid(us_inset_grid, vs_inset_grid)
     us_inset_vec, vs_inset_vec = U_inset.flatten(), V_inset.flatten()
+    us_inset_vec = us_inset_vec.reshape((-1, 1))
+    vs_inset_vec = vs_inset_vec.reshape((-1, 1))
     uv_pixel_half = np.mean(np.diff(us_inset_grid))/2.
     nvis = us_inset_vec.shape[0]
 
     # Use analytical solution to get visibilities using true positions
     Vs = np.zeros((nfreqs, nvis), dtype=complex)
     # Use (u, v) corresponding to the inset fov to get "data"
-    DFT = np.exp(-1j*2*np.pi*(np.outer(us_inset_vec, ls_vec)
+    DFT = np.exp(-1j*2*np.pi*(np.dot(us_inset_vec, ls_vec)
                         +
-                        np.outer(vs_inset_vec, ms_vec)))
+                        np.dot(vs_inset_vec, ms_vec)))
     # if opts.uniform_sky:
     for i in range(nfreqs):
         if opts.beam:
@@ -351,10 +357,10 @@ if opts.data is '':
             d[freq_ind, j] += complex_noise
             d[freq_ind, neg_ind] += complex_noise.conjugate()
 
-        # Construct DFT matrix
-            DFT = np.exp(-1j*2*np.pi*(np.outer(us_inset_vec, ls_inset_vec)
+            # Construct DFT matrix
+            DFT = np.exp(-1j*2*np.pi*(np.dot(us_inset_vec, ls_inset_vec)
                                 +
-                                np.outer(vs_inset_vec, ms_inset_vec)))
+                                np.dot(vs_inset_vec, ms_inset_vec)))
 
         if opts.beam:
             if opts.fit_beam:
