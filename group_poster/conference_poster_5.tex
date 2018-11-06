@@ -169,17 +169,17 @@ Source: Zaroubi, Saleem. \textit`{The First Galaxies}. Springer Berlin Heidelber
 
 
 \subsection*{Deep Learning for RFI Mitigation}
-RFI is present in all radio observations and consists of both terrestrial (e.g. TV stations) and in orbit (e.g. satellites) sources. This interference reduces sensitivity in 21cm EoR experiments because it can be present at nearly all frequencies and times, and is brighter than galactic foregrounds. We can treat interferometry data as time-ordered visibilities which are image-like, and RFI manifests itself in this data as sharp discontinuities, thus novel machine learning image techniques can be applied. We introduce a Deep Fully Convolutional Neural Network (D-FCN) (\ref{fig:DFCNArch}) which uses the time-frequency context from both amplitude and phase to form a robust and efficient method for identifying RFI. Figure \ref{fig:DFCNCompare} demonstrates an amplitude only and amplitude-phase D-FCN, and the Watershed RFI algorithm, as applied to a HERA waterfall visibility in the sub-band of 157-193 MHz.
+RFI is present in all radio observations and consists of both terrestrial (e.g. TV stations) and in orbit (e.g. satellites) sources. This interference reduces sensitivity in 21cm EoR experiments because it can be present at nearly all frequencies and times, and is brighter than galactic foregrounds. We can treat interferometry data as time-ordered visibilities which are image-like, and RFI manifests itself in this data as sharp discontinuities, thus novel machine learning image techniques can be applied. We introduce a Deep Fully Convolutional Neural Network (D-FCN) (Figure \ref{fig:DFCNArch}) which uses the time-frequency context from both amplitude and phase to form a robust and efficient method for identifying RFI. Figure \ref{fig:DFCNCompare} demonstrates an amplitude only and amplitude-phase D-FCN, and the Watershed RFI algorithm, as applied to a HERA waterfall visibility in the sub-band of 157-193 MHz.
 \begin{figure}[H]
 \centering
 \frame{\includegraphics[width=0.65\linewidth]{figures/PostFCStitchArch_v6_1.png}}
-\caption{Deep Full Convolutional Neural Network (D-FCN) architecture design for application to interferometric visibilities. The input space consists of a normalized log amplitude (upper branch) and it's corresponding phase component. Both input layers reintroduce coarse time-frequency information into the transpose convolutional layers in what's referred to as `skip connections'.}
+\caption{Deep Full Convolutional Neural Network (D-FCN) architecture design for application to interferometric visibilities. The input space consists of a normalized log amplitude (upper branch) and it's corresponding phase component (lower branch). Both input layers reintroduce coarse time-frequency information into the transpose convolutional layers in what's referred to as `skip connections'.}
 \label{fig:DFCNArch}
 \end{figure}
 
 \begin{figure}[H]
 \centering
-\frame{\includegraphics[width=0.65\linewidth]{figures/PredictionComparisons.pdf}}
+\frame{\includegraphics[width=0.9\linewidth]{figures/PredictionComparisons.png}}
 \caption{A comparison between three RFI identification algorithms, a D-FCN using only amplitude as input, a D-FCN with amplitude and phase (Figure \ref{fig:DFCNArch}), and the Watershed RFI algorithm. True positives are indicated in orange, false positives (red), and false negatives (white).}
 \label{fig:DFCNCompare}
 \end{figure}

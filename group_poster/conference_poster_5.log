@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.14159265-2.6-1.40.17 (TeX Live 2016) (preloaded format=pdflatex 2016.5.22)  5 NOV 2018 19:54
+This is pdfTeX, Version 3.14159265-2.6-1.40.17 (TeX Live 2016) (preloaded format=pdflatex 2016.5.22)  5 NOV 2018 20:09
 entering extended mode
  restricted \write18 enabled.
  file:line:error style messages enabled.
@@ -711,11 +711,7 @@ LaTeX Font Info:    Redeclaring math symbol \sharp on input line 209.
 LaTeX Font Info:    Redeclaring math symbol \smile on input line 210.
 LaTeX Font Info:    Redeclaring math symbol \frown on input line 211.
 LaTeX Font Info:    Redeclaring math accent \hat on input line 254.
-) (./conference_poster_5.aux
-
-LaTeX Warning: Label `fig:DFCNArch' multiply defined.
-
-)
+) (./conference_poster_5.aux)
 \openout1 = `conference_poster_5.aux'.
 
 LaTeX Font Info:    Checking defaults for OML/cmm/m/it on input line 49.
@@ -731,7 +727,8 @@ LaTeX Font Info:    ... okay on input line 49.
 LaTeX Font Info:    Checking defaults for U/cmr/m/n on input line 49.
 LaTeX Font Info:    ... okay on input line 49.
 LaTeX Font Info:    Try loading font information for OT1+ptm on input line 49.
- (/usr/local/texlive/2016/texmf-dist/tex/latex/psnfss/ot1ptm.fd
+
+(/usr/local/texlive/2016/texmf-dist/tex/latex/psnfss/ot1ptm.fd
 File: ot1ptm.fd 2001/06/04 font definitions for OT1/ptm.
 )
 (/usr/local/texlive/2016/texmf-dist/tex/context/base/mkii/supp-pdf.mkii
@@ -910,10 +907,6 @@ Package pdftex.def Info: figures/foreground_figure.png used on input line 164.
 LaTeX Font Info:    Font shape `OT1/ptm/bx/n' in size <29.86> not available
 (Font)              Font shape `OT1/ptm/b/n' tried instead on input line 171.
 
-
-LaTeX Warning: Reference `fig:DFCNCompare' on page 1 undefined on input line 17
-2.
-
 <figures/PostFCStitchArch_v6_1.png, id=9, 837.1275pt x 625.33624pt>
 File: figures/PostFCStitchArch_v6_1.png Graphic file (type png)
 
@@ -922,13 +915,13 @@ Package pdftex.def Info: figures/PostFCStitchArch_v6_1.png used on input line 1
 75.
 (pdftex.def)             Requested size: 486.99908pt x 363.78305pt.
 
-<figures/PredictionComparisons.pdf, id=10, 462.52798pt x 346.89601pt>
-File: figures/PredictionComparisons.pdf Graphic file (type pdf)
+<figures/PredictionComparisons.png, id=10, 900.36375pt x 467.7475pt>
+File: figures/PredictionComparisons.png Graphic file (type png)
 
-<use figures/PredictionComparisons.pdf>
-Package pdftex.def Info: figures/PredictionComparisons.pdf used on input line 1
+<use figures/PredictionComparisons.png>
+Package pdftex.def Info: figures/PredictionComparisons.png used on input line 1
 82.
-(pdftex.def)             Requested size: 486.99908pt x 365.26785pt.
+(pdftex.def)             Requested size: 674.30818pt x 350.32442pt.
 
 <figures/sim_flowchart.png, id=11, 660.869pt x 163.812pt>
 File: figures/sim_flowchart.png Graphic file (type png)
@@ -967,38 +960,28 @@ Non-PDF special ignored!
 Non-PDF special ignored!{/usr/local/texlive/2016/texmf-var/fonts/map/pdftex/upd
 map/pdftex.map} <./figures/radiologo_update.png> <./figures/differential_bright
 ness.png> <./figures/global_history.png> <./figures/foreground_figure.png> <./f
-igures/PostFCStitchArch_v6_1.png> <./figures/PredictionComparisons.pdf> <./figu
-res/sim_flowchart.png> <./figures/projtest2.pdf
-
-pdfTeX warning: /Library/TeX/texbin/pdflatex (file ./figures/projtest2.pdf): PD
-F inclusion: multiple pdfs with page group included in a single page
-> <./figures/HERA19.png> <./figures/HERAsensitivity.png>]
-(./conference_poster_5.aux)
-
-LaTeX Warning: There were undefined references.
-
-
-LaTeX Warning: There were multiply-defined labels.
-
- ) 
+igures/PostFCStitchArch_v6_1.png> <./figures/PredictionComparisons.png> <./figu
+res/sim_flowchart.png> <./figures/projtest2.pdf> <./figures/HERA19.png> <./figu
+res/HERAsensitivity.png>] (./conference_poster_5.aux) ) 
 Here is how much of TeX's memory you used:
  14909 strings out of 493014
  290702 string characters out of 6133351
- 370595 words of memory out of 5000000
+ 370578 words of memory out of 5000000
  18108 multiletter control sequences out of 15000+600000
  41045 words of font info for 107 fonts, out of 8000000 for 9000
  1141 hyphenation exceptions out of 8191
  62i,10n,77p,1008b,1012s stack positions out of 5000i,500n,10000p,200000b,80000s
-{/usr/local/texlive/2016/texmf-dist/fonts/enc/dvips/base/8r.enc}</usr/local/t
-exlive/2016/texmf-dist/fonts/type1/public/amsfonts/euler/eurm10.pfb></usr/local
-/texlive/2016/texmf-dist/fonts/type1/public/amsfonts/euler/eusm10.pfb></usr/loc
-al/texlive/2016/texmf-dist/fonts/type1/urw/times/utmb8a.pfb></usr/local/texlive
-/2016/texmf-dist/fonts/type1/urw/times/utmr8a.pfb></usr/local/texlive/2016/texm
-f-dist/fonts/type1/urw/times/utmri8a.pfb>
-Output written on conference_poster_5.pdf (1 page, 1964518 bytes).
+{/usr/local/texlive/2016
+/texmf-dist/fonts/enc/dvips/base/8r.enc}</usr/local/texlive/2016/texmf-dist/fon
+ts/type1/public/amsfonts/euler/eurm10.pfb></usr/local/texlive/2016/texmf-dist/f
+onts/type1/public/amsfonts/euler/eusm10.pfb></usr/local/texlive/2016/texmf-dist
+/fonts/type1/urw/times/utmb8a.pfb></usr/local/texlive/2016/texmf-dist/fonts/typ
+e1/urw/times/utmr8a.pfb></usr/local/texlive/2016/texmf-dist/fonts/type1/urw/tim
+es/utmri8a.pfb>
+Output written on conference_poster_5.pdf (1 page, 2772740 bytes).
 PDF statistics:
- 164 PDF objects out of 1000 (max. 8388607)
- 42 compressed objects within 1 object stream
+ 107 PDF objects out of 1000 (max. 8388607)
+ 31 compressed objects within 1 object stream
  0 named destinations out of 1000 (max. 500000)
  69 words of extra memory for PDF output out of 10000 (max. 10000000)
 
