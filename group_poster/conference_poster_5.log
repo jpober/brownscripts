@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.14159265-2.6-1.40.17 (TeX Live 2016) (preloaded format=pdflatex 2016.5.22)  5 NOV 2018 20:25
+This is pdfTeX, Version 3.14159265-2.6-1.40.17 (TeX Live 2016) (preloaded format=pdflatex 2016.5.22)  5 NOV 2018 20:35
 entering extended mode
  restricted \write18 enabled.
  file:line:error style messages enabled.
@@ -900,13 +900,9 @@ Package pdftex.def Info: figures/global_history.png used on input line 149.
 (pdftex.def)             Requested size: 749.2364pt x 317.59688pt.
 LaTeX Font Info:    Font shape `OT1/ptm/bx/n' in size <20.74> not available
 (Font)              Font shape `OT1/ptm/b/n' tried instead on input line 150.
-
-
-LaTeX Warning: Reference `fig:foregroundsrcs' on page 1 undefined on input line
- 160.
-
 LaTeX Font Info:    Font shape `OT1/ptm/bx/n' in size <29.86> not available
 (Font)              Font shape `OT1/ptm/b/n' tried instead on input line 172.
+
 <figures/PostFCStitchArch_v6_1.png, id=8, 837.1275pt x 625.33624pt>
 File: figures/PostFCStitchArch_v6_1.png Graphic file (type png)
 
@@ -960,17 +956,14 @@ ness.png> <./figures/global_history.png> <./figures/PostFCStitchArch_v6_1.png>
 projtest2.pdf> <./figures/MWA_tiles.jpg> <./figures/HERA19.png>]
 (./conference_poster_5.aux)
 
-LaTeX Warning: There were undefined references.
-
-
 LaTeX Warning: There were multiply-defined labels.
 
  ) 
 Here is how much of TeX's memory you used:
- 14904 strings out of 493014
- 290515 string characters out of 6133351
- 367339 words of memory out of 5000000
- 18104 multiletter control sequences out of 15000+600000
+ 14903 strings out of 493014
+ 290495 string characters out of 6133351
+ 367556 words of memory out of 5000000
+ 18103 multiletter control sequences out of 15000+600000
  39868 words of font info for 106 fonts, out of 8000000 for 9000
  1141 hyphenation exceptions out of 8191
  62i,10n,77p,1008b,1012s stack positions out of 5000i,500n,10000p,200000b,80000s
@@ -980,7 +973,7 @@ exlive/2016/texmf-dist/fonts/type1/public/amsfonts/euler/eurm10.pfb></usr/local
 al/texlive/2016/texmf-dist/fonts/type1/urw/times/utmb8a.pfb></usr/local/texlive
 /2016/texmf-dist/fonts/type1/urw/times/utmr8a.pfb></usr/local/texlive/2016/texm
 f-dist/fonts/type1/urw/times/utmri8a.pfb>
-Output written on conference_poster_5.pdf (1 page, 3096378 bytes).
+Output written on conference_poster_5.pdf (1 page, 3096090 bytes).
 PDF statistics:
  104 PDF objects out of 1000 (max. 8388607)
  31 compressed objects within 1 object stream
