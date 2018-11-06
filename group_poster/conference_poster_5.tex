@@ -38,6 +38,7 @@
 \usepackage[center]{titlesec}
 \usepackage{background}
 \usepackage{blindtext}
+\usepackage{adjustbox}
 \usepackage{euler}
 \backgroundsetup{
 scale=1,
@@ -58,15 +59,16 @@ contents={\begin{tikzpicture}[remember picture,overlay]
 % The third is 19% wide and houses a logo for your university/organization or a photo of you
 % The widths of these boxes can be easily edited to accommodate your content as you see fit
 
-\begin{minipage}[b]{0.5\textwidth}
+\begin{minipage}[b]{0.45\textwidth}
 \veryHuge \color{Brown} \textbf{Radio Cosmology Lab} \color{Black}\textbf{$|$} \color{Black}\LARGE\textit{Exploring the Epoch of Reionization}\\
 \textbf{Adam Lanman, Wenyang Li, Joshua Kerrigan, Jacob Burba, \\Peter Sims, Daniya Seitova, Jonathan Pober}\\ % Author(s)
 \huge Brown University Physics\\ % University/organization
 \end{minipage}
-\begin{minipage}[b]{0.6\linewidth}
-\includegraphics[width=45cm]{radiologo_update.png} % Logo or a photo of you, adjust its dimensions here
+\hfill
+\begin{minipage}[b]{0.45\textwidth}
+\includegraphics[width=50cm, height=10cm]{radiologo_update.png} % Logo or a photo of you, adjust its dimensions here
 \end{minipage}
-%I CANT SEEM TO GET THIS DAMN LOGO TO THE RIGHT
+\vspace*{10pt}
 
 %[Maybe put logos at the top(or bottom), PAPER doesn't have an official logo afaik, can't find a good one for MWA]
 %\hspace{5cm}
@@ -209,15 +211,40 @@ to form a robust and efficient method for identifying RFI.
 \columnbreak
 \section*{Simulation}
 
-The particular characteristics of an array can introduce unexpected effects into the data. Understanding and mitigating instrumental effects is critical to making a confident detection of the EoR. For this reason, much effort has been put into simulating the full analysis pipeline -- from the point and diffuse sources on the sky, to the raw visibilities that come out of the correlator, to the power spectrum estimations.
-
-Fast Holographic Deconvolution (FHD) is a purpose-built software framework for analyzing MWA data. FHD does foreground subtraction by \emph{forward modeling}, which builds a simulated data set, including instrumental effects, and subtracts it from the actual data. This forward modeling feature can also be used as a standalone simulation tool, to generate raw visibilities of foregrounds, noise, and EoR off of existing and future 21cm experiments.
-
 \begin{figure}[H]
 \centering
-\includegraphics[scale=.9]{figures/sim_flowchart.png}
-\caption{A sample data file (or generated data file) holds array coordinates over time and the frequency channels of the instrument. Given a beam model for the antenna, FHD calculates the full synthesized beam (or point-spread function) for a particular time and set of frequencies. The synthesized beam can then convert a sky catalog into a set of foreground visibilities for the instrument. External EoR simulations can also be fed in to test EoR sensitivity, or Gaussian noise can be injected to simulate noise.}
+\vspace*{-20pt}
+\frame{\includegraphics[width=0.8\linewidth]{figures/heratext_image.png}}
+\caption{An image produced from simulated data from pyuvsim, of a mock catalog that spells out "HERA" in point sources at the zenith.}
+\vspace*{-15pt}
 \end{figure}
+
+Radio interferometers have complicated responses which can easily introduce systematics that overwhelm the desired signal. End to end simulation is used to check for these effects and find ways to mitigate them. These simulations start with a known sky model, calculate visibilities via the interferometer measurement equation \eqref{eqn:vis_wpol}, pass these through an analysis pipeline, and compute power spectra and other data products. Often these simulations uncover effects that had not yet been seen in data, but are later observed.
+
+\begin{equation}
+\mathcal{V}_{ij} = \int\: d\Omega\: \mathcal{J}_i \mathcal{C} \mathcal{J}_j^\dag \exp( - 2\pi i \nu \vec{b}_{ij} \cdot \hat{s} / c)
+= \left( \begin{matrix}
+V^{pp}_{ij} & V^{pq}_{ij} \\
+V^{qp}_{ij} & V^{qq}_{ij}
+\end{matrix} \right)
+\label{eqn:vis_wpol}
+\end{equation}
+Eqn. \eqref{eqn:vis_wpol} gives the visibilities for all pairs of antenna feeds, given the antenna Jones matrices $\mathcal{J}$ and sky coherency matrix $\mathcal{C}$.
+
+\texttt{pyuvsim} is a new instrument simulator, developed with an \emph{accuracy first, then efficiency second} philosophy that ensures that we take into account all factors known to impact an interferometer signal  These factors include the full polarized response, precise source positioning, empirical primary beams, and full horizon to horizon sky coverage. It has served as a verification tool for other simulators, and will continue to see performance improvements in the coming years.
+
+
+
+
+
+
+
+
+%\begin{figure}[H]
+%\centering
+%\includegraphics[scale=.9]{figures/sim_flowchart.png}
+%\caption{A sample data file (or generated data file) holds array coordinates over time and the frequency channels of the instrument. Given a beam model for the antenna, FHD calculates the full synthesized beam (or point-spread function) for a particular time and set of frequencies. The synthesized beam can then convert a sky catalog into a set of foreground visibilities for the instrument. External EoR simulations can also be fed in to test EoR sensitivity, or Gaussian noise can be injected to simulate noise.}
+%\end{figure}
 
 %------------------------------------------------
 \section*{Calibration}
