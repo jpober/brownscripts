@@ -35,6 +35,10 @@ o.add_option('--linear',
     action = 'store_true',
     help = 'If passed, use a linear nearest neighbor interpolation.')
 
+o.add_option('--use_cst',
+    action = 'store_true',
+    help = 'If passed, use CST output, not interpolated output.')
+
 opts,args = o.parse_args(sys.argv[1:])
 nside = opts.nside
 
@@ -70,45 +74,57 @@ else:
 
     nfiles = len(filenames)
 
-    beam_E = np.zeros((hp.nside2npix(nside), len(freqs)))
-    thetai, phii = hp.pix2ang(nside, np.arange(hp.nside2npix(nside)))
+    if opts.use_cst:
+        data = np.loadtxt(filenames[0], skiprows=2, usecols=[0, 1])
+        thetas, phis = np.deg2rad(data[:, 0]), np.deg2rad(data[:, 1])
+        npix = thetas.size
+        beam_E = np.zeros((npix, nfiles))
+        for fi, f in enumerate(filenames):
+            beam_E[:, fi] = np.loadtxt(f, skiprows=2, usecols=3)
 
-    for fi, f in enumerate(filenames):
-        data = np.loadtxt(f, skiprows=2)
-        if opts.linear:
-            lat = data[:, 0] * np.pi / 180.0
-            nlat = len(lat)
-            lon = data[:, 1] * np.pi / 180.0
-            nlon = len(lon)
-            coords = np.stack((lat, lon)).T
-            gain = data[:, 2]
-            lut = interpolate.LinearNDInterpolator(coords, gain)
-        else:
-            lat = np.unique(data[:, 0]) * np.pi / 180.0
-            nlat = len(lat)
-            lon = np.unique(data[:, 1]) * np.pi / 180.0
-            nlon = len(lon)
-            gain = data[:, 2].reshape(nlon, nlat).transpose()
-            lut = interpolate.RectBivariateSpline(lat, lon, gain)
-        for i in np.arange(hp.nside2npix(nside)):
-            beam_E[i, fi] = lut(thetai[i], phii[i])
+        max_inds = np.argmax(beam_E, axis=0)
+        max_locs = np.zeros((nfreqs, 2))
+        max_locs[:, 0] = thetas[max_inds]
+        max_locs[:, 1] = phis[max_inds]
 
-    # Write to .fits file
-    if opts.linear:
-        filename = 'healpix_beam_%.0f-%.0fMHz_nside-%d_linear-interp.fits' %(freqs[0], freqs[-1], nside)
     else:
-        filename = 'healpix_beam_%.0f-%.0fMHz_nside-%d.fits' %(freqs[0], freqs[-1], nside)
-    new_hdul = fits.HDUList()
-    new_hdul.append(fits.ImageHDU(data=beam_E, name='BEAM_E'))
-    new_hdul.append(fits.ImageHDU(data=freqs, name='FREQS'))
-    print 'Writing ' + filename
-    new_hdul.writeto(filename)
+        beam_E = np.zeros((hp.nside2npix(nside), len(freqs)))
+        thetai, phii = hp.pix2ang(nside, np.arange(hp.nside2npix(nside)))
 
-    sys.exit()
+        for fi, f in enumerate(filenames):
+            data = np.loadtxt(f, skiprows=2)
+            if opts.linear:
+                lat = data[:, 0] * np.pi / 180.0
+                nlat = len(lat)
+                lon = data[:, 1] * np.pi / 180.0
+                nlon = len(lon)
+                coords = np.stack((lat, lon)).T
+                gain = data[:, 2]
+                lut = interpolate.LinearNDInterpolator(coords, gain)
+            else:
+                lat = np.unique(data[:, 0]) * np.pi / 180.0
+                nlat = len(lat)
+                lon = np.unique(data[:, 1]) * np.pi / 180.0
+                nlon = len(lon)
+                gain = data[:, 2].reshape(nlon, nlat).transpose()
+                lut = interpolate.RectBivariateSpline(lat, lon, gain)
+            for i in np.arange(hp.nside2npix(nside)):
+                beam_E[i, fi] = lut(thetai[i], phii[i])
 
-max_inds = np.argmax(beam_E, axis=0)
-max_locs = np.zeros((nfreqs, 2))
-max_locs[:, 0], max_locs[:, 1] = hp.pix2ang(nside, max_inds)
+        max_inds = np.argmax(beam_E, axis=0)
+        max_locs = np.zeros((nfreqs, 2))
+        max_locs[:, 0], max_locs[:, 1] = hp.pix2ang(nside, max_inds)
+
+        # Write to .fits file
+        if opts.linear:
+            filename = 'healpix_beam_%.0f-%.0fMHz_nside-%d_linear-interp.fits' %(freqs[0], freqs[-1], nside)
+        else:
+            filename = 'healpix_beam_%.0f-%.0fMHz_nside-%d.fits' %(freqs[0], freqs[-1], nside)
+        new_hdul = fits.HDUList()
+        new_hdul.append(fits.ImageHDU(data=beam_E, name='BEAM_E'))
+        new_hdul.append(fits.ImageHDU(data=freqs, name='FREQS'))
+        print 'Writing ' + filename
+        new_hdul.writeto(filename)
 
 max_locs_lm = np.zeros_like(max_locs)
 max_locs_lm[:, 0] = np.cos(max_locs[:, 1])*np.sin(max_locs[:, 0])
@@ -152,7 +168,11 @@ for ax in fig.axes:
 gs.tight_layout(fig)
 
 gs.update(top=0.9, hspace=0., wspace=0.6)
-fig.suptitle('Nside: %d' %nside)
+
+if opts.use_cst:
+    fig.suptitle('Raw CST Output')
+else:
+    fig.suptitle('Nside: %d' %nside)
 
 
 show()

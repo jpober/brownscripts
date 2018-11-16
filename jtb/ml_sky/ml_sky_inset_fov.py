@@ -174,7 +174,9 @@ if opts.data is '':
     print 'Constructing sky...'
 
     # Construct l,m grid
-    FOV = np.deg2rad(opts.fov)
+    # FOV = np.deg2rad(opts.fov)
+    # ls = np.round(np.linspace(-FOV/2, FOV/2, npix_side), decimals=14)
+    FOV = np.round(np.deg2rad(opts.fov), decimals=14)
     ls = np.linspace(-FOV/2, FOV/2, npix_side)
     ms = np.copy(ls)
     nlm = ls.size*ms.size
@@ -240,7 +242,8 @@ if opts.data is '':
         print '\tAdding Gaussian source at l=%.1f, m=%.1f...' %(np.rad2deg(ls[mid_l + l_off]),
                                                                                            np.rad2deg(ms[mid_m + m_off]))
         Sky_vec = twoD_Gaussian((L, M), ls[mid_l + l_off], ms[mid_m + m_off], stddev, stddev)
-        Sky_vec += twoD_Gaussian((L, M), ls[int(mid_l*(1-0.5))], 0, stddev, stddev)
+        # Sky_vec += twoD_Gaussian((L, M), ls[int(mid_l*(1-0.5))], 0, stddev, stddev)
+        Sky_vec += twoD_Gaussian((L, M), ls[mid_l - l_off], ms[mid_m + m_off], stddev, stddev)
         Sky = np.tile(Sky_vec, nfreqs).reshape((nfreqs, npix_side**2))
 
     else:
@@ -292,16 +295,17 @@ if opts.data is '':
                 print '\tFitting beam...'
                 fit_beam_grid[i] = twoD_Gaussian((L, M), *popt)
 
-        inset_fov = np.deg2rad(opts.inset_fov)
-        inset_fov_l_inds = np.logical_and(ls_vec >= -inset_fov/2, ls_vec <= inset_fov/2)
-        inset_fov_m_inds = np.logical_and(ms_vec >= -inset_fov/2, ms_vec <= inset_fov/2)
-        inset_fov_inds = (inset_fov_l_inds*inset_fov_m_inds).flatten()
-        ls_inset_vec = ls_vec[:, inset_fov_inds]
-        ms_inset_vec = ms_vec[:, inset_fov_inds]
-        ls_inset_vec = ls_inset_vec.reshape((1, -1))
-        ms_inset_vec = ms_inset_vec.reshape((1, -1))
-        ls_inset_grid = np.unique(ls_inset_vec)
-        ms_inset_grid = np.copy(ls_inset_grid)
+    inset_fov = np.round(np.deg2rad(opts.inset_fov), decimals=14)
+    inset_fov_l_inds = np.logical_and(ls_vec >= -inset_fov/2, ls_vec <= inset_fov/2)
+    inset_fov_m_inds = np.logical_and(ms_vec >= -inset_fov/2, ms_vec <= inset_fov/2)
+    inset_fov_inds = (inset_fov_l_inds*inset_fov_m_inds).flatten()
+    ls_inset_vec = ls_vec[:, inset_fov_inds]
+    ms_inset_vec = ms_vec[:, inset_fov_inds]
+    ls_inset_vec = ls_inset_vec.reshape((1, -1))
+    ms_inset_vec = ms_inset_vec.reshape((1, -1))
+    ls_inset_grid = np.unique(ls_inset_vec)
+    ms_inset_grid = np.copy(ls_inset_grid)
+
 
     ## ----------------------------------- Construct Visibilities ----------------------------------- ##
     print 'Constructing visibilities...'
@@ -342,6 +346,11 @@ if opts.data is '':
     # Create data from visibilities with injected Gaussian noise
     d = np.copy(Vs)
 
+    # Construct DFT_inset matrix
+    DFT_inset = np.exp(-1j*2*np.pi*(np.dot(us_inset_vec, ls_inset_vec)
+                        +
+                        np.dot(vs_inset_vec, ms_inset_vec)))
+
     # Iterate over frequencies
     print 'Frequency [MHz]: ',
     for freq_ind in range(nfreqs):
@@ -357,22 +366,17 @@ if opts.data is '':
             d[freq_ind, j] += complex_noise
             d[freq_ind, neg_ind] += complex_noise.conjugate()
 
-            # Construct DFT matrix
-            DFT = np.exp(-1j*2*np.pi*(np.dot(us_inset_vec, ls_inset_vec)
-                                +
-                                np.dot(vs_inset_vec, ms_inset_vec)))
-
         if opts.beam:
             if opts.fit_beam:
                 P = np.diag(fit_beam_grid[freq_ind, inset_fov_inds])
             else:
                 P = np.diag(beam_grid[freq_ind, inset_fov_inds])
-            DftP = np.dot(DFT, P)
+            DftP = np.dot(DFT_inset, P)
             inv_part = np.linalg.inv(np.dot(np.dot(DftP.conj().T, N_inv), DftP))
             right_part = np.dot(np.dot(DftP.conj().T, N_inv), d[freq_ind])
         else:
-            inv_part = np.linalg.inv(np.dot(np.dot(DFT.conj().T, N_inv), DFT))
-            right_part = np.dot(np.dot(DFT.conj().T, N_inv), d[freq_ind])
+            inv_part = np.linalg.inv(np.dot(np.dot(DFT_inset.conj().T, N_inv), DFT_inset))
+            right_part = np.dot(np.dot(DFT_inset.conj().T, N_inv), d[freq_ind])
 
         # Maximum likelihood solution for the sky
         a[freq_ind] = np.dot(inv_part, right_part)
@@ -395,6 +399,8 @@ if opts.data is '':
             filename += '_horizon-source'
         elif opts.uniform_sky:
             filename += '_uniform-sky'
+        elif opts.noise_sky:
+            filename += '_noise-sky_%.1erms' %opts.rms
         else:
             if opts.gaussian_source:
                 filename += '_gaussian-source'
@@ -412,6 +418,9 @@ if opts.data is '':
             filename += '_fractional-fit'
         else:
             filename += '_absolute-fit'
+
+        if opts.fit_beam:
+            filename += '_fitted-beam'
 
         filename += '_%.0fdinset-fov' %opts.inset_fov
 
@@ -439,42 +448,40 @@ if not opts.data is '':
         a = data_dic['maxL_sky']
         Sky = data_dic['sky']
         beam_grid = data_dic['beam_file']
-        fit_beam_grid = data_dic['fitted_beam']
+        fitted_beam = False
+        if 'fitted-beam' in opts.data:
+            fitted_beam = True
+            fit_beam_grid = data_dic['fitted_beam']
         npix_ind = opts.data.find('npix')
         back_ind = opts.data.find('_', npix_ind - 4)
         npix_side = int(opts.data[back_ind+1:npix_ind])
         dfov_ind = opts.data.find('dfov')
         back_ind = opts.data.find('_', dfov_ind - 4)
         FOV = np.deg2rad(float(opts.data[back_ind + 1:dfov_ind]))
-        ls = np.linspace(-FOV/2, FOV/2, npix_side)
+        ls = np.round(np.linspace(-FOV/2, FOV/2, npix_side), decimals=14)
         ms = np.copy(ls)
         nlm = ls.size*ms.size
         lm_pixel_half = np.diff(ls)[0]/2.
-        ls_vec, ms_vec = np.zeros(0), np.zeros(0)
-        for m in ms:
-            for l in ls:
-                ls_vec = np.append(ls_vec, l)
-                ms_vec = np.append(ms_vec, m)
+        L, M = np.meshgrid(ls, ms)
+        ls_vec, ms_vec = L.flatten(), M.flatten()
         if 'dinset' in opts.data:
             dinset_ind = opts.data.find('dinset')
             back_ind = opts.data.find('_', dinset_ind - 4)
             inset_fov = np.round(np.deg2rad(float(opts.data[back_ind + 1:dinset_ind])), decimals=14)
+        if 'noise-sky' in opts.data:
+            rms_ind = opts.data.find('rms')
+            back_ind = opts.data.find('_', rms_ind - 10)
+            rms = float(opts.data[back_ind + 1:rms_ind])
         inset_fov_l_inds = np.logical_and(ls_vec >= -inset_fov/2, ls_vec <= inset_fov/2)
         inset_fov_m_inds = np.logical_and(ms_vec >= -inset_fov/2, ms_vec <= inset_fov/2)
         inset_fov_inds = inset_fov_l_inds*inset_fov_m_inds
         ls_inset_grid = np.unique(ls_vec[inset_fov_inds])
         ms_inset_grid = np.copy(ls_inset_grid)
-        ls_inset_grid = ls[np.logical_and(ls >= -inset_fov/2, ls <= inset_fov/2)]
-        ms_inset_grid = np.copy(ls_inset_grid)
-        if not any(x in opts.data for x in ['uniform', 'zenith', 'horizon']):
+        if not any(x in opts.data for x in ['uniform', 'zenith', 'horizon', 'noise']):
             nsources = np.sum(data_dic['sky'])
         nfreqs = 1
         Sky_vec = Sky.reshape((nfreqs, npix_side**2))
         us_grid = np.copy(ls_inset_grid)
-        if inset_fov < FOV:
-            diff_data = a[0].real - (Sky_vec[0]*beam_grid[0]/fit_beam_grid[0])[inset_fov_inds]
-        else:
-            diff_data = a[0].real - Sky_vec[0]*beam_grid[0]/fit_beam_grid[0]
 
 
 ## ---------------------------------- Plotting ---------------------------------- ##
@@ -487,7 +494,7 @@ nplots = 4
 plot_size = 5
 nrows = 1
 ncols = nplots
-fig = figure(figsize=(plot_size*(nplots + 1), plot_size))
+fig = figure(figsize=(plot_size*(nplots + 1), plot_size-1))
 
 fontsize = 14
 extent_lm = [ls.min() - lm_pixel_half, ls.max() + lm_pixel_half,
@@ -553,13 +560,13 @@ for plot_ind in range(nplots):
         elif plot_ind == 2:
             if not opts.fit_beam:
                 rms_ax.set_title('ML Sky Solution - Sky')
-                if opts.inset_fov < opts.fov:
+                if inset_fov < FOV:
                     diff_data = a[0].real - Sky_vec[0, inset_fov_inds]
                 else:
                     diff_data = a[0].real - Sky_vec[0]
             else:
                 rms_ax.set_title('ML Sky Solution - Sky*Beam/Fitted_Beam', size=8)
-                if opts.inset_fov < opts.fov:
+                if inset_fov < FOV:
                     diff_data = a[0].real - (Sky_vec[0]*beam_grid[0]/fit_beam_grid[0])[inset_fov_inds]
             if opts.log_scale:
                 im = rms_ax.imshow(np.log10(diff_data).reshape([ls_inset_grid.size]*2),
@@ -572,13 +579,13 @@ for plot_ind in range(nplots):
         elif plot_ind == 3:
             if not opts.fit_beam:
                 rms_ax.set_title('ML Sky Solution / Sky')
-                if opts.inset_fov < opts.fov:
+                if inset_fov < FOV:
                     ratio_data = a[0].real/Sky_vec[0, inset_fov_inds]
                 else:
                     ratio_data = a[0].real/Sky_vec[0]
             else:
                 rms_ax.set_title('ML Sky Solution / Sky*Beam/Fitted_Beam', size=8)
-                if opts.inset_fov < opts.fov:
+                if inset_fov < FOV:
                     ratio_data = a[0].real/((Sky_vec[0]*beam_grid[0]/fit_beam_grid[0])[inset_fov_inds])
             if opts.log_scale:
                 im = rms_ax.imshow(np.log10(ratio_data).reshape([ls_inset_grid.size]*2),
@@ -607,6 +614,8 @@ if opts.data is '':
         title = r'Zenith Source, ' + title
     elif opts.horizon_source:
         title = r'Horizon Source, ' + title
+    elif opts.noise_sky:
+        title = r'Noise Sky, RMS = %.1e, ' %opts.rms
     else:
         title = r'Nsources: %d, ' %nsources + title
 else:
@@ -616,17 +625,19 @@ else:
         title = r'Zenith Source, ' + title
     elif 'horizon' in opts.data:
         title = r'Horizon Source, ' + title
+    elif 'noise' in opts.data:
+        title = r'Noise Sky, RMS = %.1e, ' %rms + title
     else:
         title = r'Nsources: %d, ' %nsources + title
 
 fig.suptitle(title)
 gs.tight_layout(fig)
 # gs.update(top=0.8, wspace=0.25)
-gs.update(left=0.05, right=0.95, wspace=0.4, top=0.9)
+gs.update(left = 0.05, right = 0.95, wspace = 0.5, top = 0.9)
 
 if opts.force_lim:
     # Append master colorbar
-    gs.update(right=0.95)
+    gs.update(right = 0.95)
     ax_divider = make_axes_locatable(rms_ax)
     cbar_ax = ax_divider.append_axes("right", size="5%", pad="2%")
     cb = fig.colorbar(imgs[0], cax=cbar_ax)
