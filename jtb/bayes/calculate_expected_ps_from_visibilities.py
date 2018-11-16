@@ -48,7 +48,8 @@ k_vals = np.genfromtxt(opts.k_vals) # Mpc/h
 # Read in data
 data_dic = np.load(opts.data).item()
 data_array = data_dic['data_array'] # Visibilities in Janskys (ies?)
-sigma_in = np.std(data_array, axis=0).mean()
+sigma_in = 17.096315755646163
+# sigma_in = np.std(data_array, axis=0).mean()
 freq_array = data_dic['freq_array'].squeeze()
 center_redshift = v21/freq_array.mean() - 1
 B = freq_array[-1] - freq_array[0] # bandwidth
@@ -65,6 +66,7 @@ else:
     sigma_K_sq = sigma_in**2
 # Apply cosmology terms
 sigma_K_sq = X**2*Y/(FWHM*B)*sigma_K_sq
+sigma_K_sq /= 512**2
 
 if opts.jy:
     print 'Input [Jy]: %.1e' %sigma_in
