@@ -57,9 +57,10 @@ phis = np.arctan2(np.copy(ms_vec), np.copy(ls_vec))
 phis[phis < 0.0] += 2*np.pi
 
 # Get beam on my (l, m) grid
-fits_file = ('/Users/jburba/hera_things/hera-team/HERA-Beams/'
-                +
-                'NicolasFagnoniBeams/healpix_beam.fits')
+# fits_file = ('/Users/jburba/hera_things/hera-team/HERA-Beams/'
+#                 +
+#                 'NicolasFagnoniBeams/healpix_beam.fits')
+fits_file = '/users/jburba/data/jburba/beam_stuff/HERA-Beams/NicolasFagnoniBeams/healpix_beam.fits'
 beam_E = fits.getdata(fits_file, extname='BEAM_E')
 freqs = fits.getdata(fits_file, extname='FREQS')
 freq_ind = np.where(freqs == 150.)[0][0]
