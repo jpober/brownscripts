@@ -1,5 +1,4 @@
 import numpy as np
-import healpy as hp
 import matplotlib.gridspec as gridspec
 import time, optparse, sys, os
 import astropy.cosmology as cosmo
@@ -48,7 +47,9 @@ k_vals = np.genfromtxt(opts.k_vals) # Mpc/h
 # Read in data
 data_dic = np.load(opts.data).item()
 data_array = data_dic['data_array'] # Visibilities in Janskys (ies?)
-sigma_in = 17.096315755646163
+# sigma_in = 17.096315755646163
+sigma_in = 18.191828652894863
+sigma_in *= np.sqrt(2)/81
 # sigma_in = np.std(data_array, axis=0).mean()
 freq_array = data_dic['freq_array'].squeeze()
 center_redshift = v21/freq_array.mean() - 1
@@ -66,7 +67,7 @@ else:
     sigma_K_sq = sigma_in**2
 # Apply cosmology terms
 sigma_K_sq = X**2*Y/(FWHM*B)*sigma_K_sq
-sigma_K_sq /= 512**2
+# sigma_K_sq /= 512**2
 
 if opts.jy:
     print 'Input [Jy]: %.1e' %sigma_in
@@ -78,9 +79,11 @@ print 'Output [K^2]: %.1e' %sigma_K_sq
 dm_ps = (k_vals)**3/(2*np.pi)*sigma_K_sq
 
 # Plotting
-semilogy(k_vals, dm_ps, 'o-')
-xlabel(r'$k\ \left[h^{-1}\ \rm{Mpc}\right]$')
+figure()
+semilogy(np.log10(k_vals), dm_ps, 'o-')
+xlabel(r'$\log(k)\ \left[h^{-1}\ \rm{Mpc}\right]$')
 ylabel(r'$\Delta^2$')
+title(str(sigma_in))
 show()
 
 sys.exit()

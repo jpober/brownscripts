@@ -58,7 +58,10 @@ if not os.path.exists(opts.filepath):
     print opts.filepath + ' is not a valid path'
     sys.exit()
 
-rms = opts.rms/np.sqrt(2)
+# rms = opts.rms/np.sqrt(2)
+rms = opts.rms
+# Power too low, so try multiplying by npix in eor cube to get right normalizaiton
+# rms *= 512
 
 if opts.grid:
     nu, nv = 9, 9
@@ -73,7 +76,7 @@ if opts.grid:
             data_array[ntime*nuv + i] = noise
             data_array[ntime*nuv + (nuv - i - 1)] = noise.conjugate()
 
-    filename = opts.filepath + 'noise_gridded_%.1erms' %opts.rms
+    filename = opts.filepath + 'noise_gridded_%.1erms' %rms
     filename += '_%dnfreqs' %nf
     filename += '_%dntimes' %ntimes
     filename += '.npy'
