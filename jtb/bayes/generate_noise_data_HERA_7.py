@@ -51,6 +51,10 @@ o.add_option('--grid',
     action = 'store_true',
     help = 'If passed, use a gridded data set based on BayesEoR/params parameters.')
 
+o.add_option('--beam',
+    type = 'str',
+    help = 'Filepath for ')
+
 opts,args = o.parse_args(sys.argv[1:])
 print o.values
 
@@ -64,25 +68,58 @@ rms = opts.rms
 # rms *= 512
 
 if opts.grid:
-    nu, nv = 9, 9
-    nf = 38
+    nu, nv = [9]*2
     nuv = nu*nv - 1
     ntimes = 1
-    data_array = np.zeros((nuv*ntimes, nf), dtype='complex')
-    half_ind = nuv/2
-    for ntime in range(ntimes):
-        for i in range(half_ind):
-            noise = np.random.normal(0, rms, nf) + 1j*np.random.normal(0, rms, nf)
-            data_array[ntime*nuv + i] = noise
-            data_array[ntime*nuv + (nuv - i - 1)] = noise.conjugate()
 
+    if opts.beam:
+        # Read in interpolated beam and compute 2d DFT using FOV and npix_side from BayesEoR.Params
+        print 'Reading in beam from ' + opts.beam
+        interp_beam = np.load(opts.beam)
+        nf = interp_beam.shape[1]
+
+        # DFT beam
+        interp_beam = interp_beam.reshape((nu, nv, nf))
+
+        # Set up white noise image cube
+        noise_cube = np.random.normal(0, rms, interp_beam.shape)
+
+        # FT beam*noise cube to get visibilities
+        axes_tuple = (0, 1)
+        s_before_ZM = np.fft.ifftshift(noise_cube*interp_beam, axes=axes_tuple)
+        s_before_ZM = np.fft.fftn(s_before_ZM, axes=axes_tuple)
+        s_before_ZM = np.fft.fftshift(s_before_ZM, axes=axes_tuple)
+        s_before_ZM = s_before_ZM.reshape((nu*nv, nf))
+
+        # Remove (u, v) = (0, 0) pixel
+        half_ind = nuv/2
+        s_before_ZM /= s_before_ZM[:, 0].size**0.5
+        data_array = np.delete(s_before_ZM, half_ind, axis=0)
+
+    else:
+        # Generate white noise visibilties
+        nf = opts.nfreqs
+        data_array = np.zeros((nuv*ntimes, nf), dtype='complex')
+        half_ind = nuv/2
+        for ntime in range(ntimes):
+            for i in range(half_ind):
+                noise = np.random.normal(0, rms, nf) + 1j*np.random.normal(0, rms, nf)
+                data_array[ntime*nuv + i] = noise
+                data_array[ntime*nuv + (nuv - i - 1)] = noise.conjugate()
+
+    # Write output file
+    if not '/' in opts.filepath:
+        opts.filepath += '/'
     filename = opts.filepath + 'noise_gridded_%.1erms' %rms
     filename += '_%dnfreqs' %nf
-    filename += '_%dntimes' %ntimes
+    filename += '_nu_%d' %nu
+    filename += '_nv_%d' %nv
+    if opts.beam:
+        filename += '_w-beam'
     filename += '.npy'
 
     out_dic = {}
-    out_dic['data_array'] = data_array.copy()
+    out_dic['data_array'] = data_array
 
     print 'Writing %s' %filename
     np.save(filename, out_dic)
