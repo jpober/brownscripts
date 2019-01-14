@@ -45,13 +45,15 @@ k_B = 1.38064852e-23
 k_vals = np.genfromtxt(opts.k_vals) # Mpc/h
 
 # Read in data
-data_dic = np.load(opts.data).item()
-data_array = data_dic['data_array'] # Visibilities in Janskys (ies?)
+# data_dic = np.load(opts.data).item()
+# data_array = data_dic['data_array'] # Visibilities in Janskys (ies?)
+# freq_array = data_dic['freq_array'].squeeze()
 # sigma_in = 17.096315755646163
-sigma_in = 18.191828652894863
-sigma_in *= np.sqrt(2)/81
+# sigma_in = 18.191828652894863
+sigma_in = 17
+sigma_in *= 1./81
 # sigma_in = np.std(data_array, axis=0).mean()
-freq_array = data_dic['freq_array'].squeeze()
+freq_array = np.arange(150, 160)
 center_redshift = v21/freq_array.mean() - 1
 B = freq_array[-1] - freq_array[0] # bandwidth
 nf = freq_array.size
