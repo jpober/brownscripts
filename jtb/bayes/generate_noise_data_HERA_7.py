@@ -1,5 +1,5 @@
 import numpy as np
-import optparse, sys, os
+import optparse, sys, os, copy
 
 from pyuvdata import UVData
 
@@ -53,7 +53,13 @@ o.add_option('--grid',
 
 o.add_option('--beam',
     type = 'str',
-    help = 'Filepath for ')
+    help = 'Filepath for beam file in .npy format or \'gaussian\' to produce data '
+           +
+           'with a gaussian beam and a fwhm given by --fwhm.')
+
+o.add_option('--fwhm',
+    type = float,
+    help = 'Full width half maximum for the gaussian beam in degrees.')
 
 opts,args = o.parse_args(sys.argv[1:])
 print o.values
@@ -62,8 +68,8 @@ if not os.path.exists(opts.filepath):
     print opts.filepath + ' is not a valid path'
     sys.exit()
 
-# rms = opts.rms/np.sqrt(2)
-rms = opts.rms
+rms = opts.rms/np.sqrt(2)
+# rms = opts.rms
 # Power too low, so try multiplying by npix in eor cube to get right normalizaiton
 # rms *= 512
 
@@ -73,29 +79,53 @@ if opts.grid:
     ntimes = 1
 
     if opts.beam:
-        # Read in interpolated beam and compute 2d DFT using FOV and npix_side from BayesEoR.Params
-        print 'Reading in beam from ' + opts.beam
-        interp_beam = np.load(opts.beam)
-        nf = interp_beam.shape[1]
+        if not opts.beam == 'gaussian':
+            # Read in interpolated beam and compute 2d DFT using FOV and npix_side from BayesEoR.Params
+            print 'Reading in beam from ' + opts.beam
+            interp_beam = np.load(opts.beam)
+            nf = interp_beam.shape[1]
 
-        # DFT beam
-        interp_beam = interp_beam.reshape((nu, nv, nf))
+            # DFT beam
+            interp_beam = interp_beam.reshape((nu, nv, nf))
+            # THIS ORDERING IS CONFUSING NEED TO SWITCH TO (nf, nx, ny)
+        else:
+            print 'Making Gaussian beam with FWHM: %.1f [deg]' %opts.fwhm
+            # Generate sky coordinates
+            nf = opts.nfreqs
+            simulation_FoV_deg = 12.0
+            nx, ny = [9]*2
+            FOV = np.round(np.deg2rad(simulation_FoV_deg), decimals=14)
+            ls = np.linspace(-FOV/2, FOV/2, nx)
+            ms = np.copy(ls)
+            nlm = ls.size*ms.size
+            L, M = np.meshgrid(ls, ms)
+            ls_vec, ms_vec = L.flatten(), M.flatten()
+
+            # Generate Gaussian beam normalized to 1 in each frequency channel
+            fwhm_deg = opts.fwhm
+            fwhm = np.deg2rad(fwhm_deg)
+            stddev = fwhm/(2*np.sqrt(2*np.log(2)))
+            gauss_beam = np.exp(-(ls_vec**2 + ms_vec**2)/(2*stddev**2))
+            gauss_beam = gauss_beam.reshape((nx, ny))
+            gauss_beam = np.tile(gauss_beam, (nf, 1, 1))
+            interp_beam = gauss_beam.copy()
 
         # Set up white noise image cube
         noise_cube = np.random.normal(0, rms, interp_beam.shape)
 
         # FT beam*noise cube to get visibilities
-        axes_tuple = (0, 1)
+        axes_tuple = (1, 2)
         s_before_ZM = np.fft.ifftshift(noise_cube*interp_beam, axes=axes_tuple)
         s_before_ZM = np.fft.fftn(s_before_ZM, axes=axes_tuple)
         s_before_ZM = np.fft.fftshift(s_before_ZM, axes=axes_tuple)
-        s_before_ZM = s_before_ZM.reshape((nu*nv, nf))
+        s_before_ZM = s_before_ZM.reshape((nf, nx*ny))
 
         # Remove (u, v) = (0, 0) pixel
         half_ind = nuv/2
         s_before_ZM /= s_before_ZM[:, 0].size**0.5
-        data_array = np.delete(s_before_ZM, half_ind, axis=0)
-
+        data_array = np.delete(s_before_ZM, half_ind, axis=1)
+        # Convert to Fortran ordering to match pyuvdata formatting of files with (nblts, nfreqs)
+        data_array = data_array.flatten().reshape((nx*ny-1, nf), order='F')
     else:
         # Generate white noise visibilties
         nf = opts.nfreqs
@@ -108,14 +138,27 @@ if opts.grid:
                 data_array[ntime*nuv + (nuv - i - 1)] = noise.conjugate()
 
     # Write output file
-    if not '/' in opts.filepath:
+    if not opts.filepath[-1] == '/':
         opts.filepath += '/'
-    filename = opts.filepath + 'noise_gridded_%.1erms' %rms
+    filename = opts.filepath + 'noise_gridded_%.2erms' %rms
     filename += '_%dnfreqs' %nf
     filename += '_nu_%d' %nu
     filename += '_nv_%d' %nv
     if opts.beam:
-        filename += '_w-beam'
+        if not opts.beam == 'gaussian':
+            filename += '_w-cst-beam'
+        else:
+            filename += '_w-gauss-beam_%.1fdfwhm' %fwhm_deg
+
+    file_counter = 0
+    file_path_exists = os.path.exists(filename + '.npy')
+    while file_path_exists:
+        file_counter += 1
+        testfile = copy.copy(filename)
+        testfile += '_%d' %file_counter
+        file_path_exists = os.path.exists(testfile + '.npy')
+    if not file_counter == 0:
+        filename += '_%d' %file_counter
     filename += '.npy'
 
     out_dic = {}
