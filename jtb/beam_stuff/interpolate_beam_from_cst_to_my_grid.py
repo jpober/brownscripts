@@ -19,30 +19,26 @@ o.add_option('--fov',
     default = 10,
     help = 'Field of view in degrees.')
 
+o.add_option('--gaussian',
+    action = 'store_true',
+    help = 'If passed, make beam a Gaussian with no frequency variation.')
+
+o.add_option('--nfreqs',
+    type = int,
+    default = 38,
+    help = 'Number of frequency channels to use if making a Gaussian beam.')
+
 o.add_option('--write',
     action = 'store_true',
     help = 'If passed, write interpolated beam to a numpy readable file.')
 
 opts,args = o.parse_args(sys.argv[1:])
 
-# Read in cst files
-filenames = args
-print 'Reading in %d files...' %len(filenames)
-freqs = np.array([float(re.findall(r'\d+', f.split('_')[-1])[0]) for f in filenames])
-order = np.argsort(freqs)
-freqs = freqs[order]
-nfreqs = len(freqs)
-filenames = np.array(filenames)[order]
-nfiles = len(filenames)
-
-# Get sky coordinates from cst output
-data = np.loadtxt(filenames[0], skiprows=2, usecols=[0, 1])
-thetas, phis = np.deg2rad(data[:, 0]), np.deg2rad(data[:, 1])
-npix = thetas.size
-coords = np.stack((thetas, phis)).T
-# Convert cst coordinates to l,m coordinates for plotting
-ls_cst = thetas*np.cos(phis)
-ms_cst = thetas*np.sin(phis)
+def twoD_Gaussian((x, y), amp, x0, y0, sigma_x, sigma_y):
+    # See https://stackoverflow.com/questions/21566379/
+    # fitting-a-2d-gaussian-function-using-scipy-optimize-curve-fit-valueerror-and-m
+    # for example of 2d Guassian fitting using scipy.optimize.curve_fit
+    return (amp*np.exp(-(x-x0)**2/(2*sigma_x**2) - (y-y0)**2/(2*sigma_y**2))).ravel()
 
 # Construct sky coordinates to interpolate to
 if opts.fov != 10. and opts.npix_side == 31:
@@ -58,20 +54,46 @@ nlm = ls.size*ms.size
 lm_pixel_half = np.diff(ls)[0]/2.
 L, M = np.meshgrid(ls, ms)
 ls_vec, ms_vec = L.flatten(), M.flatten()
-interp_thetas = np.sqrt(ls_vec**2 + ms_vec**2)
-interp_phis = np.arctan2(ms_vec,ls_vec)
-interp_phis[interp_phis < 0.0] += 2*np.pi
 
-# Per frequency interpolation
-cst_beam = np.zeros((npix, nfiles))
+# Get the number of frequency channels
+nfiles = len(args)
+
+# Create array to hold the beam
 interp_beam = np.zeros((nlm, nfiles))
 
-for fi, f in enumerate(filenames):
-   cst_beam[:, fi] = np.loadtxt(f, skiprows=2, usecols=2)
-   interp_beam[:, fi] = interpolate.griddata((thetas, phis),
-                                             cst_beam[:, fi],
-                                             (interp_thetas, interp_phis),
-                                             method = 'linear')
+else:
+    # Read in cst files
+    filenames = args
+    print 'Reading in %d files...' %len(filenames)
+    freqs = np.array([float(re.findall(r'\d+', f.split('_')[-1])[0]) for f in filenames])
+    order = np.argsort(freqs)
+    freqs = freqs[order]
+    nfreqs = len(freqs)
+    filenames = np.array(filenames)[order]
+
+    # Get sky coordinates from cst output
+    data = np.loadtxt(filenames[0], skiprows=2, usecols=[0, 1])
+    thetas, phis = np.deg2rad(data[:, 0]), np.deg2rad(data[:, 1])
+    npix = thetas.size
+    coords = np.stack((thetas, phis)).T
+    # Convert cst coordinates to l,m coordinates for plotting
+    ls_cst = thetas*np.cos(phis)
+    ms_cst = thetas*np.sin(phis)
+
+    # Make theta/phi coords from l/m to interpolate to
+    interp_thetas = np.sqrt(ls_vec**2 + ms_vec**2)
+    interp_phis = np.arctan2(ms_vec,ls_vec)
+    interp_phis[interp_phis < 0.0] += 2*np.pi
+
+    # Per frequency interpolation
+    cst_beam = np.zeros((npix, nfiles))
+
+    for fi, f in enumerate(filenames):
+       cst_beam[:, fi] = np.loadtxt(f, skiprows=2, usecols=2)
+       interp_beam[:, fi] = interpolate.griddata((thetas, phis),
+                                                 cst_beam[:, fi],
+                                                 (interp_thetas, interp_phis),
+                                                 method = 'linear')
 
 if opts.write:
     save_dir = '/users/jburba/data/jburba/beam_stuff/interp_beams/'
