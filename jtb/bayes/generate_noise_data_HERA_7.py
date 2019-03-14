@@ -1,7 +1,8 @@
 import numpy as np
 import optparse, sys, os, copy
 
-from pyuvdata import UVData
+# Need to reinstall pyuvdata
+# from pyuvdata import UVData
 
 ## ----------------- Option Parser ----------------- ##
 o = optparse.OptionParser()
@@ -32,7 +33,7 @@ o.add_option('--phase',
 
 o.add_option('--rms',
     type = 'float',
-    default=1.e-5,
+    default = 1.e-5,
     help = 'RMS to use for Gaussian noise in dataset.  Actual rms used is opts.rms/np.sqrt(2).')
 
 o.add_option('--filepath',
@@ -53,47 +54,78 @@ o.add_option('--grid',
 
 o.add_option('--beam',
     type = 'str',
-    help = 'Filepath for beam file in .npy format or \'gaussian\' to produce data '
+    help = 'Filepath for beam file in .npy format, \'gaussian\', or \'uniform\' '
            +
-           'with a gaussian beam and a fwhm given by --fwhm.')
+           'to produce data with a gaussian beam and a fwhm given by --fwhm.')
 
 o.add_option('--fwhm',
     type = float,
     help = 'Full width half maximum for the gaussian beam in degrees.')
 
-opts,args = o.parse_args(sys.argv[1:])
-print o.values
+o.add_option('--amp',
+    type = float,
+    default = 1.0,
+    help = 'Amplitude of beam maximum if making a gaussian or uniform beam.')
 
-if not os.path.exists(opts.filepath):
+o.add_option('--seed',
+    action = 'store_true',
+    help = 'If passed, seed np.random so datasets have the same noise cubes.')
+
+o.add_option('--no_write',
+    action = 'store_true',
+    help = 'If passed, do not write the data to a file.')
+
+o.add_option('--slope',
+    type = 'float',
+    default = 0.0,
+    help = 'If --slope=n, apply a slope of k_z^(-n) to the delay transformed visibilities'
+           +
+           ' (default = 0.0).')
+
+o.add_option('--cube_side_Mpc',
+    type = 'float',
+    default = 512.0,
+    help = 'If passing --slope, need to specify a cube side length in Mpc to set scaling for k_z'
+           +
+           ' (default = 512).')
+
+o.add_option('--cube_side_pix',
+    type = 'int',
+    default = 128,
+    help = 'If passing --slope, need to specify a cube side length in pixels to set scaling for k_z'
+           +
+           ' (default = 128).')
+
+opts,args = o.parse_args(sys.argv[1:])
+# print o.values
+
+if not (opts.no_write or os.path.exists(opts.filepath)):
     print opts.filepath + ' is not a valid path'
     sys.exit()
 
 rms = opts.rms/np.sqrt(2)
-# rms = opts.rms
-# Power too low, so try multiplying by npix in eor cube to get right normalizaiton
-# rms *= 512
 
 if opts.grid:
     nu, nv = [9]*2
     nuv = nu*nv - 1
     ntimes = 1
+    nf = opts.nfreqs
 
     if opts.beam:
-        if not opts.beam == 'gaussian':
+        if not opts.beam == 'gaussian' and not opts.beam == 'uniform':
             # Read in interpolated beam and compute 2d DFT using FOV and npix_side from BayesEoR.Params
             print 'Reading in beam from ' + opts.beam
             interp_beam = np.load(opts.beam)
             nf = interp_beam.shape[1]
 
             # DFT beam
-            interp_beam = interp_beam.reshape((nu, nv, nf))
+            beam_cube = interp_beam.reshape((nu, nv, nf))
             # THIS ORDERING IS CONFUSING NEED TO SWITCH TO (nf, nx, ny)
-        else:
-            print 'Making Gaussian beam with FWHM: %.1f [deg]' %opts.fwhm
+        elif opts.beam == 'gaussian':
+            # print 'Making Gaussian beam with FWHM: %.1f [deg]' %opts.fwhm
             # Generate sky coordinates
-            nf = opts.nfreqs
             simulation_FoV_deg = 12.0
-            nx, ny = [9]*2
+            nx, ny = (nu, nv)
             FOV = np.round(np.deg2rad(simulation_FoV_deg), decimals=14)
             ls = np.linspace(-FOV/2, FOV/2, nx)
             ms = np.copy(ls)
@@ -105,67 +137,164 @@ if opts.grid:
             fwhm_deg = opts.fwhm
             fwhm = np.deg2rad(fwhm_deg)
             stddev = fwhm/(2*np.sqrt(2*np.log(2)))
-            gauss_beam = np.exp(-(ls_vec**2 + ms_vec**2)/(2*stddev**2))
-            gauss_beam = gauss_beam.reshape((nx, ny))
-            gauss_beam = np.tile(gauss_beam, (nf, 1, 1))
-            interp_beam = gauss_beam.copy()
+            # gauss_beam = np.exp(-(ls_vec**2 + ms_vec**2)/(2*stddev**2))
+            # gauss_beam = np.tile(gauss_beam, nf)
+            # gauss_beam = gauss_beam.reshape((nf, nx, ny))
+			
+            # Try making beam slice and tiling to make sure the beam
+            # cube is what I think it is
+            gauss_beam_slice = np.exp(-(L**2 + M**2)/(2*stddev**2))
+            gauss_beam = np.zeros((nf, nu, nv))
+            for i_f in range(nf):
+				gauss_beam[i_f] = gauss_beam_slice
+			
+            beam_cube = gauss_beam.copy()*opts.amp
+        else:
+            uniform_beam = np.ones((nf, nu, nv))*opts.amp
+            beam_cube = uniform_beam.copy()
+
 
         # Set up white noise image cube
-        noise_cube = np.random.normal(0, rms, interp_beam.shape)
+        if opts.seed:
+            # print 'Setting seed for np.random'
+            np.random.seed(12345)
+        noise_cube = np.random.normal(0, rms, beam_cube.shape)
 
         # FT beam*noise cube to get visibilities
         axes_tuple = (1, 2)
-        s_before_ZM = np.fft.ifftshift(noise_cube*interp_beam, axes=axes_tuple)
+        s_before_ZM = np.fft.ifftshift(noise_cube*beam_cube, axes=axes_tuple)
         s_before_ZM = np.fft.fftn(s_before_ZM, axes=axes_tuple)
         s_before_ZM = np.fft.fftshift(s_before_ZM, axes=axes_tuple)
-        s_before_ZM = s_before_ZM.reshape((nf, nx*ny))
+        s_before_ZM /= s_before_ZM[0].size**0.5
+		
+        if not opts.slope == 0.0:
+			# Need to make this symmetric around kz=0 at kz[nf/2]
+			z, y, x = np.mgrid[-(nf/2):(nf/2),-(nu/2):(nu/2)+1,-(nv/2):(nv/2)+1]
+			z = z.astype('float64')
+			data_side_Mpc_scaled = opts.cube_side_Mpc*nf/opts.cube_side_pix
+			deltakpara = 2*np.pi/data_side_Mpc_scaled
+			kz = z*deltakpara
+
+			kz_weights = 1./np.abs(kz)**opts.slope
+			kz_weights[[0, 1, nf/2, -1]] = 0.0 # no power in modes that are removed
+			kz_weights /= kz_weights.max()
+
+			# Apply weighting in 3D k space before flattening
+			# FFT from uvf to uvnu
+			axes_tuple = (0,)
+			vfft_s = np.fft.ifftshift(s_before_ZM.copy(), axes=axes_tuple)
+			vfft_s = np.fft.fftn(vfft_s, axes=axes_tuple)
+			vfft_s = np.fft.fftshift(vfft_s, axes=axes_tuple)
+			# Aplly weights
+			vfft_s *= kz_weights
+			# Inverse FFT back to uvf cube
+			s_before_ZM = np.fft.ifftshift(vfft_s.copy(), axes=axes_tuple)
+			s_before_ZM = np.fft.ifftn(s_before_ZM, axes=axes_tuple)
+			s_before_ZM = np.fft.fftshift(s_before_ZM, axes=axes_tuple)
+		
+		# Current method
+        s_before_ZM_flat = s_before_ZM.flatten()
+        ZM_mask = np.ones_like(s_before_ZM_flat).astype('bool')
+        ZM_mask[(nu*nv/2)::(nu*nv)] = False
+        data_array = s_before_ZM_flat[ZM_mask]
+		
+        # Old method
+        # s_before_ZM = s_before_ZM.reshape((nf, nx*ny))
 
         # Remove (u, v) = (0, 0) pixel
-        half_ind = nuv/2
-        s_before_ZM /= s_before_ZM[:, 0].size**0.5
-        data_array = np.delete(s_before_ZM, half_ind, axis=1)
+        # half_ind = nuv/2
+        # data_array = np.delete(s_before_ZM, half_ind, axis=1)
         # Convert to Fortran ordering to match pyuvdata formatting of files with (nblts, nfreqs)
-        data_array = data_array.flatten().reshape((nx*ny-1, nf), order='F')
+        # data_array = data_array.flatten().reshape((nx*ny-1, nf), order='F')
+        # data_array = data_array.flatten()
+
     else:
-        # Generate white noise visibilties
-        nf = opts.nfreqs
-        data_array = np.zeros((nuv*ntimes, nf), dtype='complex')
-        half_ind = nuv/2
-        for ntime in range(ntimes):
-            for i in range(half_ind):
-                noise = np.random.normal(0, rms, nf) + 1j*np.random.normal(0, rms, nf)
-                data_array[ntime*nuv + i] = noise
-                data_array[ntime*nuv + (nuv - i - 1)] = noise.conjugate()
+        # Set up white noise image cube
+        if opts.seed:
+            print 'Setting seed for np.random'
+            np.random.seed(12345)
+        noise_cube = np.random.normal(0, rms, (nf, nu, nv)) + 0j
+        # noise_cube = np.ones((nf, nu, nv)) + 0j
+        # noise_cube_face = np.arange(1, nu*nv + 1)
+        # noise_cube = np.tile(noise_cube_face, (nf, 1))
+        # noise_cube = noise_cube.reshape((nf, nu, nv))
 
-    # Write output file
-    if not opts.filepath[-1] == '/':
-        opts.filepath += '/'
-    filename = opts.filepath + 'noise_gridded_%.2erms' %rms
-    filename += '_%dnfreqs' %nf
-    filename += '_nu_%d' %nu
-    filename += '_nv_%d' %nv
-    if opts.beam:
-        if not opts.beam == 'gaussian':
-            filename += '_w-cst-beam'
-        else:
-            filename += '_w-gauss-beam_%.1fdfwhm' %fwhm_deg
+        # FT noise cube to get visibilities (uvf cube)
+        axes_tuple = (1, 2)
+        s_before_ZM = np.fft.ifftshift(noise_cube, axes=axes_tuple)
+        s_before_ZM = np.fft.fftn(s_before_ZM, axes=axes_tuple)
+        s_before_ZM = np.fft.fftshift(s_before_ZM, axes=axes_tuple)
+        s_before_ZM /= s_before_ZM[0].size**0.5
 
-    file_counter = 0
-    file_path_exists = os.path.exists(filename + '.npy')
-    while file_path_exists:
-        file_counter += 1
-        testfile = copy.copy(filename)
-        testfile += '_%d' %file_counter
-        file_path_exists = os.path.exists(testfile + '.npy')
-    if not file_counter == 0:
-        filename += '_%d' %file_counter
-    filename += '.npy'
+        if not opts.slope == 0.0:
+			# Need to make this symmetric around kz=0 at kz[nf/2]
+			z, y, x = np.mgrid[-(nf/2):(nf/2),-(nu/2):(nu/2)+1,-(nv/2):(nv/2)+1]
+			z = z.astype('float64')
+			data_side_Mpc_scaled = opts.cube_side_Mpc*nf/opts.cube_side_pix
+			deltakpara = 2*np.pi/data_side_Mpc_scaled
+			kz = z*deltakpara
 
-    out_dic = {}
-    out_dic['data_array'] = data_array
+			kz_weights = 1./np.abs(kz)**opts.slope
+			kz_weights[[0, 1, nf/2, -1]] = 0.0 # no power in modes that are removed
+			kz_weights /= kz_weights.max()
 
-    print 'Writing %s' %filename
-    np.save(filename, out_dic)
+			# Apply weighting in 3D k space before flattening
+			# FFT from uvf to uvnu
+			axes_tuple = (0,)
+			vfft_s = np.fft.ifftshift(s_before_ZM.copy(), axes=axes_tuple)
+			vfft_s = np.fft.fftn(vfft_s, axes=axes_tuple)
+			vfft_s = np.fft.fftshift(vfft_s, axes=axes_tuple)
+			# Aplly weights
+			vfft_s *= kz_weights
+			# Inverse FFT back to uvf cube
+			s_before_ZM = np.fft.ifftshift(vfft_s.copy(), axes=axes_tuple)
+			s_before_ZM = np.fft.ifftn(s_before_ZM, axes=axes_tuple)
+			s_before_ZM = np.fft.fftshift(s_before_ZM, axes=axes_tuple)
+        
+        s_before_ZM_flat = s_before_ZM.flatten()
+        ZM_mask = np.ones_like(s_before_ZM_flat).astype('bool')
+        ZM_mask[(nu*nv/2)::(nu*nv)] = False
+        data_array = s_before_ZM_flat[ZM_mask]
+    
+    
+    if not opts.no_write:
+        # Write output file
+        if not opts.filepath[-1] == '/':
+            opts.filepath += '/'
+        filename = opts.filepath + 'noise_gridded_%.2erms' %rms
+        filename += '_%dnfreqs' %nf
+        filename += '_nu_%d' %nu
+        filename += '_nv_%d' %nv
+        if opts.beam:
+            if not opts.beam == 'gaussian' and not opts.beam == 'uniform':
+                filename += '_w-cst-beam'
+            elif opts.beam == 'gaussian':
+                filename += '_w-gauss-beam_%.1fdfwhm' %fwhm_deg
+            elif opts.beam == 'uniform':
+                filename += '_w-uniform-beam'
+            # append beam amplitude
+            filename += '_%.1famp' %opts.amp
+        if not opts.slope == 0.0:
+            filename += ('_%.1elogk-slope' %opts.slope).replace('.', 'd')
+        if len(data_array.shape) < 2:
+            filename += '_vectorized'
+
+        file_counter = 0
+        file_path_exists = os.path.exists(filename + '.npy')
+        while file_path_exists:
+            file_counter += 1
+            testfile = copy.copy(filename)
+            testfile += '_%d' %file_counter
+            file_path_exists = os.path.exists(testfile + '.npy')
+        if not file_counter == 0:
+            filename += '_%d' %file_counter
+        filename += '.npy'
+
+        out_dic = {}
+        out_dic['data_array'] = data_array
+
+        print 'Writing %s' %filename
+        np.save(filename, out_dic)
 
 else:
     # Read in data
@@ -262,3 +391,46 @@ else:
         out_dic['uvw_array'] = uvw_array.copy()
         out_dic['freq_array'] = uvd.freq_array.squeeze().copy()
         np.save(filename, out_dic)
+
+		
+		
+		
+		
+###
+# OLD CODE
+###
+
+#             kz_weights = np.ones_like(kz)
+#             # Force a bunch of delays to zero
+#             kz_weights[:11] = 0.0
+#             kz_weights[-10:] = 0.0
+#             kz_weights[nf/2] = 0.0
+#             kz_weights = 1 - np.abs(kz)/np.abs(kz).max()
+#             kz_weights[:2] = 0.0
+#             kz_weights[-1] = 0.0
+#             kz_weights = kz.copy()
+#             kz_weights = 1.e3*(np.abs(kz).max() - np.abs(kz))/np.abs(kz).max()
+#             # Don't want power in the highest modes (2 for kz<0, 1 for kz>0)
+#             axes_tuple = (0, 1, 2)
+#             noise_cube_ft = np.fft.ifftshift(noise_cube.copy(), axes=axes_tuple)
+#             noise_cube_ft = np.fft.fftn(noise_cube_ft, axes=axes_tuple)
+#             noise_cube_ft = np.fft.fftshift(noise_cube_ft, axes=axes_tuple)
+#             # noise_cube_ft *= np.abs(opts.slope*kz)
+# #             noise_cube_ft *= 1 - np.abs(kz)/np.abs(kz).max()
+#             noise_cube_ft += kz_weights # addition or multiplication?
+#             # Don't need to FT back just to FT again
+#             noise_cube = np.fft.ifftshift(noise_cube_ft.copy(), axes=axes_tuple)
+#             noise_cube = np.fft.ifftn(noise_cube, axes=axes_tuple)
+#             noise_cube = np.fft.fftshift(noise_cube, axes=axes_tuple)
+#         # sys.exit()
+#         """
+
+# Reshaping code
+# Reshape array to mimic pyuvdata formatting
+# s_before_ZM = s_before_ZM.reshape((nf, nu*nv))
+
+# Remove (u, v) = (0, 0) pixel
+# half_ind = nuv/2
+# data_array = np.delete(s_before_ZM, half_ind, axis=1)
+# Convert to Fortran ordering to match pyuvdata formatting of files with (nblts, nfreqs)
+# data_array = data_array.flatten().reshape((nu*nv-1, nf), order='F')
