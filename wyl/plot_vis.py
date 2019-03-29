@@ -94,8 +94,7 @@ def plot_chisq(data,flag=None,title='',cut=1.2,log_plot=False):
     fig.colorbar(i1)
     plt.show()
 
-def plot_phase(data,flag=None,title='',log_plot=False):
-    freq = np.linspace(167.075,197.715,data.shape[1])
+def plot_phase(data,flag=None,freq=np.linspace(167.075,197.715,384),title='',log_plot=False):
     if flag is None: flag=np.zeros(data.shape,dtype=bool)
     dd=copy.copy(data)
 #    ind = np.where(dd>cut)

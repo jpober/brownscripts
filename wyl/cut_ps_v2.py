@@ -30,6 +30,8 @@ def rebin(bin_file,kperp_min_cut=0.0,kperp_max_cut=0.1,kpara_min_cut=0.12,kpara_
         q[:,12] = False
         q[:,13] = False
         q[:,21] = False
+        q[:,29] = False
+        q[:,30] = False
     for ii in range(coarse_band_extent):
         q[24+ii::24] = False
         q[24-ii::24] = False
@@ -50,8 +52,12 @@ def get_diff_power(dif_fn, bin_dict):
     diff = readsav(dif_fn)
     h = bin_dict["h"]
     dm = bin_dict["3d_mask"]
-    dp = diff['power_diff']*(h**3)
-    dw = diff['weight_diff']
+    try:
+       dp = diff['power_diff']*(h**3)
+       dw = diff['weight_diff']
+    except:
+       dp = diff['power_3d']*(h**3)
+       dw = diff['weights_3d']
     cut = dp[dm]
     wgt = dw[dm]
     p_kpar = np.divide(np.sum(dp*dw*dm,axis=(1,2)),np.sum(dw*dm,axis=(1,2)))
@@ -74,29 +80,51 @@ def bin_3d(kx,ky,kz):
                 k[ix][iy][iz] = np.sqrt(kx[ix]**2+ky[iy]**2+kz[iz]**2)
     return k
 
-def get_3d_ps(powerfn, bin_dict, slots_1d):
+def get_3d_ps(powerfn, bin_dict, slots):
     d = readsav(powerfn)
-    p = np.copy(d['power_3d'])
-    w = np.copy(d['weights_3d'])
-    kx = d['kx_mpc']
-    ky = d['ky_mpc']
-    kz = d['kz_mpc']
+    h = d['hubble_param']
+    slots_1d = slots/h
+    try:
+        p = np.copy(d['power_3d'])*(h**3)
+        w = np.copy(d['weights_3d'])
+    except:
+        p = np.copy(d['power_diff'])*(h**3)
+        w = np.copy(d['weight_diff'])
+    kx = d['kx_mpc']/h
+    ky = d['ky_mpc']/h
+    kz = d['kz_mpc']/h
     p *= bin_dict['3d_mask']
     w *= bin_dict['3d_mask']
     p1d = np.zeros(slots_1d.size-1)
     w1d = np.zeros(slots_1d.size-1)
-    for ix in range(kx.size):
-        for iy in range(ky.size):
-            for iz in range(kz.size):
-                k = np.sqrt(kx[ix]**2+ky[iy]**2+kz[iz]**2)
-                ind = np.where(slots_1d<k)[0][-1]
-                try:
-                    p1d[ind] += p[iz,iy,ix]*w[iz,iy,ix]
-                    w1d[ind] += w[iz,iy,ix]*(p[iz,iy,ix]!=0)
-                except: pass
+    nx = kx.size
+    ny = ky.size
+    nz = kz.size
+    def fill(n):
+        ix = n%nx
+        iy = (n/nx)%ny
+        iz = n/nx/ny
+        k = np.sqrt(kx[ix]**2+ky[iy]**2+kz[iz]**2)
+        ind = np.where(slots_1d<k)[0][-1]
+        try:
+            p1d[ind] += p[iz,iy,ix]*w[iz,iy,ix]
+            w1d[ind] += w[iz,iy,ix]*(p[iz,iy,ix]!=0)
+        except: pass
+    map(fill, np.arange(nx*ny*nz))
+#    for ix in range(kx.size):
+#        for iy in range(ky.size):
+#            for iz in range(kz.size):
+#                k = np.sqrt(kx[ix]**2+ky[iy]**2+kz[iz]**2)
+#                ind = np.where(slots_1d<k)[0][-1]
+#                try:
+#                    p1d[ind] += p[iz,iy,ix]*w[iz,iy,ix]
+#                    w1d[ind] += w[iz,iy,ix]*(p[iz,iy,ix]!=0)
+#                except: pass
     ind = np.where(w1d!=0)[0]
     p1d[ind] /= w1d[ind]
+    kp = 0.5*(slots_1d[1:]+slots_1d[:-1]) 
     p1d *= 2
+    p1d *= kp**3/2/np.pi**2
     return p1d
 
 def histbin(data,wgts,bins):
@@ -152,7 +180,6 @@ def ytostep(y):
     y_bin[1::2] = y
     return y_bin
 
-
 def kpar_plot(k1,k2,k3,kz):
     p1,=plt.step(kz,k1/1e6,where='mid',label='FHD - OF')
     p2,=plt.step(kz,k2/1e6,where='mid',label='FHD - FO')
@@ -196,15 +223,20 @@ def power1dplot(fn):
     tp = fsp[9]
     pol = fsp[10]
     d = readsav(fn)
+    deor = readsav('/users/wl42/IDL/FHD/catalog_data/eor_power_1d.idlsave')
     h = d['hubble_param']
     p = d['power']*(h**3)
     n = d['noise']*(h**3)
     s = (h**3)/np.sqrt(d['weights'])
     k_edges = d['k_edges']/h
     k = k_edges[1:]/2+k_edges[:-1]/2
+    keor = deor['k_centers']/h
+    peor = deor['power']*(h**3)
     p = p*k**3/2/np.pi**2
     n = n*k**3/2/np.pi**2
     s = s*k**3/2/np.pi**2
+    peor = peor*keor**3/2/np.pi**2
+    plt.step(keor,peor,where='mid',label='fiducial theory',c='r')
     plt.step(k,p,where='mid',label='measured power',c='black')
     plt.step(k,s,where='mid',label='1 sigma thermal noise',linestyle='--',c='black')
     k_bin = xtostep(k)
@@ -221,12 +253,12 @@ def power1dplot(fn):
     plt.grid(True,axis='y')
     plt.legend(loc=2)
     plt.xlim(1e-1,np.max(k))
-    plt.ylim(1e2,1e7)
+    plt.ylim(1e0,1e8)
     plt.xscale('log')
     plt.yscale('log')
     plt.show()
 
-def get_1d_limit(fn):
+def get_1d_limit(fn,uplim=True):
     d = readsav(fn)
     h = d['hubble_param']
     p = d['power']*(h**3)
@@ -235,7 +267,8 @@ def get_1d_limit(fn):
     k = k_edges[1:]/2+k_edges[:-1]/2
     p = p*k**3/2/np.pi**2
     s = s*k**3/2/np.pi**2
-    pkup = np.sqrt(2)*s*erfinv(0.977-(1-0.977)*erf(p/s/np.sqrt(2))) + p
+    if uplim: pkup = np.sqrt(2)*s*erfinv(0.977-(1-0.977)*erf(p/s/np.sqrt(2))) + p
+    else: pkup = p
     return k, pkup
 
 def exratio(fi):
@@ -247,12 +280,12 @@ def exratio(fi):
     k=0.5*(k[1:]+k[:-1])
     h=d['hubble_param']
     k /= h
-    sec=np.logical_and(k>0.2,k<0.3)
+    sec=np.logical_and(k>0.2,k<0.35)
     return np.mean(p[sec])/np.mean(n[sec])*np.sqrt(np.sum(sec)-1)
 
 def flagr(s):
     sc=np.ma.masked_array(s,np.zeros((len(s)),dtype=bool))
-    for ii in range(500):
+    for ii in range(sc.size):
         m=np.mean(sc)
         q=np.std(sc)
         ind=np.argmax(sc)
