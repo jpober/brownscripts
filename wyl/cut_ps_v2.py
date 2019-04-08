@@ -3,9 +3,17 @@ from scipy.io.idl import readsav
 from plot_vis import *
 import scipy.special as sp
 
+colorsets = [plt.cm.Set1, plt.cm.Set2, plt.cm.Set3]
+
 def erf(x): return sp.erf(x)
 
 def erfinv(y): return sp.erfinv(y)
+
+def getcolor(n):
+    ii = n%29
+    if ii<9: return colorsets[0](ii)
+    elif ii<17: return colorsets[1](ii-9)
+    else: return colorsets[2](ii-17)
 
 def rebin(bin_file,kperp_min_cut=0.0,kperp_max_cut=0.1,kpara_min_cut=0.12,kpara_max_cut=1.2,coarse_band_extent=4,cut_vmodes=True):
     fbin = readsav(bin_file)
@@ -217,7 +225,7 @@ def kperp_plot(k1,k2,k3,kperp):
     plt.legend(handles=[p1,p2,p3],loc=1)
     plt.show()
 
-def power1dplot(fn):
+def power1dplot(fn, colornum=0, kmeasure = False, show = False, lgd=False, fiducial=True, label=''):
     lgd_hand = []
     fsp = fn.split('/')[-1].split('_') 
     tp = fsp[9]
@@ -236,9 +244,9 @@ def power1dplot(fn):
     n = n*k**3/2/np.pi**2
     s = s*k**3/2/np.pi**2
     peor = peor*keor**3/2/np.pi**2
-    plt.step(keor,peor,where='mid',label='fiducial theory',c='r')
-    plt.step(k,p,where='mid',label='measured power',c='black')
-    plt.step(k,s,where='mid',label='1 sigma thermal noise',linestyle='--',c='black')
+    if fiducial: plt.step(keor,peor,where='mid',label='fiducial theory',c='r')
+    if kmeasure: plt.step(k,p,where='mid',label='measured power',linestyle=':',c=getcolor(colornum))
+    plt.step(k,s,where='mid',label=label+'1 sigma thermal noise',linestyle='--',c=getcolor(colornum))
     k_bin = xtostep(k)
     p_bin = ytostep(p)
     s_bin = ytostep(s)
@@ -247,16 +255,16 @@ def power1dplot(fn):
     #pkup[ind0] = 2*s_bin[ind0]
     #pup = np.sqrt(2)*s_bin*scipy.special.erfinv(0.977-(1-0.977)*scipy.special.erf(p_bin/s_bin/np.sqrt(2)))
     plt.fill_between(k_bin,p_bin-2*s_bin,pkup,color='silver',alpha=0.8)
-    plt.plot(k_bin,pkup,label='2 sigma upper limit',c='indigo')
+    plt.plot(k_bin,pkup,label=label+'2 sigma upper limit',c=getcolor(colornum))
     plt.ylabel('$\Delta^2(mK^2)$')
     plt.xlabel('$k(hMpc^{-1})$')
     plt.grid(True,axis='y')
-    plt.legend(loc=2)
+    if lgd: plt.legend(bbox_to_anchor=(1.04,0.5), loc="center left")
     plt.xlim(1e-1,np.max(k))
     plt.ylim(1e0,1e8)
     plt.xscale('log')
     plt.yscale('log')
-    plt.show()
+    if show: plt.show()
 
 def get_1d_limit(fn,uplim=True):
     d = readsav(fn)
@@ -294,9 +302,11 @@ def flagr(s):
     print str(ii)+" observations flagged."
     return sc
 
+lstfit = np.array([ 7.29211610e-05, -2.40663465e+00])
+
 def metric_wrap(fpath='/users/wl42/data/wl42/FHD_out/fhd_int_PhaseII/ps/data/1d_binning/'):
-    fx = glob.glob(fpath+'116*xx*_averemove_swbh_dencorr_no_horizon_wedge_kperplambda5-50_1dkpower.idlsave')
-    fy = glob.glob(fpath+'116*yy*_averemove_swbh_dencorr_no_horizon_wedge_kperplambda5-50_1dkpower.idlsave')
+    fx = glob.glob(fpath+'116*xx*no_horizon*1dkpower.idlsave')
+    fy = glob.glob(fpath+'116*yy*no_horizon*1dkpower.idlsave')
     fx.sort()
     fy.sort()
     obs, rx, ry = [], [], []
@@ -312,23 +322,49 @@ def metric_wrap(fpath='/users/wl42/data/wl42/FHD_out/fhd_int_PhaseII/ps/data/1d_
         ry.append(r)
     rx = flagr(rx)
     ry = flagr(ry)
-    return { 'obs': obs, 'day': day, 'sid': sid, 'rx': rx, 'ry': ry }
+    z=lstfit
+    return { 'obs': obs, 'day': day, 'sid': z[0]*sid+z[1], 'rx': rx, 'ry': ry }
 
-def scatter_snr(day,sid,r,flag=False):
+def scatter_snr(dic,flag=False,mk='x',ra=0): #ra in radians
+    day = dic['day']
+    sid = dic['sid']
+    rx = dic['rx']
+    ry = dic['ry']
+    fig,axs=plt.subplots(2,1,sharex=True)
+    fig.subplots_adjust(hspace=0.03)
     for d in np.unique(day):
         ind = np.where(day==d)[0]
-        if flag: plt.scatter(sid[ind],r[ind])
-        else: plt.scatter(sid[ind],r.data[ind])
-    plt.axvline(x=24214.35,color='black',linewidth=0.8,linestyle='-.')
-    plt.axvline(x=26292.00,color='black',linewidth=0.8,linestyle='-.')
-    plt.axvline(x=28392.95,color='black',linewidth=0.8,linestyle='-.')
-    plt.axvline(x=30322.70,color='black',linewidth=0.8,linestyle='-.')
-    plt.axvline(x=32141.35,color='black',linewidth=0.8,linestyle='-.')
-    plt.axvline(x=33951.70,color='black',linewidth=0.8,linestyle='-.')
-    plt.axvline(x=35810.80,color='black',linewidth=0.8,linestyle='-.')
-    plt.grid(True,axis='y')
-    plt.xlim(np.min(sid)-56,np.max(sid)+56)
-    plt.xlabel('lst(s)')
-    plt.ylabel('power/noise')
+        if flag: 
+	    axs[0].scatter(sid[ind],rx[ind],marker=mk)
+	    axs[1].scatter(sid[ind],ry[ind],marker=mk)
+        else: 
+	    axs[0].scatter(sid[ind],rx.data[ind],marker=mk)
+	    axs[1].scatter(sid[ind],ry.data[ind],marker=mk)
+    z=lstfit
+    axs[0].axvline(x=z[0]*24214.35+z[1]+ra,color='black',linewidth=0.8,linestyle='-.')
+    axs[0].axvline(x=z[0]*26292.00+z[1]+ra,color='black',linewidth=0.8,linestyle='-.')
+    axs[0].axvline(x=z[0]*28392.95+z[1]+ra,color='black',linewidth=0.8,linestyle='-.')
+    axs[0].axvline(x=z[0]*30322.70+z[1]+ra,color='black',linewidth=0.8,linestyle='-.')
+    axs[0].axvline(x=z[0]*32141.35+z[1]+ra,color='black',linewidth=0.8,linestyle='-.')
+    axs[0].axvline(x=z[0]*33951.70+z[1]+ra,color='black',linewidth=0.8,linestyle='-.')
+    axs[0].axvline(x=z[0]*35810.80+z[1]+ra,color='black',linewidth=0.8,linestyle='-.')
+    axs[1].axvline(x=z[0]*24214.35+z[1]+ra,color='black',linewidth=0.8,linestyle='-.')
+    axs[1].axvline(x=z[0]*26292.00+z[1]+ra,color='black',linewidth=0.8,linestyle='-.')
+    axs[1].axvline(x=z[0]*28392.95+z[1]+ra,color='black',linewidth=0.8,linestyle='-.')
+    axs[1].axvline(x=z[0]*30322.70+z[1]+ra,color='black',linewidth=0.8,linestyle='-.')
+    axs[1].axvline(x=z[0]*32141.35+z[1]+ra,color='black',linewidth=0.8,linestyle='-.')
+    axs[1].axvline(x=z[0]*33951.70+z[1]+ra,color='black',linewidth=0.8,linestyle='-.')
+    axs[1].axvline(x=z[0]*35810.80+z[1]+ra,color='black',linewidth=0.8,linestyle='-.')
+    #plt.grid(True,axis='y')
+    axs[0].set_xlim(np.min(sid)-56*z[0],np.max(sid)+56*z[0])
+    axs[1].set_xlim(np.min(sid)-56*z[0],np.max(sid)+56*z[0])
+    axs[1].set_xlabel('lst(rad)')
+    axs[0].set_ylabel('XX')
+    axs[1].set_ylabel('YY')
+    axs[0].set_yscale('symlog',linthreshy=1.)
+    axs[1].set_yscale('symlog',linthreshy=1.)
+    axs[0].set_ylim(-5,250)
+    axs[1].set_ylim(-5,250)
+    #plt.ylabel('power/noise')
     plt.show()
 
