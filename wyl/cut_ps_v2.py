@@ -246,7 +246,7 @@ def power1dplot(fn, colornum=0, kmeasure = False, show = False, lgd=False, fiduc
     peor = peor*keor**3/2/np.pi**2
     if fiducial: plt.step(keor,peor,where='mid',label='fiducial theory',c='r')
     if kmeasure: plt.step(k,p,where='mid',label='measured power',linestyle=':',c=getcolor(colornum))
-    plt.step(k,s,where='mid',label=label+'1 sigma thermal noise',linestyle='--',c=getcolor(colornum))
+    plt.step(k,s,where='mid',label=label+'thermal noise',linestyle='--',c=getcolor(colornum))
     k_bin = xtostep(k)
     p_bin = ytostep(p)
     s_bin = ytostep(s)
@@ -266,7 +266,7 @@ def power1dplot(fn, colornum=0, kmeasure = False, show = False, lgd=False, fiduc
     plt.yscale('log')
     if show: plt.show()
 
-def get_1d_limit(fn,uplim=True):
+def get_1d_limit(fn):
     d = readsav(fn)
     h = d['hubble_param']
     p = d['power']*(h**3)
@@ -275,9 +275,8 @@ def get_1d_limit(fn,uplim=True):
     k = k_edges[1:]/2+k_edges[:-1]/2
     p = p*k**3/2/np.pi**2
     s = s*k**3/2/np.pi**2
-    if uplim: pkup = np.sqrt(2)*s*erfinv(0.977-(1-0.977)*erf(p/s/np.sqrt(2))) + p
-    else: pkup = p
-    return k, pkup
+    pkup = np.sqrt(2)*s*erfinv(0.977-(1-0.977)*erf(p/s/np.sqrt(2))) + p
+    return k, p, pkup, s
 
 def exratio(fi):
     #fi=obs+'_cubeXX__even_odd_joint_bh_res_'+pol+'_averemove_swbh_dencorr_no_horizon_wedge_kperplambda5-50_1dkpower.idlsave'
@@ -302,7 +301,7 @@ def flagr(s):
     print str(ii)+" observations flagged."
     return sc
 
-lstfit = np.array([ 7.29211610e-05, -2.40663465e+00])
+lstfit = np.array([ 7.29211507e-05, -2.40663844e+00])
 
 def metric_wrap(fpath='/users/wl42/data/wl42/FHD_out/fhd_int_PhaseII/ps/data/1d_binning/'):
     fx = glob.glob(fpath+'116*xx*no_horizon*1dkpower.idlsave')
@@ -325,7 +324,7 @@ def metric_wrap(fpath='/users/wl42/data/wl42/FHD_out/fhd_int_PhaseII/ps/data/1d_
     z=lstfit
     return { 'obs': obs, 'day': day, 'sid': z[0]*sid+z[1], 'rx': rx, 'ry': ry }
 
-def scatter_snr(dic,flag=False,mk='x',ra=0): #ra in radians
+def scatter_snr(dic,flag=False,mk='x',pointobslist=None): 
     day = dic['day']
     sid = dic['sid']
     rx = dic['rx']
@@ -341,20 +340,33 @@ def scatter_snr(dic,flag=False,mk='x',ra=0): #ra in radians
 	    axs[0].scatter(sid[ind],rx.data[ind],marker=mk)
 	    axs[1].scatter(sid[ind],ry.data[ind],marker=mk)
     z=lstfit
-    axs[0].axvline(x=z[0]*24214.35+z[1]+ra,color='black',linewidth=0.8,linestyle='-.')
-    axs[0].axvline(x=z[0]*26292.00+z[1]+ra,color='black',linewidth=0.8,linestyle='-.')
-    axs[0].axvline(x=z[0]*28392.95+z[1]+ra,color='black',linewidth=0.8,linestyle='-.')
-    axs[0].axvline(x=z[0]*30322.70+z[1]+ra,color='black',linewidth=0.8,linestyle='-.')
-    axs[0].axvline(x=z[0]*32141.35+z[1]+ra,color='black',linewidth=0.8,linestyle='-.')
-    axs[0].axvline(x=z[0]*33951.70+z[1]+ra,color='black',linewidth=0.8,linestyle='-.')
-    axs[0].axvline(x=z[0]*35810.80+z[1]+ra,color='black',linewidth=0.8,linestyle='-.')
-    axs[1].axvline(x=z[0]*24214.35+z[1]+ra,color='black',linewidth=0.8,linestyle='-.')
-    axs[1].axvline(x=z[0]*26292.00+z[1]+ra,color='black',linewidth=0.8,linestyle='-.')
-    axs[1].axvline(x=z[0]*28392.95+z[1]+ra,color='black',linewidth=0.8,linestyle='-.')
-    axs[1].axvline(x=z[0]*30322.70+z[1]+ra,color='black',linewidth=0.8,linestyle='-.')
-    axs[1].axvline(x=z[0]*32141.35+z[1]+ra,color='black',linewidth=0.8,linestyle='-.')
-    axs[1].axvline(x=z[0]*33951.70+z[1]+ra,color='black',linewidth=0.8,linestyle='-.')
-    axs[1].axvline(x=z[0]*35810.80+z[1]+ra,color='black',linewidth=0.8,linestyle='-.')
+    if pointobslist is None:
+        axs[0].axvline(x=z[0]*24214.35+z[1],color='black',linewidth=0.8,linestyle='-.')
+        axs[0].axvline(x=z[0]*26292.00+z[1],color='black',linewidth=0.8,linestyle='-.')
+        axs[0].axvline(x=z[0]*28392.95+z[1],color='black',linewidth=0.8,linestyle='-.')
+        axs[0].axvline(x=z[0]*30322.70+z[1],color='black',linewidth=0.8,linestyle='-.')
+        axs[0].axvline(x=z[0]*32141.35+z[1],color='black',linewidth=0.8,linestyle='-.')
+        axs[0].axvline(x=z[0]*33951.70+z[1],color='black',linewidth=0.8,linestyle='-.')
+        axs[0].axvline(x=z[0]*35810.80+z[1],color='black',linewidth=0.8,linestyle='-.')
+        axs[1].axvline(x=z[0]*24214.35+z[1],color='black',linewidth=0.8,linestyle='-.')
+        axs[1].axvline(x=z[0]*26292.00+z[1],color='black',linewidth=0.8,linestyle='-.')
+        axs[1].axvline(x=z[0]*28392.95+z[1],color='black',linewidth=0.8,linestyle='-.')
+        axs[1].axvline(x=z[0]*30322.70+z[1],color='black',linewidth=0.8,linestyle='-.')
+        axs[1].axvline(x=z[0]*32141.35+z[1],color='black',linewidth=0.8,linestyle='-.')
+        axs[1].axvline(x=z[0]*33951.70+z[1],color='black',linewidth=0.8,linestyle='-.')
+        axs[1].axvline(x=z[0]*35810.80+z[1],color='black',linewidth=0.8,linestyle='-.')
+    else:
+        #please make sure pointobslist is in lst order
+        obslst = None
+        for fi in pointobslist:
+            l = []
+            for line in open(fi, 'rb'):
+		l.append(int(line.strip()))
+            if obslst:
+                s = 0.5*(obslst+l[0]%86164.1)
+                axs[0].axvline(x=z[0]*s+z[1],color='black',linewidth=0.8,linestyle='-.')
+                axs[1].axvline(x=z[0]*s+z[1],color='black',linewidth=0.8,linestyle='-.')
+            obslst = l[-1]%86164.1
     #plt.grid(True,axis='y')
     axs[0].set_xlim(np.min(sid)-56*z[0],np.max(sid)+56*z[0])
     axs[1].set_xlim(np.min(sid)-56*z[0],np.max(sid)+56*z[0])
@@ -366,5 +378,54 @@ def scatter_snr(dic,flag=False,mk='x',ra=0): #ra in radians
     axs[0].set_ylim(-5,250)
     axs[1].set_ylim(-5,250)
     #plt.ylabel('power/noise')
+    plt.show()
+
+def plotlimit(f1,f2,sz=(10,10)):
+    fig,axs=plt.subplots(3,2,sharex=True,sharey=True,figsize=sz)  
+    deor = readsav('/users/wl42/IDL/FHD/catalog_data/eor_power_1d.idlsave')
+    keor = deor['k_centers']
+    peor = deor['power'] 
+    z=['7.1','6.8','6.5'] 
+    pol=['E-W','N-S']
+    for ii in range(6): 
+        ix=ii/2
+        iy=ii%2
+        fb=f1[ii]
+        fl=f2[ii] 
+        d=readsav(fl) 
+        h=d['hubble_param']
+        k0=keor/h 
+        p0=peor*keor**3/2/np.pi**2 
+        kb,pb,pbup,sb=get_1d_limit(fb)
+        kl,pl,plup,sl=get_1d_limit(fl)
+        pl[np.where(pl==0)]=np.nan
+        axs[ix][iy].set_xlim(0.15,1.2) 
+        axs[ix][iy].set_ylim(10,1e7)
+        axs[ix][iy].set_title('z='+z[ix]+' '+pol[iy])
+        axs[ix][iy].set_xscale('log')
+        axs[ix][iy].set_yscale('log') 
+        m1,m2,m3=None,None,None 
+        if iy==0: axs[ix][iy].set_ylabel('$\Delta^2$ ($mK^2$)')
+        if ix==2: axs[ix][iy].set_xlabel('$k$ ($h$ $Mpc^{-1}$)')
+        if ii==1: 
+            m1='Fiducial Theory'
+            m2='2016 2-$\sigma$ Upper Limit' 
+            m3='2016 Noise Level' 
+        axs[ix][iy].step(k0,p0,where='mid',c='r',label=m1) 
+        axs[ix][iy].step(kb,pbup,where='mid',c='c',label=m2)
+        axs[ix][iy].step(kb,sb,where='mid',c='c',linestyle='--',label=m3)
+        l1,l2,l3=None,None,None
+        if ii==0:
+            l1='Measured Power' 
+            l2='Noise Level'
+            l3='2-$\sigma$ Upper Limit'
+        axs[ix][iy].step(kl,pl,where='mid',c='k',label=l1) 
+        axs[ix][iy].step(kl,sl,where='mid',c='k',linestyle='--',label=l2) 
+        axs[ix][iy].step(kl,plup,where='mid',c='indigo',label=l3)
+        axs[ix][iy].fill_between(xtostep(kl),ytostep(pl)-2*ytostep(sl),ytostep(plup),color='silver',alpha=0.8)
+        axs[ix][iy].grid(axis='y') 
+    plt.subplots_adjust(top=0.94,bottom=0.12,left=0.07,right=0.965,hspace=0.21,wspace=0.005)
+    axs[0][0].legend(loc=2,ncol=3,fontsize='x-small')
+    axs[0][1].legend(loc=2,ncol=3,fontsize='x-small')
     plt.show()
 
