@@ -62,7 +62,7 @@ contents={\begin{tikzpicture}[remember picture,overlay]
 
 \begin{minipage}[b]{0.45\textwidth}
 \veryHuge \color{Brown} \textbf{Radio Cosmology Lab} \color{Black}\textbf{$|$} \color{Black}\LARGE\textit{Exploring the Epoch of Reionization}\\
-\textbf{Adam Lanman, Wenyang Li, Joshua Kerrigan, Jacob Burba, \\Peter Sims, Daniya Seitova, Jonathan Pober}\\ % Author(s)
+\textbf{Jacob Burba, Theo Kunicki, Daniya Seitova, \\Samantha McGraw, Jasper Solt, Jonathan Pober}\\ % Author(s)
 \huge Brown University Physics\\ % University/organization
 \end{minipage}
 \hfill
@@ -189,16 +189,19 @@ A statistically robust analysis of the data is essential to avoid a spurious or 
 
 
 
-\subsection*{Deep Learning for RFI Mitigation}
-RFI is present in all radio observations and consists of both terrestrial (e.g. TV stations) and in orbit (e.g. satellites) sources.
-% This interference reduces sensitivity in 21cm EoR experiments because it can be present in nearly all frequency channels and is brighter than galactic foregrounds. 
-Due to the nature of how RFI manifests itself in visibility data as sharp discontinuities or disruptive amorphous shapes, novel machine learning techniques can be applied. We introduce a Deep Fully Convolutional Neural Network 
-% (D-FCN) which uses the time-frequency context from both amplitude and phase 
-to form a robust and efficient method for identifying RFI.
+\subsection*{Machine Learning Reionization}
+Our goal is to use Machine Learning to extract the temporal evolution of reionization (characterized by the mean, midpoint, and duration) from simulations that account for the degrading effects of the radio telescope. To extract the physical parameters of reionization, a Convolutional Neural Network (CNN) was trained with simulated data.  The resulting model was able to extract the mean and midpoint to within $\pm$1\% and the duration to within $\pm$10\% of their true values.
 \begin{figure}[H]
 \centering
-\frame{\includegraphics[width=0.8\linewidth]{figures/PostFCStitchArch_v6_1.png}}
-\caption{Deep Full Convolutional Neural Network (D-FCN) architecture design for application to interferometric visibilities. The input space consists of a normalized log amplitude (upper branch) and it's corresponding phase component. Both input layers reintroduce coarse time-frequency information into the transpose convolutional layers in what's referred to as `skip connections'.}
+\includegraphics[width=0.4\linewidth]{figures/meanz1024_1.png}
+\hspace{0.1in}
+\includegraphics[width=0.4\linewidth]{figures/midpoint1024_1.png}
+\end{figure}
+\begin{figure}[H]
+\centering
+\vspace{-0.1in}
+\includegraphics[width=0.4\linewidth]{figures/duration1024_1.png}
+\caption{Convolutional Neural Network predictions of the mean (top left), midpoint (top right), and duration (bottom) of semi-numerical simulations of reionization. Higher error in the duration may be a result of the redshift intervals of the training data approaching the duration of reionization.}
 \label{fig:DFCNArch}
 \end{figure}
 
@@ -213,7 +216,7 @@ to form a robust and efficient method for identifying RFI.
 \begin{figure}[H]
 \centering
 \vspace*{-20pt}
-\frame{\includegraphics[width=0.8\linewidth]{figures/heratext_image.png}}
+\frame{\includegraphics[width=0.85\linewidth]{figures/heratext_image.png}}
 \caption{An image produced from simulated data from pyuvsim, of a mock catalog that spells out "HERA" in point sources at the zenith.}
 \vspace*{-15pt}
 \label{fig:heratext}
@@ -250,7 +253,7 @@ Interferometric arrays seeking to measure the 21 cm signal from the EoR must con
 \begin{figure}[H]
 \centering
 \label{comparison_between_sky_and_redundant}
-\frame{\includegraphics[width=0.75\linewidth]{figures/projtest2.pdf}}
+\includegraphics[width=0.75\linewidth]{figures/projtest2.pdf}
 \caption{30 minutes averaged gain calibrations of 2 MWA PhaseII tiles. Upper: Gain amplitude; Middle: Gain phase. Lower: fractional difference between sky based (FHD) and redundancy based (OMNICAL) solutions with degeneracy projected. Blue: FHD solutions; Red: OMNICAL solutions after projecting degeneracy.}
 \end{figure}
 
@@ -268,7 +271,7 @@ The MWA is one of the three Square Kilometer Array (SKA) Precursor telescopes lo
 \begin{figure}[H]
 \centering
 \label{fig:HERA}
-\frame{\includegraphics[width=0.95\linewidth]{figures/MWA_tiles.jpg}}
+\includegraphics[width=0.95\linewidth]{figures/MWA_tiles.jpg}
 \caption{MWA - Located in the Murchison Radio-astronomy Observatory in Western Australia.}
 \end{figure}
 
@@ -295,9 +298,16 @@ The Hydrogen Epoch of Reionization Array is a $2^{nd}$ generation radio interfer
 \centering
 \vspace*{20pt}
 \label{fig:HERA}
-\frame{\includegraphics[width=0.75\linewidth]{figures/HERA19.png}}
-\caption{HERA - Located in the Karoo desert in South Africa}
-\vspace*{-20pt}
+\includegraphics[width=0.65\linewidth]{figures/HERA19.png}
+\end{figure}
+\begin{figure}[H]
+\centering
+%\vspace{-0.5in}
+\includegraphics[width=0.65\linewidth]{figures/site_visit_node.jpg}
+%\frame{\includegraphics[width=0.65\linewidth]{figures/HERA19.png}}
+%\frame{\includegraphics[width=0.65\linewidth]{figures/site_visit_node.jpg}}
+\caption{(Top) HERA - Located in the Karoo desert in South Africa.  (Bottom) Jacob, Daniya, and Theo wiring up a HERA node on site.}
+%\vspace*{-20pt}
 \end{figure}
 
 %\begin{figure}[H]
@@ -320,10 +330,10 @@ The Hydrogen Epoch of Reionization Array is a $2^{nd}$ generation radio interfer
 %\section*{Conclusions}
 
 %[Do we have conclusions?] [No?]
-\section*{}
-\fbox{\begin{minipage}{0.95\linewidth}
-\large \textbf{We are open to undergraduate and graduate students who are interested in our potential research projects. Please contact \url{jonathan\_pober@brown.edu} if you would like to join!}\\
-\end{minipage}}
+%\section*{}
+%\fbox{\begin{minipage}{0.95\linewidth}
+%\large \textbf{We are open to undergraduate and graduate students who are interested in our potential research projects. Please contact \url{jonathan\_pober@brown.edu} if you would like to join!}\\
+%\end{minipage}}
 
 \color{DarkSlateGray} % Set the color back to DarkSlateGray for the rest of the content
 
